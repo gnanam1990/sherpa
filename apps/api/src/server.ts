@@ -187,7 +187,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     async (req, reply) => {
       const resolved = await resolve(req.params.addr);
       if (!isResolved(resolved)) return reply.code(400).send({ error: resolved });
-      const limit = Math.min(50, Math.max(1, Number(req.query.limit ?? 10)));
+      const rawLimit = Number(req.query.limit ?? 10);
+      if (!Number.isFinite(rawLimit)) {
+        return reply.code(400).send({ error: 'limit must be a finite number' });
+      }
+      const limit = Math.min(50, Math.max(1, Math.floor(rawLimit)));
       try {
         const items = await indexer.list(resolved.address, limit);
         return reply.send({ address: resolved.address, chain: config.chain.name, items });

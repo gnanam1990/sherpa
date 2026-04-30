@@ -75,6 +75,16 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  it('GET /api/history/:addr rejects non-numeric limit', async () => {
+    const app = buildServer({ config: offlineConfig });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/history/${USDC_RECIPIENT}?limit=abc`,
+    });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
   it('shares a rate limiter across requests so Ring 3 actually bites', async () => {
     const rateLimiter = createInMemoryRateLimiter();
     // Drain the bucket (limit is 10/60s per executor.ts).
