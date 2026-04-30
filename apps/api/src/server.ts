@@ -3,7 +3,14 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { parseDeterministic, plan, type ConfirmationCardProps } from '@sherpa/core';
 import { resolve, isResolved } from '@sherpa/identity';
-import { createAuditLog, updateAuditLog } from '@sherpa/memory';
+import {
+  createAuditLog,
+  createInMemoryAuditStore,
+  createInMemoryRateLimiter,
+  updateAuditLog,
+  type AuditStore,
+  type RateLimiter,
+} from '@sherpa/memory';
 
 /**
  * Week-2 API shell. Real handlers back onto `@sherpa/core` and
@@ -23,6 +30,18 @@ const executeBody = z.object({
   ),
 });
 
+const confirmBody = z.object({
+  txHash: z
+    .custom<`0x${string}`>((v) => typeof v === 'string' && /^0x[a-fA-F0-9]{64}$/.test(v), { message: 'txHash must be 0x-prefixed 32-byte hex' })
+    .optional(),
+  error: z.string().max(500).optional(),
+});
+
+export type BuildServerOptions = {
+  auditStore?: AuditStore;
+  rateLimiter?: RateLimiter;
+};
+
 function hashPlan(card: ConfirmationCardProps): string {
   const h = createHash('sha256');
   h.update(JSON.stringify(card, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)));
@@ -36,8 +55,14 @@ function serializeCard(card: ConfirmationCardProps): Record<string, unknown> {
   };
 }
 
-export function buildServer(): FastifyInstance {
+export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const app = Fastify({ logger: false });
+
+  // Long-lived, per-server instances so Rings 3 (rate limit) and 5 (audit
+  // log) share state across requests. Callers may inject their own (Redis /
+  // Postgres) implementations in production.
+  const auditStore = options.auditStore ?? createInMemoryAuditStore();
+  const rateLimiter = options.rateLimiter ?? createInMemoryRateLimiter();
 
   app.get('/api/health', async () => ({ ok: true, ts: Date.now() }));
 
@@ -47,7 +72,10 @@ export function buildServer(): FastifyInstance {
       return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
     }
     const parsedIntent = parseDeterministic(parsed.data.input);
-    const planResult = await plan(parsedIntent, { userKey: parsed.data.userKey });
+    const planResult = await plan(parsedIntent, {
+      userKey: parsed.data.userKey,
+      rateLimiter,
+    });
     if (!planResult.ok) {
       return reply.send({ parsed: parsedIntent, error: planResult.error });
     }
@@ -60,19 +88,25 @@ export function buildServer(): FastifyInstance {
       return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
     }
     const parsedIntent = parseDeterministic(parsed.data.input);
-    const planResult = await plan(parsedIntent, { userKey: parsed.data.userAddress });
+    const planResult = await plan(parsedIntent, {
+      userKey: parsed.data.userAddress,
+      rateLimiter,
+    });
     if (!planResult.ok) {
       return reply.code(400).send({ ok: false, error: planResult.error });
     }
     const planHash = hashPlan(planResult.card);
-    const auditLogId = await createAuditLog({
-      userAddress: parsed.data.userAddress,
-      intent: parsedIntent.intent,
-      planHash,
-      submittedAt: Date.now(),
-    });
+    const auditLogId = await createAuditLog(
+      {
+        userAddress: parsed.data.userAddress,
+        intent: parsedIntent.intent,
+        planHash,
+        submittedAt: Date.now(),
+      },
+      auditStore,
+    );
     // Ring 5 write happens here; Ring 7 (user confirmation) occurs client-side
-    // and the client POSTs the signed tx hash back to `/api/execute/confirm`
+    // and the client POSTs the signed tx hash back to `/api/execute/:id/confirm`
     // in Week 3. For Week 2 we return the plan + audit-log id.
     return reply.send({
       ok: true,
@@ -84,9 +118,22 @@ export function buildServer(): FastifyInstance {
 
   app.post<{ Params: { id: string } }>('/api/execute/:id/confirm', async (req, reply) => {
     const id = Number(req.params.id);
-    if (!Number.isFinite(id)) return reply.code(400).send({ error: 'bad id' });
-    const body = req.body as { txHash?: `0x${string}` };
-    await updateAuditLog(id, { txHash: body.txHash, confirmedAt: Date.now() });
+    if (!Number.isInteger(id) || id <= 0) {
+      return reply.code(400).send({ error: 'id must be a positive integer' });
+    }
+    const parsed = confirmBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
+    }
+    try {
+      await updateAuditLog(
+        id,
+        { txHash: parsed.data.txHash, error: parsed.data.error, confirmedAt: Date.now() },
+        auditStore,
+      );
+    } catch (err) {
+      return reply.code(404).send({ error: (err as Error).message });
+    }
     return reply.send({ ok: true });
   });
 
