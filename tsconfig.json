@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "files": [],
+  "references": [
+    { "path": "./packages/safety" },
+    { "path": "./packages/tools" },
+    { "path": "./packages/core" },
+    { "path": "./packages/llm" },
+    { "path": "./packages/agentkit" },
+    { "path": "./packages/ui" },
+    { "path": "./packages/identity" },
+    { "path": "./packages/memory" },
+    { "path": "./packages/scheduler" },
+    { "path": "./packages/config" },
+    { "path": "./packages/logger" },
+    { "path": "./apps/api" }
+  ]
+}
