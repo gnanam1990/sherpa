@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { loadConfig, type SherpaConfig } from '@sherpa/config';
 import { parseDeterministic, plan, type ConfirmationCardProps } from '@sherpa/core';
 import { resolve, isResolved } from '@sherpa/identity';
 import {
@@ -11,6 +12,13 @@ import {
   type AuditStore,
   type RateLimiter,
 } from '@sherpa/memory';
+import {
+  createBasescanIndexer,
+  emptyIndexer,
+  fetchBalance,
+  getPublicClient,
+  type HistoryIndexer,
+} from '@sherpa/tools';
 
 /**
  * Week-2 API shell. Real handlers back onto `@sherpa/core` and
@@ -40,6 +48,8 @@ const confirmBody = z.object({
 export type BuildServerOptions = {
   auditStore?: AuditStore;
   rateLimiter?: RateLimiter;
+  indexer?: HistoryIndexer;
+  config?: SherpaConfig;
 };
 
 function hashPlan(card: ConfirmationCardProps): string {
@@ -63,6 +73,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   // Postgres) implementations in production.
   const auditStore = options.auditStore ?? createInMemoryAuditStore();
   const rateLimiter = options.rateLimiter ?? createInMemoryRateLimiter();
+  const config = options.config ?? loadConfig();
+  const indexer =
+    options.indexer ??
+    (config.basescanApiKey
+      ? createBasescanIndexer({ apiUrl: config.chain.basescanUrl, apiKey: config.basescanApiKey })
+      : emptyIndexer);
 
   app.get('/api/health', async () => ({ ok: true, ts: Date.now() }));
 
@@ -140,20 +156,46 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   app.get<{ Params: { addr: string } }>('/api/balance/:addr', async (req, reply) => {
     const resolved = await resolve(req.params.addr);
     if (!isResolved(resolved)) return reply.code(400).send({ error: resolved });
-    // Real multicall balance lookup lands in Week 3 (needs RPC config).
-    return reply.send({
-      address: resolved.address,
-      source: resolved.source,
-      balances: { USDC: '0', ETH: '0' },
-      stage: 'week-2-stub',
-    });
+    if (!config.useRealRpc) {
+      return reply.send({
+        address: resolved.address,
+        source: resolved.source,
+        chain: config.chain.name,
+        balances: { ETH: '0', USDC: '0' },
+        stage: 'stub',
+      });
+    }
+    try {
+      const client = getPublicClient({
+        chainId: config.chain.chainId,
+        rpcUrl: config.rpcUrl,
+      });
+      const snap = await fetchBalance(client, resolved.address);
+      return reply.send({
+        address: resolved.address,
+        source: resolved.source,
+        chain: config.chain.name,
+        balances: { ETH: snap.ethDisplay, USDC: snap.usdcDisplay },
+      });
+    } catch (err) {
+      return reply.code(502).send({ error: 'rpc_error', message: (err as Error).message });
+    }
   });
 
-  app.get<{ Params: { addr: string } }>('/api/history/:addr', async (req, reply) => {
-    const resolved = await resolve(req.params.addr);
-    if (!isResolved(resolved)) return reply.code(400).send({ error: resolved });
-    return reply.send({ address: resolved.address, items: [], stage: 'week-2-stub' });
-  });
+  app.get<{ Params: { addr: string }; Querystring: { limit?: string } }>(
+    '/api/history/:addr',
+    async (req, reply) => {
+      const resolved = await resolve(req.params.addr);
+      if (!isResolved(resolved)) return reply.code(400).send({ error: resolved });
+      const limit = Math.min(50, Math.max(1, Number(req.query.limit ?? 10)));
+      try {
+        const items = await indexer.list(resolved.address, limit);
+        return reply.send({ address: resolved.address, chain: config.chain.name, items });
+      } catch (err) {
+        return reply.code(502).send({ error: 'indexer_error', message: (err as Error).message });
+      }
+    },
+  );
 
   return app;
 }
