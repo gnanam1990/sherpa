@@ -1,7 +1,7 @@
 import type { Address } from '@sherpa/safety';
 
 /** Stage-1+ supported intents. Keep in sync with the parser. */
-export type Intent = 'SEND' | 'BUY' | 'BET' | 'SWAP' | 'BALANCE' | 'HISTORY';
+export type Intent = 'SEND' | 'BUY' | 'BET' | 'SWAP' | 'BALANCE' | 'HISTORY' | 'UNKNOWN';
 
 export type ParsedIntent = {
   intent: Intent;
@@ -40,3 +40,13 @@ export type ConfirmationCardProps = {
   warnings: string[];
   estimated_completion_ms: number;
 };
+
+export type ParseResponse = {
+  parsed: ParsedIntent;
+  card?: ConfirmationCardProps;
+  error?: string;
+};
+
+export type ExecuteResponse =
+  | { ok: true; auditLogId: number; planHash: string }
+  | { ok: false; error: string };

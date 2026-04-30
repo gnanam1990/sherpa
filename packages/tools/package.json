@@ -24,7 +24,8 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@sherpa/safety": "workspace:*"
+    "@sherpa/safety": "workspace:*",
+    "viem": "^2.21.54"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
