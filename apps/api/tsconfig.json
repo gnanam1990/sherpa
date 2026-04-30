@@ -12,7 +12,8 @@
     { "path": "../../packages/identity" },
     { "path": "../../packages/logger" },
     { "path": "../../packages/memory" },
-    { "path": "../../packages/safety" }
+    { "path": "../../packages/safety" },
+    { "path": "../../packages/tools" }
   ],
   "include": ["src/**/*"],
   "exclude": ["src/**/*.test.ts", "dist", "node_modules"]

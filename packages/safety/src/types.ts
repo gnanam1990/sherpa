@@ -1,7 +1,7 @@
-/** 0x-prefixed hex address. Narrowed by safety layer before use. */
+/** 0x-prefixed hex address (20-byte). */
 export type Address = `0x${string}`;
 
-/** The seven safety rings. */
+/** The seven safety rings, checked in order per M1_BACKEND_PACK. */
 export type SafetyRing =
   | 'ring1_allowlist'
   | 'ring2_amount_cap'
@@ -26,4 +26,22 @@ export type RateLimitConfig = {
   key: string;
   limit: number;
   windowSec: number;
+};
+
+export type RateLimitResult = {
+  ok: boolean;
+  remaining: number;
+  resetAt: number;
+};
+
+/** Minimum tx shape safety needs to vet. */
+export type PendingTx = {
+  to: Address;
+  data: `0x${string}`;
+  value: bigint;
+  /** Semantic asset + amount the executor extracted (for amount caps). */
+  asset: Address | 'native';
+  amount: bigint;
+  /** Recipient resolution source; must not be `'llm'`. */
+  recipientSource: 'farcaster' | 'basename' | 'ens' | 'direct';
 };

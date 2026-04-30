@@ -21,7 +21,10 @@
     "@sherpa/logger": "workspace:*",
     "@sherpa/memory": "workspace:*",
     "@sherpa/safety": "workspace:*",
-    "fastify": "^5.2.0"
+    "@sherpa/tools": "workspace:*",
+    "fastify": "^5.2.0",
+    "viem": "^2.21.54",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

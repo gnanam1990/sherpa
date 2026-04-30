@@ -1,20 +1,21 @@
-import { tokens } from '@sherpa/ui';
+import { Shell, tokens } from '@sherpa/ui';
+import { Prompt } from './_components/Prompt';
 
 export default function HomePage() {
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
-        gap: '1rem',
-      }}
-    >
-      <h1 style={{ margin: 0, color: tokens.color.baseBlue }}>Sherpa</h1>
-      <p style={{ opacity: 0.7 }}>The natural-language Base agent. Week-1 scaffold.</p>
-    </main>
+    <Shell>
+      <header style={{ textAlign: 'center', marginTop: 24 }}>
+        <h1 style={{ margin: 0, color: tokens.color.baseBlue, fontSize: 40, letterSpacing: -1 }}>
+          Sherpa
+        </h1>
+        <p style={{ color: tokens.color.muted, marginTop: 8 }}>
+          Type anything. Sherpa does it on Base.
+        </p>
+      </header>
+      <Prompt />
+      <footer style={{ marginTop: 'auto', color: tokens.color.muted, fontSize: 12 }}>
+        Stage 1 · Base Sepolia · <span style={{ color: tokens.color.success }}>sponsored gas</span>
+      </footer>
+    </Shell>
   );
 }

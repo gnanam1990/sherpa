@@ -5,7 +5,13 @@
     "outDir": "dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "references": [{ "path": "../safety" }],
+  "references": [
+    { "path": "../identity" },
+    { "path": "../llm" },
+    { "path": "../memory" },
+    { "path": "../safety" },
+    { "path": "../tools" }
+  ],
   "include": ["src/**/*"],
   "exclude": ["src/**/*.test.ts", "dist", "node_modules"]
 }

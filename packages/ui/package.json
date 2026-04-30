@@ -23,7 +23,12 @@
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
   "devDependencies": {
+    "@types/react": "^19.0.2",
+    "react": "^19.0.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }
