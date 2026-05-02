@@ -52,4 +52,37 @@ describe('core/executor', () => {
     const out = await plan(p);
     expect(out.ok).toBe(false);
   });
+
+  it('plans a BUY with approve+swap and an EIP-5792 envelope', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const p = parseDeterministic('buy $50 of eth');
+    const out = await plan(p, { userAddress: me, paymasterUrl: 'https://paymaster.test' });
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('BUY');
+      expect(out.card.steps.length).toBe(2);
+      expect(out.card.steps[0]?.kind).toBe('approve');
+      expect(out.card.steps[1]?.kind).toBe('swap');
+      expect(out.card.batch?.calls.length).toBe(2);
+      expect(out.card.gas_display).toMatch(/sponsored/);
+    }
+  });
+
+  it('BUY without userAddress is rejected', async () => {
+    const p = parseDeterministic('buy $50 of eth');
+    const out = await plan(p);
+    expect(out.ok).toBe(false);
+  });
+
+  it('plans a BET with approve+bet steps', async () => {
+    const p = parseDeterministic('bet $5 yes on eth-tops-5k');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('BET');
+      expect(out.card.steps.length).toBe(2);
+      expect(out.card.steps[0]?.kind).toBe('approve');
+      expect(out.card.steps[1]?.kind).toBe('bet');
+    }
+  });
 });

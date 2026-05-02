@@ -3,9 +3,12 @@ import {
   ALLOWED_CONTRACTS,
   assertAllowlisted,
   assertAmountCap,
+  buildSendCallsParams,
   checkRings,
   firstFailure,
+  isBatchSponsorable,
   ringsOk,
+  type Call,
   type PendingTx,
 } from './index.js';
 
@@ -70,5 +73,46 @@ describe('safety/rings', () => {
   it('fails ring6 when simulation rejects', async () => {
     const results = await checkRings(goodTx, { simulate: () => false });
     expect(firstFailure(results)?.ring).toBe('ring6_simulation');
+  });
+});
+
+describe('safety/sponsor', () => {
+  const from = '0x1111111111111111111111111111111111111111' as const;
+  const calls: Call[] = [
+    { to: ALLOWED_CONTRACTS.USDC, data: '0xabcd', value: 0n },
+    { to: ALLOWED_CONTRACTS.UNISWAP_ROUTER, data: '0x04e45aaf', value: 0n },
+  ];
+
+  it('builds an EIP-5792 envelope with hex chainId + values', () => {
+    const env = buildSendCallsParams(calls, { chainId: 84532, from });
+    expect(env.version).toBe('1.0');
+    expect(env.chainId).toBe('0x14a34');
+    expect(env.from).toBe(from);
+    expect(env.calls.length).toBe(2);
+    expect(env.calls[0]?.value).toBe('0x0');
+    expect(env.capabilities).toBeUndefined();
+  });
+
+  it('includes paymasterService when url provided', () => {
+    const env = buildSendCallsParams(calls, {
+      chainId: 84532,
+      from,
+      paymasterUrl: 'https://paymaster.example/rpc',
+    });
+    expect(env.capabilities?.paymasterService?.url).toBe('https://paymaster.example/rpc');
+  });
+
+  it('throws on empty call list', () => {
+    expect(() => buildSendCallsParams([], { chainId: 84532, from })).toThrow();
+  });
+
+  it('isBatchSponsorable: true when all values zero', () => {
+    expect(isBatchSponsorable(calls)).toBe(true);
+  });
+
+  it('isBatchSponsorable: false when any call carries native value', () => {
+    expect(
+      isBatchSponsorable([...calls, { to: from, data: '0x', value: 1n }]),
+    ).toBe(false);
   });
 });

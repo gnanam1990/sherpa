@@ -8,8 +8,12 @@
 export * from './types.js';
 export { usdc } from './usdc.js';
 export type { UsdcTransferParams, UsdcQuote } from './usdc.js';
-export { limitless } from './limitless.js';
-export type { BetParams, BetQuote } from './limitless.js';
+export { limitless, createLimitless, buildApproveCall } from './limitless.js';
+export type { BetParams, BetQuote, LimitlessConfig } from './limitless.js';
+export { uniswap, makeUniswap } from './uniswap.js';
+export type { BuyParams, BuyQuote, UniswapDeps } from './uniswap.js';
+export { onramp, createOnramp } from './onramp.js';
+export type { OnrampParams, OnrampQuote, OnrampSession, OnrampConfig } from './onramp.js';
 export { getPublicClient, type ViemClientConfig } from './viem.js';
 export { fetchBalance, type BalanceSnapshot } from './balance.js';
 export { emptyIndexer, type HistoryIndexer, type HistoryItem } from './history.js';

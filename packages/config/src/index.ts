@@ -44,6 +44,8 @@ export type SherpaConfig = {
   groqApiKey?: string;
   /** Whether to attempt real RPC lookups (disabled in unit tests). */
   useRealRpc: boolean;
+  /** Coinbase Paymaster service URL (EIP-5792 capabilities.paymasterService.url). */
+  paymasterUrl?: string;
 };
 
 function pickChain(name: string | undefined): ChainConfig {
@@ -61,5 +63,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     anthropicApiKey: env.ANTHROPIC_API_KEY,
     groqApiKey: env.GROQ_API_KEY,
     useRealRpc: env.SHERPA_USE_REAL_RPC !== 'false',
+    paymasterUrl: env.SHERPA_PAYMASTER_URL,
   };
 }

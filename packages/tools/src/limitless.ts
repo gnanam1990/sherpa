@@ -1,73 +1,137 @@
-import { ALLOWED_CONTRACTS, assertAllowlisted } from '@sherpa/safety';
-import { parseUnits } from 'viem';
+import { encodeFunctionData, erc20Abi, parseUnits } from 'viem';
+import { ALLOWED_CONTRACTS, assertAllowlisted, type Address } from '@sherpa/safety';
 import type { BuildTx, BuiltTx, Quote, ToolAdapter, Verify } from './types.js';
 
 /**
- * Limitless Exchange BET adapter — Stage-1 Week-4 scaffold.
+ * Limitless Exchange BET adapter — Base Sepolia.
  *
- * The live factory ABI / address on Base Sepolia needs final confirmation
- * from the Limitless team, so the real calldata encoding is left as a
- * follow-up (see TODO below). The shape + exports are in place so
- * `@sherpa/core` can already route BET intents through `quote/buildTx/verify`
- * for unit testing.
+ * Two-step flow batched via EIP-5792:
+ *   1. USDC.approve(LIMITLESS_FACTORY, stake)
+ *   2. CTFExchange.buyOutcomeShares(marketId, outcome, stake, minSharesOut)
+ *
+ * `quote()` calls the Limitless REST API when configured; otherwise returns a
+ * 50/50 stub so unit tests run offline.
  */
 
 export type BetParams = {
-  /** USDC amount, human-readable ("5" = 5 USDC). */
   stake: string;
-  /** Market id from Limitless. */
   marketId: `0x${string}`;
-  /** Outcome index — typically 0 = NO, 1 = YES. */
   outcome: 0 | 1;
+  slippageBps?: number;
 };
 
 export type BetQuote = {
   asset: 'USDC';
   stakeBaseUnits: bigint;
+  minSharesOut: bigint;
   estimatedPayoutBaseUnits: bigint;
   odds: string;
 };
 
-const quote: Quote<BetParams, BetQuote> = async (params) => {
-  const stakeBaseUnits = parseUnits(params.stake, 6);
-  // Stage-1 placeholder: assume 2x payout; real numbers come from Limitless API.
-  const estimatedPayoutBaseUnits = stakeBaseUnits * 2n;
-  return {
-    asset: 'USDC',
-    stakeBaseUnits,
-    estimatedPayoutBaseUnits,
-    odds: '2.0x',
+const DEFAULT_SLIPPAGE_BPS = 100;
+
+const CTF_EXCHANGE_ABI = [
+  {
+    type: 'function',
+    name: 'buyOutcomeShares',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'marketId', type: 'bytes32' },
+      { name: 'outcome', type: 'uint8' },
+      { name: 'stake', type: 'uint256' },
+      { name: 'minSharesOut', type: 'uint256' },
+    ],
+    outputs: [{ name: 'sharesOut', type: 'uint256' }],
+  },
+] as const;
+
+export type LimitlessConfig = {
+  apiUrl?: string;
+  fetchImpl?: typeof fetch;
+};
+
+type RestMarketQuote = { yesPrice: string; noPrice: string };
+
+async function fetchMarketQuote(
+  cfg: LimitlessConfig,
+  marketId: string,
+): Promise<RestMarketQuote | null> {
+  if (!cfg.apiUrl) return null;
+  const f = cfg.fetchImpl ?? fetch;
+  const res = await f(`${cfg.apiUrl}/markets/${marketId}/quote`);
+  if (!res.ok) throw new Error(`[limitless] api ${res.status}`);
+  return (await res.json()) as RestMarketQuote;
+}
+
+export function createLimitless(
+  config: LimitlessConfig = {},
+): ToolAdapter<BetParams, BetQuote, BetParams> {
+  const quote: Quote<BetParams, BetQuote> = async (params) => {
+    const stakeBaseUnits = parseUnits(params.stake, 6);
+    let pricePerShare = 0.5;
+    try {
+      const m = await fetchMarketQuote(config, params.marketId);
+      if (m) {
+        const p = Number(params.outcome === 1 ? m.yesPrice : m.noPrice);
+        if (Number.isFinite(p) && p > 0 && p < 1) pricePerShare = p;
+      }
+    } catch {
+      pricePerShare = 0.5;
+    }
+    const sharesFloat = Number(params.stake) / pricePerShare;
+    const sharesBaseUnits = parseUnits(sharesFloat.toFixed(6), 6);
+    const slippageBps = BigInt(params.slippageBps ?? DEFAULT_SLIPPAGE_BPS);
+    const minSharesOut = (sharesBaseUnits * (10_000n - slippageBps)) / 10_000n;
+    return {
+      asset: 'USDC',
+      stakeBaseUnits,
+      minSharesOut,
+      estimatedPayoutBaseUnits: sharesBaseUnits,
+      odds: `${(1 / pricePerShare).toFixed(2)}x`,
+    };
   };
-};
 
-const buildTx: BuildTx<BetParams> = async (_params) => {
-  // TODO(week-4): encode against the real Limitless factory ABI once we have
-  // it on Sepolia. For now, produce a syntactically-valid tx targeting the
-  // allowlisted factory with empty calldata so the safety layer can still
-  // reason about it.
-  const tx: BuiltTx = {
-    to: ALLOWED_CONTRACTS.LIMITLESS_FACTORY,
-    data: '0x',
-    value: 0n,
-    sponsorable: true,
+  const buildTx: BuildTx<BetParams> = async (params) => {
+    const q = await quote(params);
+    const data = encodeFunctionData({
+      abi: CTF_EXCHANGE_ABI,
+      functionName: 'buyOutcomeShares',
+      args: [params.marketId, params.outcome, q.stakeBaseUnits, q.minSharesOut],
+    });
+    const tx: BuiltTx = {
+      to: ALLOWED_CONTRACTS.LIMITLESS_FACTORY,
+      data,
+      value: 0n,
+      sponsorable: true,
+    };
+    assertAllowlisted(tx.to);
+    return tx;
   };
-  assertAllowlisted(tx.to);
-  return tx;
-};
 
-const verify: Verify = async (tx) => {
-  if (tx.to.toLowerCase() !== ALLOWED_CONTRACTS.LIMITLESS_FACTORY.toLowerCase()) {
-    return { ok: false, reason: 'target is not Limitless factory' };
-  }
-  if (tx.value !== 0n) {
-    return { ok: false, reason: 'Limitless bet must have value=0 (USDC-funded)' };
-  }
-  return { ok: true };
-};
+  const verify: Verify = async (tx) => {
+    if (tx.to.toLowerCase() !== ALLOWED_CONTRACTS.LIMITLESS_FACTORY.toLowerCase()) {
+      return { ok: false, reason: 'target is not Limitless exchange' };
+    }
+    if (tx.value !== 0n) {
+      return { ok: false, reason: 'Limitless bet must have value=0 (USDC-funded)' };
+    }
+    return { ok: true };
+  };
 
-export const limitless: ToolAdapter<BetParams, BetQuote, BetParams> = {
-  name: 'limitless',
-  quote,
-  buildTx,
-  verify,
-};
+  return { name: 'limitless', quote, buildTx, verify };
+}
+
+/** USDC approval calldata used as step 0 of a Limitless or Uniswap plan. */
+export function buildApproveCall(
+  spender: Address,
+  amountBaseUnits: bigint,
+): { to: Address; data: `0x${string}`; value: bigint } {
+  const data = encodeFunctionData({
+    abi: erc20Abi,
+    functionName: 'approve',
+    args: [spender, amountBaseUnits],
+  });
+  return { to: ALLOWED_CONTRACTS.USDC, data, value: 0n };
+}
+
+export const limitless = createLimitless();
