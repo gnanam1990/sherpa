@@ -25,6 +25,18 @@ export type ExecutionPlan = {
 };
 
 /**
+ * EIP-5792 `wallet_sendCalls` envelope. Surfaced on the confirmation card
+ * for the frontend; null when the plan is a single non-batched step (e.g.
+ * pure SEND that the wallet can submit directly).
+ */
+export type SendCallsEnvelope = {
+  version: '1.0';
+  chainId: `0x${string}`;
+  calls: Array<{ to: Address; data: `0x${string}`; value: `0x${string}` }>;
+  capabilities?: { paymasterService?: { url: string } };
+};
+
+/**
  * Contract with M2 (frontend). The executor produces this shape; the UI
  * renders it. Never break without 24h notice — see M1_BACKEND_PACK §3.
  */
@@ -36,6 +48,8 @@ export type ConfirmationCardProps = {
   recipient_display?: string;
   recipient_metadata?: Record<string, unknown>;
   steps: ExecutionStep[];
+  /** Sponsored EIP-5792 batch the frontend should submit (when steps.length > 0). */
+  batch?: SendCallsEnvelope;
   gas_display: string;
   warnings: string[];
   estimated_completion_ms: number;

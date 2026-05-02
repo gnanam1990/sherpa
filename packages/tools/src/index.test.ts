@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { usdc, limitless, createBasescanIndexer, emptyIndexer } from './index.js';
+import {
+  usdc,
+  limitless,
+  uniswap,
+  onramp,
+  createBasescanIndexer,
+  createLimitless,
+  emptyIndexer,
+  buildApproveCall,
+} from './index.js';
+import { ALLOWED_CONTRACTS } from '@sherpa/safety';
 
 const recipient = '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as const;
 
@@ -59,6 +69,73 @@ describe('tools/limitless', () => {
     });
     const v = await limitless.verify({ ...tx, value: 1n });
     expect(v.ok).toBe(false);
+  });
+});
+
+describe('tools/uniswap', () => {
+  const me = '0x1111111111111111111111111111111111111111' as const;
+
+  it('quote returns stub ETH out for given USDC in', async () => {
+    const q = await uniswap.quote({ usd: '300', asset: 'ETH', recipient: me });
+    expect(q.amountInBaseUnits).toBe(300_000_000n);
+    // 300 USDC at 1 ETH = 3000 USDC ⇒ 0.1 ETH = 1e17 wei
+    expect(q.amountOutBaseUnits).toBe(100_000_000_000_000_000n);
+  });
+
+  it('buildTx targets the router with exactInputSingle calldata', async () => {
+    const tx = await uniswap.buildTx({ usd: '50', asset: 'ETH', recipient: me });
+    expect(tx.to.toLowerCase()).toBe(ALLOWED_CONTRACTS.UNISWAP_ROUTER.toLowerCase());
+    expect(tx.data.startsWith('0x04e45aaf')).toBe(true);
+    expect(tx.value).toBe(0n);
+  });
+
+  it('verify rejects wrong selector', async () => {
+    const tx = await uniswap.buildTx({ usd: '1', asset: 'ETH', recipient: me });
+    const v = await uniswap.verify({ ...tx, data: '0xdeadbeef' });
+    expect(v.ok).toBe(false);
+  });
+});
+
+describe('tools/onramp', () => {
+  const dest = '0x2222222222222222222222222222222222222222' as const;
+
+  it('quote computes 1% fee', async () => {
+    const q = await onramp.quote({ usd: '100', destination: dest, asset: 'USDC' });
+    expect(q.feeUsd).toBe('1.00');
+    expect(q.netDisplay).toBe('99.00 USDC');
+  });
+
+  it('buildSession returns a sandbox URL with the destination encoded', async () => {
+    const s = await onramp.buildSession({ usd: '50', destination: dest, asset: 'USDC' });
+    expect(s.url).toContain('pay.coinbase.com');
+    expect(s.url).toContain(encodeURIComponent(dest));
+    expect(s.live).toBe(false);
+  });
+
+  it('rejects non-positive usd', async () => {
+    await expect(
+      onramp.quote({ usd: '0', destination: dest, asset: 'USDC' }),
+    ).rejects.toThrow();
+  });
+});
+
+describe('tools/limitless REST quote', () => {
+  it('uses fetched price when api configured', async () => {
+    const fakeFetch: typeof fetch = async () =>
+      new Response(JSON.stringify({ yesPrice: '0.25', noPrice: '0.75' }), { status: 200 });
+    const lim = createLimitless({ apiUrl: 'https://api.limitless.test', fetchImpl: fakeFetch });
+    const q = await lim.quote({ stake: '5', marketId: `0x${'b'.repeat(64)}`, outcome: 1 });
+    // 5 USDC at 0.25/share = 20 shares ⇒ ~4.0x odds
+    expect(q.odds).toBe('4.00x');
+  });
+});
+
+describe('tools/buildApproveCall', () => {
+  it('targets USDC and encodes approve(spender, amount)', () => {
+    const c = buildApproveCall(ALLOWED_CONTRACTS.UNISWAP_ROUTER, 1_000_000n);
+    expect(c.to.toLowerCase()).toBe(ALLOWED_CONTRACTS.USDC.toLowerCase());
+    expect(c.data.startsWith('0x095ea7b3')).toBe(true); // approve selector
+    expect(c.value).toBe(0n);
   });
 });
 

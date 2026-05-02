@@ -106,6 +106,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     const parsedIntent = parseDeterministic(parsed.data.input);
     const planResult = await plan(parsedIntent, {
       userKey: parsed.data.userAddress,
+      userAddress: parsed.data.userAddress,
+      chainId: config.chain.chainId,
+      paymasterUrl: config.paymasterUrl,
       rateLimiter,
     });
     if (!planResult.ok) {

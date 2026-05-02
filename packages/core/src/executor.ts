@@ -1,35 +1,67 @@
 import { resolve, isResolved, type ResolverBackends } from '@sherpa/identity';
 import { createInMemoryRateLimiter, type RateLimiter } from '@sherpa/memory';
 import {
+  ALLOWED_CONTRACTS,
+  buildSendCallsParams,
   checkRings,
   firstFailure,
+  isBatchSponsorable,
   ringsOk,
-  ALLOWED_CONTRACTS,
+  type Address,
+  type Call,
   type PendingTx,
 } from '@sherpa/safety';
-import { limitless, usdc } from '@sherpa/tools';
-import type { ConfirmationCardProps, ExecutionStep, ParsedIntent } from './types.js';
+import { buildApproveCall, limitless, uniswap, usdc } from '@sherpa/tools';
+import type {
+  ConfirmationCardProps,
+  ExecutionStep,
+  ParsedIntent,
+  SendCallsEnvelope,
+} from './types.js';
 
 export type ExecutorDeps = {
   backends?: ResolverBackends;
   rateLimiter?: RateLimiter;
   userKey?: string;
+  userAddress?: Address;
+  chainId?: number;
+  paymasterUrl?: string;
 };
 
 export type PlanResult = { ok: true; card: ConfirmationCardProps } | { ok: false; error: string };
 
 const GAS_SPONSORED_DISPLAY = '$0.00 (sponsored ✓)';
+const GAS_USER_PAYS = 'user pays';
+const DEFAULT_CHAIN_ID = 84532;
 
-/**
- * Turn a `ParsedIntent` into a user-facing `ConfirmationCardProps`. Runs
- * the full safety-ring chain (1, 2, 3, 4, 6) before returning — Ring 5
- * (audit log) and Ring 7 (user confirmation) are handled in `execute()` and
- * by the UI layer respectively.
- */
+function stepToCall(step: ExecutionStep): Call {
+  return { to: step.to, data: step.data, value: step.value };
+}
+
+function envelopeFor(steps: ExecutionStep[], deps: ExecutorDeps): SendCallsEnvelope | undefined {
+  if (steps.length === 0 || !deps.userAddress) return undefined;
+  const params = buildSendCallsParams(steps.map(stepToCall), {
+    chainId: deps.chainId ?? DEFAULT_CHAIN_ID,
+    from: deps.userAddress,
+    paymasterUrl: deps.paymasterUrl,
+  });
+  return {
+    version: params.version,
+    chainId: params.chainId,
+    calls: params.calls.map((c) => ({ to: c.to, data: c.data, value: c.value })),
+    capabilities: params.capabilities,
+  };
+}
+
+function gasDisplay(steps: ExecutionStep[], deps: ExecutorDeps): string {
+  if (!deps.paymasterUrl) return GAS_USER_PAYS;
+  return isBatchSponsorable(steps.map(stepToCall)) ? GAS_SPONSORED_DISPLAY : GAS_USER_PAYS;
+}
+
 export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promise<PlanResult> {
-  if (parsed.intent === 'SEND') {
-    return planSend(parsed, deps);
-  }
+  if (parsed.intent === 'SEND') return planSend(parsed, deps);
+  if (parsed.intent === 'BET') return planBet(parsed, deps);
+  if (parsed.intent === 'BUY') return planBuy(parsed, deps);
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,
@@ -43,9 +75,6 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
         estimated_completion_ms: 500,
       },
     };
-  }
-  if (parsed.intent === 'BET') {
-    return planBet(parsed, deps);
   }
   if (parsed.intent === 'HISTORY') {
     return {
@@ -61,7 +90,6 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
       },
     };
   }
-
   return { ok: false, error: `intent ${parsed.intent} not supported in Stage 1` };
 }
 
@@ -96,26 +124,31 @@ async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
     amount: quote.stakeBaseUnits,
     recipientSource: 'direct',
   };
+  const r = await runRings(pending, deps);
+  if (!r.ok) return r;
 
-  const rl = deps.rateLimiter ?? createInMemoryRateLimiter();
-  const rings = await checkRings(pending, {
-    userKey: deps.userKey ?? 'anon',
-    checkRateLimit: async (key) => (await rl.check(key, 10, 60)).ok,
-    simulate: () => true,
-  });
-  if (!ringsOk(rings)) {
-    const fail = firstFailure(rings);
-    const reason = fail && !fail.ok ? fail.reason : '';
-    return { ok: false, error: `safety ${fail?.ring} failed: ${reason}` };
+  const approve = buildApproveCall(ALLOWED_CONTRACTS.LIMITLESS_FACTORY, quote.stakeBaseUnits);
+  const steps: ExecutionStep[] = [
+    {
+      kind: 'approve',
+      to: approve.to,
+      data: approve.data,
+      value: approve.value,
+      label: `Approve ${stakeStr} USDC for Limitless`,
+    },
+    {
+      kind: 'bet',
+      to: tx.to,
+      data: tx.data,
+      value: tx.value,
+      label: `Bet ${stakeStr} USDC on ${outcomeWord}${predicate ? ` (${predicate})` : ''}`,
+    },
+  ];
+
+  const warnings: string[] = [];
+  if (marketId === `0x${'0'.repeat(64)}`) {
+    warnings.push('marketId not provided — using placeholder');
   }
-
-  const step: ExecutionStep = {
-    kind: 'bet',
-    to: tx.to,
-    data: tx.data,
-    value: tx.value,
-    label: `Bet ${stakeStr} USDC on ${outcomeWord}${predicate ? ` (${predicate})` : ''}`,
-  };
 
   return {
     ok: true,
@@ -124,9 +157,73 @@ async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
       primary_action_label: 'Place bet',
       primary_amount_display: `${stakeStr} USDC`,
       secondary_amount_display: `payout ≈ ${quote.odds}`,
-      steps: [step],
-      gas_display: GAS_SPONSORED_DISPLAY,
-      warnings: ['Limitless adapter is a Week-4 scaffold — real ABI lands next.'],
+      steps,
+      batch: envelopeFor(steps, deps),
+      gas_display: gasDisplay(steps, deps),
+      warnings,
+      estimated_completion_ms: 6_000,
+    },
+  };
+}
+
+async function planBuy(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const usd = typeof slots.usd === 'string' ? slots.usd : '';
+  const asset = (typeof slots.asset === 'string' ? slots.asset : '').toUpperCase();
+  if (!usd) return { ok: false, error: 'missing slots: usd' };
+  if (asset !== 'ETH') {
+    return { ok: false, error: `BUY asset ${asset} not supported (Stage 1: ETH only)` };
+  }
+  if (!deps.userAddress) {
+    return { ok: false, error: 'BUY requires userAddress (recipient of swapped ETH)' };
+  }
+
+  const params = { usd, asset: 'ETH' as const, recipient: deps.userAddress };
+  const tx = await uniswap.buildTx(params);
+  const verified = await uniswap.verify(tx);
+  if (!verified.ok) return { ok: false, error: `tx verify failed: ${verified.reason}` };
+  const quote = await uniswap.quote(params);
+
+  const pending: PendingTx = {
+    to: tx.to,
+    data: tx.data,
+    value: tx.value,
+    asset: ALLOWED_CONTRACTS.USDC,
+    amount: quote.amountInBaseUnits,
+    recipientSource: 'direct',
+  };
+  const r = await runRings(pending, deps);
+  if (!r.ok) return r;
+
+  const approve = buildApproveCall(ALLOWED_CONTRACTS.UNISWAP_ROUTER, quote.amountInBaseUnits);
+  const steps: ExecutionStep[] = [
+    {
+      kind: 'approve',
+      to: approve.to,
+      data: approve.data,
+      value: approve.value,
+      label: `Approve ${usd} USDC for Uniswap`,
+    },
+    {
+      kind: 'swap',
+      to: tx.to,
+      data: tx.data,
+      value: tx.value,
+      label: `Swap ${usd} USDC → ETH`,
+    },
+  ];
+
+  return {
+    ok: true,
+    card: {
+      intent: 'BUY',
+      primary_action_label: 'Buy',
+      primary_amount_display: `$${Number(usd).toFixed(2)}`,
+      secondary_amount_display: quote.display,
+      steps,
+      batch: envelopeFor(steps, deps),
+      gas_display: gasDisplay(steps, deps),
+      warnings: [],
       estimated_completion_ms: 6_000,
     },
   };
@@ -138,9 +235,7 @@ async function planSend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
   const toInput = typeof slots.to === 'string' ? slots.to : '';
   const asset = typeof slots.asset === 'string' ? slots.asset : 'USDC';
 
-  if (!amountStr || !toInput) {
-    return { ok: false, error: 'missing slots: amount/to' };
-  }
+  if (!amountStr || !toInput) return { ok: false, error: 'missing slots: amount/to' };
   if (asset !== 'USDC') {
     return { ok: false, error: `SEND asset ${asset} not supported in Stage 1 (USDC only)` };
   }
@@ -152,9 +247,7 @@ async function planSend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
 
   const tx = await usdc.buildTx({ amount: amountStr, to: resolved.address });
   const verified = await usdc.verify(tx);
-  if (!verified.ok) {
-    return { ok: false, error: `tx verify failed: ${verified.reason}` };
-  }
+  if (!verified.ok) return { ok: false, error: `tx verify failed: ${verified.reason}` };
   const quote = await usdc.quote({ amount: amountStr, to: resolved.address });
 
   const pending: PendingTx = {
@@ -165,27 +258,18 @@ async function planSend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
     amount: quote.amountBaseUnits,
     recipientSource: resolved.source,
   };
+  const r = await runRings(pending, deps);
+  if (!r.ok) return r;
 
-  const rl = deps.rateLimiter ?? createInMemoryRateLimiter();
-  const rings = await checkRings(pending, {
-    userKey: deps.userKey ?? 'anon',
-    checkRateLimit: async (key) => (await rl.check(key, 10, 60)).ok,
-    simulate: () => true,
-  });
-
-  if (!ringsOk(rings)) {
-    const fail = firstFailure(rings);
-    const reason = fail && !fail.ok ? fail.reason : '';
-    return { ok: false, error: `safety ${fail?.ring} failed: ${reason}` };
-  }
-
-  const step: ExecutionStep = {
-    kind: 'transfer',
-    to: tx.to,
-    data: tx.data,
-    value: tx.value,
-    label: `Transfer ${amountStr} USDC to ${resolved.display}`,
-  };
+  const steps: ExecutionStep[] = [
+    {
+      kind: 'transfer',
+      to: tx.to,
+      data: tx.data,
+      value: tx.value,
+      label: `Transfer ${amountStr} USDC to ${resolved.display}`,
+    },
+  ];
 
   return {
     ok: true,
@@ -196,10 +280,29 @@ async function planSend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
       secondary_amount_display: quote.usdDisplay,
       recipient_display: resolved.display,
       recipient_metadata: { source: resolved.source, ...(resolved.metadata ?? {}) },
-      steps: [step],
-      gas_display: GAS_SPONSORED_DISPLAY,
+      steps,
+      batch: envelopeFor(steps, deps),
+      gas_display: gasDisplay(steps, deps),
       warnings: [],
       estimated_completion_ms: 4_000,
     },
   };
+}
+
+async function runRings(
+  pending: PendingTx,
+  deps: ExecutorDeps,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const rl = deps.rateLimiter ?? createInMemoryRateLimiter();
+  const rings = await checkRings(pending, {
+    userKey: deps.userKey ?? 'anon',
+    checkRateLimit: async (key) => (await rl.check(key, 10, 60)).ok,
+    simulate: () => true,
+  });
+  if (!ringsOk(rings)) {
+    const fail = firstFailure(rings);
+    const reason = fail && !fail.ok ? fail.reason : '';
+    return { ok: false, error: `safety ${fail?.ring} failed: ${reason}` };
+  }
+  return { ok: true };
 }
