@@ -10,3 +10,4 @@
 export * from './types.js';
 export * from './router.js';
 export * from './mock.js';
+export * from './providers.js';

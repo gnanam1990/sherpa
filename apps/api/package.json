@@ -19,6 +19,7 @@
     "@sherpa/core": "workspace:*",
     "@sherpa/tools": "workspace:*",
     "@sherpa/identity": "workspace:*",
+    "@sherpa/llm": "workspace:*",
     "@sherpa/logger": "workspace:*",
     "@sherpa/memory": "workspace:*",
     "@sherpa/safety": "workspace:*",

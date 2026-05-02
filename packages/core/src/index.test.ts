@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parseDeterministic, plan } from './index.js';
+import { parseDeterministic, parseWithLLM, plan } from './index.js';
+import type { LLMResponse } from '@sherpa/llm';
 
 const USDC_RECIPIENT = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 
@@ -74,6 +75,19 @@ describe('core/executor', () => {
     expect(out.ok).toBe(false);
   });
 
+  it('plans a DEPOSIT with onramp redirect_url', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const p = parseDeterministic('deposit $50');
+    expect(p.intent).toBe('DEPOSIT');
+    const out = await plan(p, { userAddress: me });
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.steps.length).toBe(0);
+      expect(out.card.redirect_url).toContain('pay.coinbase.com');
+      expect(out.card.warnings.length).toBeGreaterThan(0);
+    }
+  });
+
   it('plans a BET with approve+bet steps', async () => {
     const p = parseDeterministic('bet $5 yes on eth-tops-5k');
     const out = await plan(p);
@@ -84,5 +98,46 @@ describe('core/executor', () => {
       expect(out.card.steps[0]?.kind).toBe('approve');
       expect(out.card.steps[1]?.kind).toBe('bet');
     }
+  });
+});
+
+describe('core/parseWithLLM', () => {
+  const fakeUsage = { provider: 'gpt-4o-mini' as const, promptTokens: 1, completionTokens: 1, costUsd: 0 };
+
+  it('uses deterministic parse when it matches (no LLM call)', async () => {
+    let called = 0;
+    const llm = async (): Promise<LLMResponse> => {
+      called += 1;
+      return { text: '{}', usage: fakeUsage };
+    };
+    const out = await parseWithLLM('balance', llm);
+    expect(out.intent).toBe('BALANCE');
+    expect(called).toBe(0);
+  });
+
+  it('falls back to LLM and validates the JSON response', async () => {
+    const llm = async (): Promise<LLMResponse> => ({
+      text: '```json\n{"intent":"DEPOSIT","slots":{"usd":"25","asset":"USDC"},"confidence":0.8}\n```',
+      usage: fakeUsage,
+    });
+    const out = await parseWithLLM('please put $25 into my wallet', llm);
+    expect(out.intent).toBe('DEPOSIT');
+    expect(out.slots.usd).toBe('25');
+    expect(out.confidence).toBe(0.8);
+  });
+
+  it('returns UNKNOWN for non-JSON model output', async () => {
+    const llm = async (): Promise<LLMResponse> => ({ text: 'sorry idk', usage: fakeUsage });
+    const out = await parseWithLLM('xyzzy', llm);
+    expect(out.intent).toBe('UNKNOWN');
+  });
+
+  it('returns UNKNOWN when intent is not in the allowlist', async () => {
+    const llm = async (): Promise<LLMResponse> => ({
+      text: '{"intent":"HACK","slots":{},"confidence":1}',
+      usage: fakeUsage,
+    });
+    const out = await parseWithLLM('drain my wallet', llm);
+    expect(out.intent).toBe('UNKNOWN');
   });
 });

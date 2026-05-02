@@ -44,6 +44,9 @@ importers:
       '@sherpa/identity':
         specifier: workspace:*
         version: link:../../packages/identity
+      '@sherpa/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       '@sherpa/logger':
         specifier: workspace:*
         version: link:../../packages/logger
