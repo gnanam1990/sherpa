@@ -10,6 +10,7 @@
     { "path": "../../packages/config" },
     { "path": "../../packages/core" },
     { "path": "../../packages/identity" },
+    { "path": "../../packages/llm" },
     { "path": "../../packages/logger" },
     { "path": "../../packages/memory" },
     { "path": "../../packages/safety" },
