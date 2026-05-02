@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { loadConfig } from '@sherpa/config';
 import { createInMemoryRateLimiter } from '@sherpa/memory';
 import { buildServer } from './server.js';
+
+const offlineConfig = { ...loadConfig(), useRealRpc: false } as const;
 
 const USDC_RECIPIENT = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 
@@ -53,10 +56,32 @@ describe('apps/api', () => {
     await app.close();
   });
 
-  it('GET /api/balance/:addr resolves direct 0x addresses', async () => {
-    const app = buildServer();
+  it('GET /api/balance/:addr resolves direct 0x addresses (offline)', async () => {
+    const app = buildServer({ config: offlineConfig });
     const res = await app.inject({ method: 'GET', url: `/api/balance/${USDC_RECIPIENT}` });
     expect(res.statusCode).toBe(200);
+    const body = res.json() as { stage?: string; balances: { ETH: string; USDC: string } };
+    expect(body.stage).toBe('stub');
+    expect(body.balances.ETH).toBe('0');
+    await app.close();
+  });
+
+  it('GET /api/history/:addr returns [] with emptyIndexer default', async () => {
+    const app = buildServer({ config: offlineConfig });
+    const res = await app.inject({ method: 'GET', url: `/api/history/${USDC_RECIPIENT}?limit=5` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { items: unknown[] };
+    expect(Array.isArray(body.items)).toBe(true);
+    await app.close();
+  });
+
+  it('GET /api/history/:addr rejects non-numeric limit', async () => {
+    const app = buildServer({ config: offlineConfig });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/history/${USDC_RECIPIENT}?limit=abc`,
+    });
+    expect(res.statusCode).toBe(400);
     await app.close();
   });
 
@@ -64,7 +89,7 @@ describe('apps/api', () => {
     const rateLimiter = createInMemoryRateLimiter();
     // Drain the bucket (limit is 10/60s per executor.ts).
     for (let i = 0; i < 10; i += 1) await rateLimiter.check(USDC_RECIPIENT, 10, 60);
-    const app = buildServer({ rateLimiter });
+    const app = buildServer({ rateLimiter, config: offlineConfig });
     const res = await app.inject({
       method: 'POST',
       url: '/api/parse',

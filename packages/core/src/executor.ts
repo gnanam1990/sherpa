@@ -7,7 +7,7 @@ import {
   ALLOWED_CONTRACTS,
   type PendingTx,
 } from '@sherpa/safety';
-import { usdc } from '@sherpa/tools';
+import { limitless, usdc } from '@sherpa/tools';
 import type { ConfirmationCardProps, ExecutionStep, ParsedIntent } from './types.js';
 
 export type ExecutorDeps = {
@@ -44,6 +44,9 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
       },
     };
   }
+  if (parsed.intent === 'BET') {
+    return planBet(parsed, deps);
+  }
   if (parsed.intent === 'HISTORY') {
     return {
       ok: true,
@@ -60,6 +63,73 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   }
 
   return { ok: false, error: `intent ${parsed.intent} not supported in Stage 1` };
+}
+
+async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const stakeStr =
+    typeof slots.usd === 'string'
+      ? slots.usd
+      : typeof slots.amount === 'string'
+        ? slots.amount
+        : '';
+  const predicate = typeof slots.predicate === 'string' ? slots.predicate : '';
+  const explicitOutcome = typeof slots.outcome === 'string' ? slots.outcome.toUpperCase() : '';
+  const marketId =
+    typeof slots.marketId === 'string' && /^0x[a-fA-F0-9]{64}$/.test(slots.marketId)
+      ? (slots.marketId as `0x${string}`)
+      : (`0x${'0'.repeat(64)}` as `0x${string}`);
+  if (!stakeStr) return { ok: false, error: 'missing slots: stake' };
+  const outcomeWord = explicitOutcome || (/\byes\b/i.test(predicate) ? 'YES' : 'NO');
+  const outcome: 0 | 1 = outcomeWord === 'YES' ? 1 : 0;
+
+  const tx = await limitless.buildTx({ stake: stakeStr, marketId, outcome });
+  const verified = await limitless.verify(tx);
+  if (!verified.ok) return { ok: false, error: `tx verify failed: ${verified.reason}` };
+  const quote = await limitless.quote({ stake: stakeStr, marketId, outcome });
+
+  const pending: PendingTx = {
+    to: tx.to,
+    data: tx.data,
+    value: tx.value,
+    asset: ALLOWED_CONTRACTS.USDC,
+    amount: quote.stakeBaseUnits,
+    recipientSource: 'direct',
+  };
+
+  const rl = deps.rateLimiter ?? createInMemoryRateLimiter();
+  const rings = await checkRings(pending, {
+    userKey: deps.userKey ?? 'anon',
+    checkRateLimit: async (key) => (await rl.check(key, 10, 60)).ok,
+    simulate: () => true,
+  });
+  if (!ringsOk(rings)) {
+    const fail = firstFailure(rings);
+    const reason = fail && !fail.ok ? fail.reason : '';
+    return { ok: false, error: `safety ${fail?.ring} failed: ${reason}` };
+  }
+
+  const step: ExecutionStep = {
+    kind: 'bet',
+    to: tx.to,
+    data: tx.data,
+    value: tx.value,
+    label: `Bet ${stakeStr} USDC on ${outcomeWord}${predicate ? ` (${predicate})` : ''}`,
+  };
+
+  return {
+    ok: true,
+    card: {
+      intent: 'BET',
+      primary_action_label: 'Place bet',
+      primary_amount_display: `${stakeStr} USDC`,
+      secondary_amount_display: `payout ≈ ${quote.odds}`,
+      steps: [step],
+      gas_display: GAS_SPONSORED_DISPLAY,
+      warnings: ['Limitless adapter is a Week-4 scaffold — real ABI lands next.'],
+      estimated_completion_ms: 6_000,
+    },
+  };
 }
 
 async function planSend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
