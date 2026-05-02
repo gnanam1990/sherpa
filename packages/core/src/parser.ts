@@ -1,14 +1,16 @@
+import type { LLMRequest, LLMResponse } from '@sherpa/llm';
 import type { ParsedIntent, Intent } from './types.js';
 
 /**
  * Deterministic Stage-1 parser. Covers the most common natural-language
- * patterns without needing an LLM — the LLM path (via `@sherpa/llm`) is wired
- * in `parseWithLLM` below for anything the deterministic rules miss.
+ * patterns without needing an LLM. `parseWithLLM` is the fallback used by
+ * the API when the deterministic parser returns UNKNOWN.
  *
  * Supported forms:
  *   SEND     "send 5 usdc to 0x… / @handle / name.base.eth / name.eth"
  *   BET      "bet $5 on … / bet 5 on …"
  *   BUY      "buy $50 of eth"
+ *   DEPOSIT  "deposit $50 / fund $50 / top up 50"
  *   BALANCE  "balance" / "what's my balance" / "show my balance"
  *   HISTORY  "history" / "last N txs" / "my recent txs"
  */
@@ -16,6 +18,7 @@ import type { ParsedIntent, Intent } from './types.js';
 const SEND_RE = /^send\s+([\d.]+)\s*(usdc|eth)?\s+to\s+(\S+)\s*$/i;
 const BUY_RE = /^buy\s+\$?([\d.]+)\s+(?:of\s+)?(\w+)\s*$/i;
 const BET_RE = /^bet\s+\$?([\d.]+)\s+(.+?)\s*$/i;
+const DEPOSIT_RE = /^(?:deposit|fund|add|top\s*up)\s+\$?([\d.]+)\s*(?:usdc|usd|dollars?)?\s*$/i;
 const BALANCE_RE = /^(?:what[’']?s\s+my\s+)?(?:show\s+my\s+)?balance\??\s*$/i;
 const HISTORY_RE =
   /^(?:show\s+)?(?:my\s+)?(?:last\s+(\d+)\s+)?(?:recent\s+)?(?:tx|txs|transactions|history)\s*$/i;
@@ -51,6 +54,10 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('BET', raw, { usd: m[1], predicate: m[2] ?? '' }, 0.75);
   }
 
+  if ((m = raw.match(DEPOSIT_RE))) {
+    return make('DEPOSIT', raw, { usd: m[1], asset: 'USDC' }, 0.9);
+  }
+
   if (BALANCE_RE.test(raw)) {
     return make('BALANCE', raw, {}, 0.95);
   }
@@ -60,4 +67,73 @@ export function parseDeterministic(input: string): ParsedIntent {
   }
 
   return make('UNKNOWN', raw, {}, 0);
+}
+
+/**
+ * LLM-backed fallback. Asks the router for a strict JSON object describing
+ * the intent + slots; rejects anything that doesn't validate. Caller is
+ * expected to pass a router instance from `@sherpa/llm` (real or mock).
+ */
+export type LLMComplete = (req: LLMRequest) => Promise<LLMResponse>;
+
+const VALID_INTENTS: readonly Intent[] = [
+  'SEND',
+  'BUY',
+  'BET',
+  'SWAP',
+  'DEPOSIT',
+  'BALANCE',
+  'HISTORY',
+];
+
+const PARSE_SYSTEM = `You translate a user's natural-language Web3 instruction into a strict JSON object.
+
+Output ONLY a single JSON object, no prose, with this shape:
+{ "intent": "SEND|BUY|BET|SWAP|DEPOSIT|BALANCE|HISTORY|UNKNOWN", "slots": { ... }, "confidence": 0..1 }
+
+Slot conventions:
+- SEND     { "amount": "5", "asset": "USDC", "to": "<address|handle|ens>" }
+- BUY      { "usd": "50", "asset": "ETH" }
+- BET      { "usd": "5", "predicate": "<text>", "outcome": "YES|NO" }
+- DEPOSIT  { "usd": "50", "asset": "USDC" }
+- BALANCE  {}
+- HISTORY  { "limit": 10 }
+
+If you cannot parse, return { "intent": "UNKNOWN", "slots": {}, "confidence": 0 }.`;
+
+function safeParseJson(text: string): unknown {
+  // The model may wrap the JSON in code fences. Strip them, then take the
+  // first {...} block we find.
+  const stripped = text
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/, '')
+    .trim();
+  const start = stripped.indexOf('{');
+  const end = stripped.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  try {
+    return JSON.parse(stripped.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+}
+
+export async function parseWithLLM(input: string, complete: LLMComplete): Promise<ParsedIntent> {
+  const raw = input.trim();
+  const det = parseDeterministic(raw);
+  if (det.intent !== 'UNKNOWN') return det;
+
+  const resp = await complete({ task: 'parse', system: PARSE_SYSTEM, user: raw });
+  const json = safeParseJson(resp.text);
+  if (!json || typeof json !== 'object') return make('UNKNOWN', raw, {}, 0);
+
+  const obj = json as Record<string, unknown>;
+  const intentRaw = typeof obj.intent === 'string' ? obj.intent.toUpperCase() : 'UNKNOWN';
+  const intent = (VALID_INTENTS as readonly string[]).includes(intentRaw)
+    ? (intentRaw as Intent)
+    : 'UNKNOWN';
+  const slots = obj.slots && typeof obj.slots === 'object' ? (obj.slots as Record<string, unknown>) : {};
+  const confidence = typeof obj.confidence === 'number' ? Math.max(0, Math.min(1, obj.confidence)) : 0.5;
+
+  return make(intent, raw, slots, confidence);
 }

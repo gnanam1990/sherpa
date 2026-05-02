@@ -2,7 +2,19 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { loadConfig, type SherpaConfig } from '@sherpa/config';
-import { parseDeterministic, plan, type ConfirmationCardProps } from '@sherpa/core';
+import {
+  parseDeterministic,
+  parseWithLLM,
+  plan,
+  type ConfirmationCardProps,
+  type LLMComplete,
+} from '@sherpa/core';
+import {
+  anthropicProvider,
+  createRouter,
+  groqProvider,
+  openaiProvider,
+} from '@sherpa/llm';
 import { resolve, isResolved } from '@sherpa/identity';
 import {
   createAuditLog,
@@ -50,7 +62,20 @@ export type BuildServerOptions = {
   rateLimiter?: RateLimiter;
   indexer?: HistoryIndexer;
   config?: SherpaConfig;
+  /** Override LLM completion (tests inject a mock). */
+  llmComplete?: LLMComplete;
 };
+
+function defaultLlmComplete(config: SherpaConfig): LLMComplete | undefined {
+  const providers: Parameters<typeof createRouter>[0]['providers'] = {};
+  if (config.openaiApiKey) providers['gpt-4o-mini'] = openaiProvider({ apiKey: config.openaiApiKey });
+  if (config.groqApiKey) providers['groq-llama'] = groqProvider({ apiKey: config.groqApiKey });
+  if (config.anthropicApiKey)
+    providers['claude-haiku'] = anthropicProvider({ apiKey: config.anthropicApiKey });
+  if (Object.keys(providers).length === 0) return undefined;
+  const router = createRouter({ providers });
+  return (req) => router.complete(req);
+}
 
 function hashPlan(card: ConfirmationCardProps): string {
   const h = createHash('sha256');
@@ -74,6 +99,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const auditStore = options.auditStore ?? createInMemoryAuditStore();
   const rateLimiter = options.rateLimiter ?? createInMemoryRateLimiter();
   const config = options.config ?? loadConfig();
+  const llmComplete = options.llmComplete ?? defaultLlmComplete(config);
+  const parse = (input: string) =>
+    llmComplete ? parseWithLLM(input, llmComplete) : Promise.resolve(parseDeterministic(input));
   const indexer =
     options.indexer ??
     (config.basescanApiKey
@@ -87,9 +115,16 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
     }
-    const parsedIntent = parseDeterministic(parsed.data.input);
+    const parsedIntent = await parse(parsed.data.input);
+    const userAddress =
+      typeof parsed.data.userKey === 'string' && /^0x[a-fA-F0-9]{40}$/.test(parsed.data.userKey)
+        ? (parsed.data.userKey as `0x${string}`)
+        : undefined;
     const planResult = await plan(parsedIntent, {
       userKey: parsed.data.userKey,
+      userAddress,
+      chainId: config.chain.chainId,
+      paymasterUrl: config.paymasterUrl,
       rateLimiter,
     });
     if (!planResult.ok) {
@@ -103,7 +138,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
     }
-    const parsedIntent = parseDeterministic(parsed.data.input);
+    const parsedIntent = await parse(parsed.data.input);
     const planResult = await plan(parsedIntent, {
       userKey: parsed.data.userAddress,
       userAddress: parsed.data.userAddress,

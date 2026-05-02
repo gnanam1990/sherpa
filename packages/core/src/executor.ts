@@ -11,7 +11,7 @@ import {
   type Call,
   type PendingTx,
 } from '@sherpa/safety';
-import { buildApproveCall, limitless, uniswap, usdc } from '@sherpa/tools';
+import { buildApproveCall, limitless, onramp, uniswap, usdc } from '@sherpa/tools';
 import type {
   ConfirmationCardProps,
   ExecutionStep,
@@ -62,6 +62,7 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'SEND') return planSend(parsed, deps);
   if (parsed.intent === 'BET') return planBet(parsed, deps);
   if (parsed.intent === 'BUY') return planBuy(parsed, deps);
+  if (parsed.intent === 'DEPOSIT') return planDeposit(parsed, deps);
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,
@@ -225,6 +226,40 @@ async function planBuy(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
       gas_display: gasDisplay(steps, deps),
       warnings: [],
       estimated_completion_ms: 6_000,
+    },
+  };
+}
+
+async function planDeposit(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const usd =
+    typeof slots.usd === 'string'
+      ? slots.usd
+      : typeof slots.amount === 'string'
+        ? slots.amount
+        : '';
+  if (!usd) return { ok: false, error: 'missing slots: usd' };
+  if (!deps.userAddress) {
+    return { ok: false, error: 'DEPOSIT requires userAddress (destination wallet)' };
+  }
+  const session = await onramp.buildSession({
+    usd,
+    destination: deps.userAddress,
+    asset: 'USDC',
+  });
+  const quote = await onramp.quote({ usd, destination: deps.userAddress, asset: 'USDC' });
+  return {
+    ok: true,
+    card: {
+      intent: 'DEPOSIT',
+      primary_action_label: session.live ? 'Open Coinbase Onramp' : 'Open Onramp (sandbox)',
+      primary_amount_display: `$${Number(usd).toFixed(2)}`,
+      secondary_amount_display: `≈ ${quote.netDisplay} (${quote.feeUsd} fee)`,
+      steps: [],
+      redirect_url: session.url,
+      gas_display: 'n/a — fiat on-ramp',
+      warnings: session.live ? [] : ['Coinbase Onramp does not run on testnets — sandbox URL'],
+      estimated_completion_ms: 60_000,
     },
   };
 }

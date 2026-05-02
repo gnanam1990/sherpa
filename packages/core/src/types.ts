@@ -1,7 +1,15 @@
 import type { Address } from '@sherpa/safety';
 
 /** Stage-1+ supported intents. Keep in sync with the parser. */
-export type Intent = 'SEND' | 'BUY' | 'BET' | 'SWAP' | 'BALANCE' | 'HISTORY' | 'UNKNOWN';
+export type Intent =
+  | 'SEND'
+  | 'BUY'
+  | 'BET'
+  | 'SWAP'
+  | 'DEPOSIT'
+  | 'BALANCE'
+  | 'HISTORY'
+  | 'UNKNOWN';
 
 export type ParsedIntent = {
   intent: Intent;
@@ -50,6 +58,8 @@ export type ConfirmationCardProps = {
   steps: ExecutionStep[];
   /** Sponsored EIP-5792 batch the frontend should submit (when steps.length > 0). */
   batch?: SendCallsEnvelope;
+  /** External redirect (e.g. Coinbase Onramp URL) for off-chain actions. */
+  redirect_url?: string;
   gas_display: string;
   warnings: string[];
   estimated_completion_ms: number;
