@@ -116,8 +116,15 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
     }
     const parsedIntent = await parse(parsed.data.input);
+    const userAddress =
+      typeof parsed.data.userKey === 'string' && /^0x[a-fA-F0-9]{40}$/.test(parsed.data.userKey)
+        ? (parsed.data.userKey as `0x${string}`)
+        : undefined;
     const planResult = await plan(parsedIntent, {
       userKey: parsed.data.userKey,
+      userAddress,
+      chainId: config.chain.chainId,
+      paymasterUrl: config.paymasterUrl,
       rateLimiter,
     });
     if (!planResult.ok) {

@@ -19,6 +19,13 @@ export type SerializedStep = {
   label: string;
 };
 
+export type SerializedSendCallsEnvelope = {
+  version: '1.0';
+  chainId: string;
+  calls: Array<{ to: string; data: string; value: string }>;
+  capabilities?: { paymasterService?: { url: string } };
+};
+
 export type SerializedConfirmationCardProps = {
   intent: string;
   primary_action_label: string;
@@ -27,6 +34,8 @@ export type SerializedConfirmationCardProps = {
   recipient_display?: string;
   recipient_metadata?: Record<string, unknown>;
   steps: SerializedStep[];
+  batch?: SerializedSendCallsEnvelope;
+  redirect_url?: string;
   gas_display: string;
   warnings: string[];
   estimated_completion_ms: number;
@@ -104,6 +113,28 @@ export function ConfirmationCard(props: {
           <span style={{ color: tokens.color.fg }}>{card.recipient_display}</span>
         </div>
       ) : null}
+      {card.steps.length > 0 ? (
+        <ol
+          style={{
+            margin: 0,
+            paddingLeft: tokens.space.md,
+            color: tokens.color.muted,
+            fontSize: 13,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+          }}
+        >
+          {card.steps.map((s, i) => (
+            <li key={`${s.kind}-${i}`} data-testid="card-step">
+              <span style={{ color: tokens.color.fg }}>{s.label}</span>
+              <span style={{ marginLeft: tokens.space.sm, color: tokens.color.muted }}>
+                ({s.kind})
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
       {card.warnings.length > 0 ? (
         <ul style={{ margin: 0, paddingLeft: tokens.space.md, color: tokens.color.warning }}>
           {card.warnings.map((w) => (
@@ -111,9 +142,21 @@ export function ConfirmationCard(props: {
           ))}
         </ul>
       ) : null}
-      <button style={buttonStyle} onClick={onConfirm} type="button">
-        {card.primary_action_label}
-      </button>
+      {card.redirect_url ? (
+        <a
+          href={card.redirect_url}
+          target="_blank"
+          rel="noreferrer noopener"
+          style={{ ...buttonStyle, textAlign: 'center', textDecoration: 'none' }}
+          data-testid="card-redirect"
+        >
+          {card.primary_action_label}
+        </a>
+      ) : (
+        <button style={buttonStyle} onClick={onConfirm} type="button">
+          {card.primary_action_label}
+        </button>
+      )}
     </div>
   );
 }
