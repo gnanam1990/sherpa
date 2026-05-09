@@ -130,6 +130,121 @@ describe('tools/limitless REST quote', () => {
   });
 });
 
+describe('tools/limitless findMarket', () => {
+  const sampleRow = (id: string, title: string, volume: number) => ({
+    id,
+    title,
+    volume,
+  });
+
+  it('returns [] when no apiUrl configured', async () => {
+    const lim = createLimitless();
+    expect(await lim.findMarket({ predicate: 'eth tops 5k' })).toEqual([]);
+  });
+
+  it('hits /markets with search/limit/sortBy and parses bare-array response', async () => {
+    let capturedUrl = '';
+    const fakeFetch: typeof fetch = async (input) => {
+      capturedUrl = String(input);
+      return new Response(
+        JSON.stringify([
+          sampleRow(`0x${'a'.repeat(64)}`, 'ETH > 5k by EOY', 12000),
+          sampleRow(`0x${'b'.repeat(64)}`, 'ETH > 5k Dec 31', 4000),
+        ]),
+        { status: 200 },
+      );
+    };
+    const lim = createLimitless({ apiUrl: 'https://api.limitless.test', fetchImpl: fakeFetch });
+    const out = await lim.findMarket({
+      predicate: 'eth tops 5k',
+      asset: 'ETH',
+      threshold: 5000,
+    });
+    expect(capturedUrl).toContain('/markets?');
+    expect(capturedUrl).toContain('search=eth+tops+5k');
+    expect(capturedUrl).toContain('limit=10');
+    expect(capturedUrl).toContain('sortBy=volume');
+    expect(capturedUrl).toContain('asset=ETH');
+    expect(capturedUrl).toContain('threshold=5000');
+    expect(out.length).toBe(2);
+    expect(out[0]?.volume).toBe(12000);
+  });
+
+  it('also accepts a {markets:[...]} envelope and skips malformed ids', async () => {
+    const fakeFetch: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          markets: [
+            sampleRow(`0x${'c'.repeat(64)}`, 'ok', 1),
+            sampleRow('0xnotbytes32', 'malformed id', 99),
+            { marketId: `0x${'d'.repeat(64)}`, question: 'alt-key shape', volumeUsd: '42' },
+          ],
+        }),
+        { status: 200 },
+      );
+    const lim = createLimitless({ apiUrl: 'https://api.limitless.test', fetchImpl: fakeFetch });
+    const out = await lim.findMarket({ predicate: 'p' });
+    expect(out.length).toBe(2);
+    expect(out[1]?.title).toBe('alt-key shape');
+    expect(out[1]?.volume).toBe(42);
+  });
+
+  it('caches results for 5 minutes by query', async () => {
+    let calls = 0;
+    const fakeFetch: typeof fetch = async () => {
+      calls += 1;
+      return new Response(JSON.stringify([sampleRow(`0x${'e'.repeat(64)}`, 't', 1)]), {
+        status: 200,
+      });
+    };
+    let nowMs = 1_000_000;
+    const lim = createLimitless({
+      apiUrl: 'https://api.limitless.test',
+      fetchImpl: fakeFetch,
+      now: () => nowMs,
+    });
+    await lim.findMarket({ predicate: 'q1' });
+    await lim.findMarket({ predicate: 'q1' });
+    expect(calls).toBe(1); // cache hit
+    await lim.findMarket({ predicate: 'q2' });
+    expect(calls).toBe(2); // different key, miss
+    nowMs += 5 * 60 * 1000 + 1; // past TTL
+    await lim.findMarket({ predicate: 'q1' });
+    expect(calls).toBe(3); // expired, refetched
+  });
+
+  it('throws on non-2xx', async () => {
+    const fakeFetch: typeof fetch = async () => new Response('boom', { status: 500 });
+    const lim = createLimitless({ apiUrl: 'https://api.limitless.test', fetchImpl: fakeFetch });
+    await expect(lim.findMarket({ predicate: 'q' })).rejects.toThrow(/findMarket api 500/);
+  });
+});
+
+describe('tools/limitless factoryAddress override', () => {
+  it('exposes the configured factoryAddress on the adapter', () => {
+    const fake = '0xabababababababababababababababababababab' as const;
+    const lim = createLimitless({ factoryAddress: fake });
+    expect(lim.factoryAddress).toBe(fake);
+  });
+
+  it('default adapter has factoryAddress=undefined (production gate)', () => {
+    expect(limitless.factoryAddress).toBeUndefined();
+  });
+
+  it('configured adapter builds tx without throwing', async () => {
+    const fake = '0xabababababababababababababababababababab' as const;
+    const lim = createLimitless({ factoryAddress: fake });
+    const tx = await lim.buildTx({
+      stake: '1',
+      marketId: `0x${'a'.repeat(64)}`,
+      outcome: 0,
+    });
+    expect(tx.to).toBe(fake);
+    const v = await lim.verify(tx);
+    expect(v.ok).toBe(true);
+  });
+});
+
 describe('tools/buildApproveCall', () => {
   it('targets USDC and encodes approve(spender, amount)', () => {
     const c = buildApproveCall(ALLOWED_CONTRACTS.UNISWAP_ROUTER, 1_000_000n);

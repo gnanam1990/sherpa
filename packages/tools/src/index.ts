@@ -14,7 +14,14 @@ export {
   buildApproveCall,
   LimitlessNotConfiguredError,
 } from './limitless.js';
-export type { BetParams, BetQuote, LimitlessConfig } from './limitless.js';
+export type {
+  BetParams,
+  BetQuote,
+  LimitlessConfig,
+  LimitlessAdapter,
+  LimitlessMarket,
+  FindMarketParams,
+} from './limitless.js';
 export { uniswap, makeUniswap } from './uniswap.js';
 export type { BuyParams, BuyQuote, UniswapDeps } from './uniswap.js';
 export { onramp, createOnramp } from './onramp.js';
