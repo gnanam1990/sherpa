@@ -6,20 +6,42 @@ import type { ParsedIntent, Intent } from './types.js';
  * patterns without needing an LLM. `parseWithLLM` is the fallback used by
  * the API when the deterministic parser returns UNKNOWN.
  *
+ * Contract:
+ *   - The deterministic layer is conservative — anything ambiguous (multi-word
+ *     recipients, prose like "vitalik dot eth", asset names spelled funny)
+ *     deliberately falls through to UNKNOWN so `parseWithLLM` can take it.
+ *   - Recipient is captured as a single `\S+` token. We do NOT normalise
+ *     "dot" → "." here; the LLM owns the looser cases.
+ *   - All matches are case-insensitive and `$?` on amounts is optional.
+ *
  * Supported forms:
  *   SEND     "send 5 usdc to 0x… / @handle / name.base.eth / name.eth"
- *   BET      "bet $5 on … / bet 5 on …"
- *   BUY      "buy $50 of eth"
- *   DEPOSIT  "deposit $50 / fund $50 / top up 50"
- *   BALANCE  "balance" / "what's my balance" / "show my balance"
+ *            "5 usdc to <recipient>" / "5 to <recipient>"  (verbless)
+ *   BET      "bet $5 on …"
+ *   BUY      "buy $50 of eth" / "buy eth for $50"          (either order)
+ *   DEPOSIT  "deposit $50" / "fund $50" / "top up 50"
+ *   BALANCE  "balance" / "what's my balance" / "what is my balance" /
+ *            "show my balance" / "show me my balance"
  *   HISTORY  "history" / "last N txs" / "my recent txs"
+ *
+ * Deliberately UNKNOWN (handed to the LLM):
+ *   - "send 5 USDC to vitalik dot eth"  (multi-word recipient)
+ *   - "send vitalik 5 USDC"             (indirect-object phrasing)
+ *   - "I want to buy some ETH"          (prose)
  */
 
 const SEND_RE = /^send\s+([\d.]+)\s*(usdc|eth)?\s+to\s+(\S+)\s*$/i;
+// Verbless: "<amount> [asset] to <recipient>". Asset defaults to USDC like SEND_RE.
+const SEND_NO_VERB_RE = /^([\d.]+)\s*(usdc|eth)?\s+to\s+(\S+)\s*$/i;
 const BUY_RE = /^buy\s+\$?([\d.]+)\s+(?:of\s+)?(\w+)\s*$/i;
+// Asset-first: "buy <asset> for $<amount>".
+const BUY_FOR_RE = /^buy\s+(\w+)\s+for\s+\$?([\d.]+)\s*$/i;
 const BET_RE = /^bet\s+\$?([\d.]+)\s+(.+?)\s*$/i;
 const DEPOSIT_RE = /^(?:deposit|fund|add|top\s*up)\s+\$?([\d.]+)\s*(?:usdc|usd|dollars?)?\s*$/i;
-const BALANCE_RE = /^(?:what[’']?s\s+my\s+)?(?:show\s+my\s+)?balance\??\s*$/i;
+// Accepts: "balance", "what's my balance", "what is my balance",
+// "show my balance", "show me my balance", with optional "?".
+const BALANCE_RE =
+  /^(?:(?:what(?:[’']s|\s+is)\s+my\s+)|(?:show(?:\s+me)?\s+my\s+))?balance\??\s*$/i;
 const HISTORY_RE =
   /^(?:show\s+)?(?:my\s+)?(?:last\s+(\d+)\s+)?(?:recent\s+)?(?:tx|txs|transactions|history)\s*$/i;
 
@@ -46,8 +68,21 @@ export function parseDeterministic(input: string): ParsedIntent {
     );
   }
 
+  if ((m = raw.match(SEND_NO_VERB_RE))) {
+    return make(
+      'SEND',
+      raw,
+      { amount: m[1], asset: (m[2] ?? 'USDC').toUpperCase(), to: m[3] },
+      0.85,
+    );
+  }
+
   if ((m = raw.match(BUY_RE))) {
     return make('BUY', raw, { usd: m[1], asset: (m[2] ?? '').toUpperCase() }, 0.85);
+  }
+
+  if ((m = raw.match(BUY_FOR_RE))) {
+    return make('BUY', raw, { usd: m[2], asset: (m[1] ?? '').toUpperCase() }, 0.85);
   }
 
   if ((m = raw.match(BET_RE))) {

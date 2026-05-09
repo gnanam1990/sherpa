@@ -43,7 +43,7 @@ describe('llm/router', () => {
 
 describe('llm/providers', () => {
   it('openaiProvider hits the chat endpoint with a Bearer token', async () => {
-    let captured: { url?: string; headers?: Record<string, string>; body?: string } = {};
+    const captured: { url?: string; headers?: Record<string, string>; body?: string } = {};
     const fetchImpl: typeof fetch = async (input, init) => {
       captured.url = String(input);
       captured.headers = init?.headers as Record<string, string>;
@@ -78,7 +78,7 @@ describe('llm/providers', () => {
   });
 
   it('anthropicProvider sends x-api-key + parses content blocks', async () => {
-    let captured: { headers?: Record<string, string> } = {};
+    const captured: { headers?: Record<string, string> } = {};
     const fetchImpl: typeof fetch = async (_input, init) => {
       captured.headers = init?.headers as Record<string, string>;
       return new Response(

@@ -26,6 +26,45 @@ describe('core/parser', () => {
   it('returns UNKNOWN for unsupported inputs', () => {
     expect(parseDeterministic('marry me').intent).toBe('UNKNOWN');
   });
+
+  // M1-week-2 parser hardening: phrasings the previous regex set missed.
+  // Each case is either now deterministic or deliberately UNKNOWN (LLM owns).
+  it('parses verbless SEND ("5 to vitalik.eth")', () => {
+    const p = parseDeterministic('5 to vitalik.eth');
+    expect(p.intent).toBe('SEND');
+    expect(p.slots.amount).toBe('5');
+    expect(p.slots.asset).toBe('USDC');
+    expect(p.slots.to).toBe('vitalik.eth');
+  });
+
+  it('parses verbless SEND with asset ("5 usdc to 0x…")', () => {
+    const p = parseDeterministic(`5 usdc to ${USDC_RECIPIENT}`);
+    expect(p.intent).toBe('SEND');
+    expect(p.slots.asset).toBe('USDC');
+    expect(p.slots.to).toBe(USDC_RECIPIENT);
+  });
+
+  it('parses asset-first BUY ("buy ETH for $50")', () => {
+    const p = parseDeterministic('buy ETH for $50');
+    expect(p.intent).toBe('BUY');
+    expect(p.slots.usd).toBe('50');
+    expect(p.slots.asset).toBe('ETH');
+  });
+
+  it('parses BALANCE without apostrophe ("what is my balance")', () => {
+    expect(parseDeterministic('what is my balance').intent).toBe('BALANCE');
+    expect(parseDeterministic('WHAT IS MY BALANCE?').intent).toBe('BALANCE');
+  });
+
+  it('parses BALANCE "show me my balance"', () => {
+    expect(parseDeterministic('show me my balance').intent).toBe('BALANCE');
+  });
+
+  it('returns UNKNOWN for multi-word recipients (LLM territory)', () => {
+    // "vitalik dot eth" should NOT match SEND_RE — the recipient capture is a
+    // single \S+ token by design. parseWithLLM picks this up.
+    expect(parseDeterministic('send 5 USDC to vitalik dot eth').intent).toBe('UNKNOWN');
+  });
 });
 
 describe('core/executor', () => {
