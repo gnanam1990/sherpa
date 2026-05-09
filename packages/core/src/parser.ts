@@ -69,12 +69,18 @@ export function parseDeterministic(input: string): ParsedIntent {
   }
 
   if ((m = raw.match(SEND_NO_VERB_RE))) {
-    return make(
-      'SEND',
-      raw,
-      { amount: m[1], asset: (m[2] ?? 'USDC').toUpperCase(), to: m[3] },
-      0.85,
-    );
+    // "5 ETH to USDC" is a SWAP intent (Stage 2), not a SEND with USDC as a
+    // recipient. When the captured recipient is a known asset symbol, bail
+    // to UNKNOWN so the LLM (or future SWAP regex) can disambiguate.
+    const to = m[3] ?? '';
+    if (!/^(usdc|usd|eth|weth|btc|wbtc)$/i.test(to)) {
+      return make(
+        'SEND',
+        raw,
+        { amount: m[1], asset: (m[2] ?? 'USDC').toUpperCase(), to },
+        0.85,
+      );
+    }
   }
 
   if ((m = raw.match(BUY_RE))) {

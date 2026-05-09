@@ -4,10 +4,16 @@
  * Per `docs/sherpa/SHERPA_COST_MODEL.md` Part 7, the build-phase hard cap is
  * **$50/day**. Better to fail loud than blow $5k overnight on a runaway loop.
  *
- * This module ships an in-memory counter; the Postgres-backed
- * `checkDailySpend()` sketched in the cost-model doc lands once M3 wires
- * `llm_usage`. Until then, the same `SpendCap` interface lets us swap the
- * implementation without touching the router.
+ * **Per-process limitation**: this counter lives in module-local state inside
+ * a single Node process. If `apps/api` ever runs more than one worker (e.g.
+ * a multi-instance Vercel deployment, or `pm2 cluster`), each worker holds
+ * its own counter and the *effective* daily cap multiplies by the worker
+ * count. On Vercel Hobby this is non-issue — one warm function instance per
+ * region — but the moment we move to a horizontally-scaled deployment we
+ * MUST swap this for a shared store. The Postgres-backed
+ * `checkDailySpend()` sketched in the cost-model doc is that swap; it lands
+ * once M3 wires `llm_usage`. The same `SpendCap` interface lets us swap
+ * implementations without touching the router.
  *
  * Reset boundary is the UTC calendar day (matches the cost-model doc's
  * `CURRENT_DATE` semantics).

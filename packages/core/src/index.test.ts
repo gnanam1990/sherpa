@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseDeterministic, parseWithLLM, plan } from './index.js';
-import { makeUniswap } from '@sherpa/tools';
+import { createLimitless, makeUniswap } from '@sherpa/tools';
+import { ALLOWED_CONTRACTS } from '@sherpa/safety';
 import type { LLMResponse } from '@sherpa/llm';
 
 const USDC_RECIPIENT = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
@@ -65,6 +66,13 @@ describe('core/parser', () => {
     // "vitalik dot eth" should NOT match SEND_RE — the recipient capture is a
     // single \S+ token by design. parseWithLLM picks this up.
     expect(parseDeterministic('send 5 USDC to vitalik dot eth').intent).toBe('UNKNOWN');
+  });
+
+  // Carry-over from PR #6: verbless SEND must not eat SWAP-shaped phrases.
+  it('does NOT match "5 ETH to USDC" as a verbless SEND (SWAP territory)', () => {
+    const p = parseDeterministic('5 ETH to USDC');
+    expect(p.intent).toBe('UNKNOWN');
+    expect(p.confidence).toBe(0);
   });
 });
 
@@ -143,6 +151,60 @@ describe('core/executor', () => {
     if (!out.ok) {
       expect(out.error).toMatch(/not yet configured/i);
     }
+  });
+
+  // 2.3: end-to-end BET shape. Verifies the EIP-5792 envelope the API will
+  // hand to the wallet — exactly two calls in order (USDC.approve, then
+  // Limitless.buyOutcomeShares) and capabilities.paymasterService when a
+  // paymaster URL is configured.
+  it('plans a BET with a 2-call EIP-5792 batch and paymaster capability', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const fakeFactory = '0xabababababababababababababababababababab' as const;
+    const lim = createLimitless({ factoryAddress: fakeFactory });
+
+    const p = parseDeterministic('bet $5 yes on eth-tops-5k');
+    const out = await plan(p, {
+      userAddress: me,
+      paymasterUrl: 'https://paymaster.test',
+      limitless: lim,
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+
+    expect(out.card.intent).toBe('BET');
+    expect(out.card.steps.length).toBe(2);
+    expect(out.card.steps[0]?.kind).toBe('approve');
+    expect(out.card.steps[1]?.kind).toBe('bet');
+
+    // Batch shape: 2 calls, ordered approve → buy.
+    expect(out.card.batch?.calls.length).toBe(2);
+    const [approveCall, buyCall] = out.card.batch!.calls;
+    expect(approveCall?.to.toLowerCase()).toBe(ALLOWED_CONTRACTS.USDC.toLowerCase());
+    expect(approveCall?.data.startsWith('0x095ea7b3')).toBe(true); // approve selector
+    expect(buyCall?.to.toLowerCase()).toBe(fakeFactory.toLowerCase());
+    // buyOutcomeShares calldata is encoded; first 4 bytes (selector) +
+    // 4×32-byte args = 4 + 128 = 132 bytes ⇒ "0x" + 264 hex chars.
+    expect(buyCall?.data.length).toBe(2 + 132 * 2);
+    // EIP-5792 envelopes carry value as hex string, not bigint.
+    expect(buyCall?.value).toBe('0x0');
+    expect(approveCall?.value).toBe('0x0');
+
+    // Sponsorship capability is set when a paymaster URL is provided.
+    expect(out.card.batch?.capabilities?.paymasterService?.url).toBe('https://paymaster.test');
+    expect(out.card.gas_display).toMatch(/sponsored/);
+  });
+
+  it('omits paymasterService capability when no paymasterUrl is provided', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const lim = createLimitless({
+      factoryAddress: '0xabababababababababababababababababababab',
+    });
+    const p = parseDeterministic('bet $5 yes on eth-tops-5k');
+    const out = await plan(p, { userAddress: me, limitless: lim });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.card.batch?.capabilities?.paymasterService).toBeUndefined();
+    expect(out.card.gas_display).not.toMatch(/sponsored/);
   });
 });
 
