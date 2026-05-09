@@ -10,8 +10,6 @@ import type { Address } from './types.js';
 export const ALLOWED_CONTRACTS = {
   // USDC on Base Sepolia
   USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as Address,
-  // Limitless CTFExchange on Base Sepolia (placeholder — update once confirmed)
-  LIMITLESS_FACTORY: '0x0000000000000000000000000000000000000001' as Address,
   // Uniswap V3 SwapRouter02 — Base Sepolia
   UNISWAP_ROUTER: '0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4' as Address,
   // Uniswap V3 Quoter v2 — Base Sepolia
@@ -22,12 +20,32 @@ export const ALLOWED_CONTRACTS = {
 
 export type AllowedContractName = keyof typeof ALLOWED_CONTRACTS;
 
+/**
+ * Limitless CTFExchange on Base Sepolia.
+ *
+ * TODO(m1-week-2): replace with the real Base-Sepolia CTFExchange address
+ * once confirmed with the Limitless team. Until then this is `undefined`
+ * and every code path that targets Limitless MUST surface a typed error
+ * (`LimitlessNotConfiguredError` in packages/tools/src/limitless.ts) rather
+ * than silently use a placeholder.
+ *
+ * Why undefined and not a sentinel like 0x…0001: a sentinel still has to
+ * be added to `ALLOWED_CONTRACTS` to pass `assertAllowlisted`, and at that
+ * point the Ring 2 check happily approves calldata addressed to address
+ * 0x…0001 — which is exactly the hole this guards against.
+ */
+export const LIMITLESS_FACTORY_ADDRESS: Address | undefined = undefined;
+
+export function isAllowlisted(target: Address): boolean {
+  const t = target.toLowerCase();
+  if (Object.values(ALLOWED_CONTRACTS).some((addr) => addr.toLowerCase() === t)) return true;
+  if (LIMITLESS_FACTORY_ADDRESS && LIMITLESS_FACTORY_ADDRESS.toLowerCase() === t) return true;
+  return false;
+}
+
 /** Throws if `target` is not in the allowlist. */
 export function assertAllowlisted(target: Address): void {
-  const found = Object.values(ALLOWED_CONTRACTS).some(
-    (addr) => addr.toLowerCase() === target.toLowerCase(),
-  );
-  if (!found) {
+  if (!isAllowlisted(target)) {
     throw new Error(`[safety] target ${target} not in allowlist`);
   }
 }

@@ -8,7 +8,12 @@
 export * from './types.js';
 export { usdc } from './usdc.js';
 export type { UsdcTransferParams, UsdcQuote } from './usdc.js';
-export { limitless, createLimitless, buildApproveCall } from './limitless.js';
+export {
+  limitless,
+  createLimitless,
+  buildApproveCall,
+  LimitlessNotConfiguredError,
+} from './limitless.js';
 export type { BetParams, BetQuote, LimitlessConfig } from './limitless.js';
 export { uniswap, makeUniswap } from './uniswap.js';
 export type { BuyParams, BuyQuote, UniswapDeps } from './uniswap.js';

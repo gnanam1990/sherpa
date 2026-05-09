@@ -2,6 +2,7 @@ import { resolve, isResolved, type ResolverBackends } from '@sherpa/identity';
 import { createInMemoryRateLimiter, type RateLimiter } from '@sherpa/memory';
 import {
   ALLOWED_CONTRACTS,
+  LIMITLESS_FACTORY_ADDRESS,
   buildSendCallsParams,
   checkRings,
   firstFailure,
@@ -95,6 +96,13 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
 }
 
 async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+  if (!LIMITLESS_FACTORY_ADDRESS) {
+    return {
+      ok: false,
+      error:
+        'Limitless Sepolia address not yet configured. BET is disabled until M1 wires the real CTFExchange address.',
+    };
+  }
   const slots = parsed.slots;
   const stakeStr =
     typeof slots.usd === 'string'
@@ -128,7 +136,7 @@ async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
   const r = await runRings(pending, deps);
   if (!r.ok) return r;
 
-  const approve = buildApproveCall(ALLOWED_CONTRACTS.LIMITLESS_FACTORY, quote.stakeBaseUnits);
+  const approve = buildApproveCall(LIMITLESS_FACTORY_ADDRESS, quote.stakeBaseUnits);
   const steps: ExecutionStep[] = [
     {
       kind: 'approve',

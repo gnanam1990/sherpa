@@ -8,6 +8,7 @@ import {
   createLimitless,
   emptyIndexer,
   buildApproveCall,
+  LimitlessNotConfiguredError,
 } from './index.js';
 import { ALLOWED_CONTRACTS } from '@sherpa/safety';
 
@@ -51,24 +52,23 @@ describe('tools/limitless', () => {
     expect(q.estimatedPayoutBaseUnits).toBe(10_000_000n);
   });
 
-  it('verify accepts factory target with value=0', async () => {
-    const tx = await limitless.buildTx({
-      stake: '1',
-      marketId: `0x${'a'.repeat(64)}`,
-      outcome: 0,
-    });
-    const v = await limitless.verify(tx);
-    expect(v.ok).toBe(true);
+  it('buildTx throws LimitlessNotConfiguredError when factory address is not set', async () => {
+    await expect(
+      limitless.buildTx({ stake: '1', marketId: `0x${'a'.repeat(64)}`, outcome: 0 }),
+    ).rejects.toBeInstanceOf(LimitlessNotConfiguredError);
   });
 
-  it('verify rejects non-zero value', async () => {
-    const tx = await limitless.buildTx({
-      stake: '1',
-      marketId: `0x${'a'.repeat(64)}`,
-      outcome: 0,
-    });
-    const v = await limitless.verify({ ...tx, value: 1n });
+  it('verify rejects when factory address is not set', async () => {
+    // Synthesise a BuiltTx without going through buildTx (which would throw).
+    const fakeTx = {
+      to: '0x0000000000000000000000000000000000000001' as const,
+      data: '0xdeadbeef' as const,
+      value: 0n,
+      sponsorable: true,
+    };
+    const v = await limitless.verify(fakeTx);
     expect(v.ok).toBe(false);
+    expect(v.ok === false && v.reason).toContain('not yet configured');
   });
 });
 

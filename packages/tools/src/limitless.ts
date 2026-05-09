@@ -1,6 +1,23 @@
 import { encodeFunctionData, erc20Abi, parseUnits } from 'viem';
-import { ALLOWED_CONTRACTS, assertAllowlisted, type Address } from '@sherpa/safety';
+import {
+  ALLOWED_CONTRACTS,
+  LIMITLESS_FACTORY_ADDRESS,
+  assertAllowlisted,
+  type Address,
+} from '@sherpa/safety';
 import type { BuildTx, BuiltTx, Quote, ToolAdapter, Verify } from './types.js';
+
+export class LimitlessNotConfiguredError extends Error {
+  constructor() {
+    super('Limitless Sepolia address not yet configured');
+    this.name = 'LimitlessNotConfiguredError';
+  }
+}
+
+function requireFactory(): Address {
+  if (!LIMITLESS_FACTORY_ADDRESS) throw new LimitlessNotConfiguredError();
+  return LIMITLESS_FACTORY_ADDRESS;
+}
 
 /**
  * Limitless Exchange BET adapter — Base Sepolia.
@@ -92,6 +109,7 @@ export function createLimitless(
   };
 
   const buildTx: BuildTx<BetParams> = async (params) => {
+    const factory = requireFactory();
     const q = await quote(params);
     const data = encodeFunctionData({
       abi: CTF_EXCHANGE_ABI,
@@ -99,7 +117,7 @@ export function createLimitless(
       args: [params.marketId, params.outcome, q.stakeBaseUnits, q.minSharesOut],
     });
     const tx: BuiltTx = {
-      to: ALLOWED_CONTRACTS.LIMITLESS_FACTORY,
+      to: factory,
       data,
       value: 0n,
       sponsorable: true,
@@ -109,7 +127,10 @@ export function createLimitless(
   };
 
   const verify: Verify = async (tx) => {
-    if (tx.to.toLowerCase() !== ALLOWED_CONTRACTS.LIMITLESS_FACTORY.toLowerCase()) {
+    if (!LIMITLESS_FACTORY_ADDRESS) {
+      return { ok: false, reason: 'Limitless Sepolia address not yet configured' };
+    }
+    if (tx.to.toLowerCase() !== LIMITLESS_FACTORY_ADDRESS.toLowerCase()) {
       return { ok: false, reason: 'target is not Limitless exchange' };
     }
     if (tx.value !== 0n) {

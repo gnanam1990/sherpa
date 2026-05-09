@@ -88,15 +88,14 @@ describe('core/executor', () => {
     }
   });
 
-  it('plans a BET with approve+bet steps', async () => {
+  it('refuses BET while Limitless Sepolia address is unconfigured', async () => {
+    // M1-week-2: until LIMITLESS_FACTORY_ADDRESS is set in @sherpa/safety,
+    // BET must surface a typed error rather than build a tx to a placeholder.
     const p = parseDeterministic('bet $5 yes on eth-tops-5k');
     const out = await plan(p);
-    expect(out.ok).toBe(true);
-    if (out.ok) {
-      expect(out.card.intent).toBe('BET');
-      expect(out.card.steps.length).toBe(2);
-      expect(out.card.steps[0]?.kind).toBe('approve');
-      expect(out.card.steps[1]?.kind).toBe('bet');
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/not yet configured/i);
     }
   });
 });
