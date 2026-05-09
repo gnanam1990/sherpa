@@ -26,6 +26,19 @@ export { uniswap, makeUniswap } from './uniswap.js';
 export type { BuyParams, BuyQuote, UniswapDeps } from './uniswap.js';
 export { fetchPythPriceUsd, PYTH_FEED_IDS } from './pyth.js';
 export type { PythConfig, PythSupportedAsset } from './pyth.js';
+export { aerodrome, createAerodrome, AerodromeNotConfiguredError } from './aerodrome.js';
+export type { AerodromeAdapter, AerodromeDeps, SwapParams, SwapQuote, SwapAsset } from './aerodrome.js';
+export { morpho, createMorpho, MorphoNotConfiguredError } from './morpho.js';
+export type {
+  MorphoAdapter,
+  MorphoConfig,
+  MorphoLendParams,
+  MorphoLendQuote,
+  MorphoMarketParams,
+  LendAction,
+} from './morpho.js';
+export { aave, createAave, AaveNotConfiguredError } from './aave.js';
+export type { AaveAdapter, AaveConfig, AaveLendParams, AaveLendQuote, AaveLendAction } from './aave.js';
 export { onramp, createOnramp } from './onramp.js';
 export type { OnrampParams, OnrampQuote, OnrampSession, OnrampConfig } from './onramp.js';
 export { getPublicClient, type ViemClientConfig } from './viem.js';
