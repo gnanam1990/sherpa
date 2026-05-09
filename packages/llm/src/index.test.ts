@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   anthropicProvider,
+  createInMemorySpendCap,
   createRouter,
   groqProvider,
+  LLMSpendCapExceeded,
   mockProvider,
   openaiProvider,
 } from './index.js';
@@ -102,5 +104,49 @@ describe('llm/providers', () => {
     await expect(
       openaiProvider({ apiKey: 'k', fetchImpl })({ task: 'parse', system: 's', user: 'u' }),
     ).rejects.toThrow(/429/);
+  });
+});
+
+describe('llm/spend-cap', () => {
+  function pricedProvider(costUsd: number) {
+    return async () => ({
+      text: 'ok',
+      usage: { provider: 'gpt-4o-mini' as const, promptTokens: 1, completionTokens: 1, costUsd },
+    });
+  }
+
+  it('allows calls under the daily cap and records cost', async () => {
+    const cap = createInMemorySpendCap({ capUsd: 1 });
+    const router = createRouter({
+      providers: { 'gpt-4o-mini': pricedProvider(0.1) },
+      spendCap: cap,
+    });
+    await router.complete({ task: 'parse', system: 's', user: 'u' });
+    await router.complete({ task: 'parse', system: 's', user: 'u' });
+    expect(cap.spentToday()).toBeCloseTo(0.2, 6);
+  });
+
+  it('throws LLMSpendCapExceeded when the cap is reached', async () => {
+    const cap = createInMemorySpendCap({ capUsd: 0.05 });
+    const router = createRouter({
+      providers: { 'gpt-4o-mini': pricedProvider(0.04) },
+      spendCap: cap,
+    });
+    await router.complete({ task: 'parse', system: 's', user: 'u' }); // 0.04
+    await router.complete({ task: 'parse', system: 's', user: 'u' }); // 0.08 → over
+    await expect(
+      router.complete({ task: 'parse', system: 's', user: 'u' }),
+    ).rejects.toBeInstanceOf(LLMSpendCapExceeded);
+  });
+
+  it('resets at the UTC date boundary', () => {
+    let nowStr = '2026-05-09T23:59:59Z';
+    const cap = createInMemorySpendCap({ capUsd: 1, now: () => new Date(nowStr) });
+    cap.record(0.99);
+    expect(cap.spentToday()).toBeCloseTo(0.99, 6);
+    expect(() => cap.check()).not.toThrow();
+    nowStr = '2026-05-10T00:00:00Z';
+    expect(cap.spentToday()).toBe(0);
+    expect(() => cap.check()).not.toThrow();
   });
 });
