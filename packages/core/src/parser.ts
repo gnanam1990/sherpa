@@ -122,6 +122,7 @@ const VALID_INTENTS: readonly Intent[] = [
   'BUY',
   'BET',
   'SWAP',
+  'LEND',
   'DEPOSIT',
   'BALANCE',
   'HISTORY',

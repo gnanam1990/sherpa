@@ -36,10 +36,45 @@ export type AllowedContractName = keyof typeof ALLOWED_CONTRACTS;
  */
 export const LIMITLESS_FACTORY_ADDRESS: Address | undefined = undefined;
 
+/**
+ * Aerodrome Router on Base. Stage-2 SWAP target.
+ *
+ * TODO(m1-week-3): Aerodrome has no first-party Sepolia deployment as of
+ * 2026-05. Mainnet Router is `0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43`,
+ * but we deliberately do NOT hard-code mainnet addresses here — Stage 4
+ * audit gates that. Until a Sepolia deployment exists or we're past the
+ * mainnet flip, every code path that targets Aerodrome MUST throw a typed
+ * error (see packages/tools/src/aerodrome.ts).
+ */
+export const AERODROME_ROUTER_ADDRESS: Address | undefined = undefined;
+
+/**
+ * Morpho Blue on Base. Stage-2 LEND target.
+ *
+ * TODO(m1-week-3): Morpho Blue's Sepolia deployment is unconfirmed. Mainnet
+ * is `0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb`, gated by the same Stage 4
+ * rule as Aerodrome.
+ */
+export const MORPHO_BLUE_ADDRESS: Address | undefined = undefined;
+
+/**
+ * Aave V3 Pool on Base. Stage-2 LEND fallback when Morpho rates aren't
+ * competitive or the asset isn't supported.
+ *
+ * TODO(m1-week-3): Aave V3 has Base Sepolia testnet deployments. The Pool
+ * proxy on Sepolia changes occasionally — confirm the current address from
+ * https://aave.com/docs before flipping this on. Until set, the adapter
+ * throws.
+ */
+export const AAVE_V3_POOL_ADDRESS: Address | undefined = undefined;
+
 export function isAllowlisted(target: Address, extras: readonly Address[] = []): boolean {
   const t = target.toLowerCase();
   if (Object.values(ALLOWED_CONTRACTS).some((addr) => addr.toLowerCase() === t)) return true;
   if (LIMITLESS_FACTORY_ADDRESS && LIMITLESS_FACTORY_ADDRESS.toLowerCase() === t) return true;
+  if (AERODROME_ROUTER_ADDRESS && AERODROME_ROUTER_ADDRESS.toLowerCase() === t) return true;
+  if (MORPHO_BLUE_ADDRESS && MORPHO_BLUE_ADDRESS.toLowerCase() === t) return true;
+  if (AAVE_V3_POOL_ADDRESS && AAVE_V3_POOL_ADDRESS.toLowerCase() === t) return true;
   if (extras.some((addr) => addr.toLowerCase() === t)) return true;
   return false;
 }
