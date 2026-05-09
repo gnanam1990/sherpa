@@ -1,5 +1,6 @@
 import { encodeFunctionData, parseUnits, formatUnits, type PublicClient } from 'viem';
 import { ALLOWED_CONTRACTS, assertAllowlisted, type Address } from '@sherpa/safety';
+import { fetchPythPriceUsd, type PythConfig } from './pyth.js';
 import type { BuildTx, BuiltTx, Quote, ToolAdapter, Verify } from './types.js';
 
 /**
@@ -8,9 +9,14 @@ import type { BuildTx, BuiltTx, Quote, ToolAdapter, Verify } from './types.js';
  * Stage-1 path: USDC -> WETH (single-hop, 0.05% pool). The user expresses
  * intent in USD ("buy $50 of eth"); we treat USD == USDC.
  *
- * `quote()` calls Quoter v2 if a viem client is provided; otherwise returns
- * a stub quote so unit tests can run without RPC. `buildTx()` is fully
- * deterministic (no RPC) — calldata for SwapRouter02.exactInputSingle.
+ * `quote()` has three tiers, in order of fidelity:
+ *   1. Real RPC (`deps.client`) → Quoter v2 simulation. Most accurate.
+ *   2. Pyth Hermes (`deps.pyth`)  → free HTTPS price feed; better than the
+ *      stub when RPC is unreachable.
+ *   3. Hard-coded 1 ETH = 3000 USDC stub. Last resort for offline tests.
+ *
+ * `buildTx()` is fully deterministic (no RPC) — calldata for
+ * SwapRouter02.exactInputSingle.
  */
 
 export type BuyParams = {
@@ -94,9 +100,28 @@ function stubAmountOut(amountInUsdcBaseUnits: bigint): bigint {
   return (amountInUsdcBaseUnits * 10n ** 18n) / 3_000_000_000n;
 }
 
+/**
+ * Convert a USDC amount (1e6) to a wei amount (1e18) using a Pyth-derived
+ * USD-per-ETH price. Inverse of `1 ETH = priceUsd USDC`:
+ *   wei = usdc * 1e18 / (priceUsd * 1e6)
+ * We multiply priceUsd by 1e8 first to keep precision in BigInt math.
+ */
+function pythAmountOut(amountInUsdcBaseUnits: bigint, priceUsdPerEth: number): bigint {
+  const priceScaled = BigInt(Math.round(priceUsdPerEth * 1e8));
+  if (priceScaled <= 0n) return 0n;
+  return (amountInUsdcBaseUnits * 10n ** 18n * 100n) / priceScaled;
+}
+
 export type UniswapDeps = {
-  /** Optional viem client for live Quoter calls. Falls back to stub. */
+  /** Optional viem client for live Quoter calls (tier 1 — most accurate). */
   client?: PublicClient;
+  /**
+   * Optional Pyth fallback (tier 2). When `client` is unavailable the
+   * adapter tries Pyth Hermes for a real-time USD/ETH price before falling
+   * back to the hard-coded stub. Pass `false` to disable explicitly (e.g. in
+   * unit tests that want deterministic stub output).
+   */
+  pyth?: PythConfig | false;
 };
 
 export function makeUniswap(deps: UniswapDeps = {}): ToolAdapter<BuyParams, BuyQuote, BuyParams> {
@@ -124,7 +149,10 @@ export function makeUniswap(deps: UniswapDeps = {}): ToolAdapter<BuyParams, BuyQ
       })) as unknown as { result: readonly [bigint, bigint, number, bigint] };
       amountOut = result.result[0];
     } else {
-      amountOut = stubAmountOut(amountIn);
+      // Tier 2: Pyth Hermes. Tier 3 (stub) only if Pyth is disabled or fails.
+      const pythPrice =
+        deps.pyth === false ? null : await fetchPythPriceUsd('ETH/USD', deps.pyth ?? {});
+      amountOut = pythPrice !== null ? pythAmountOut(amountIn, pythPrice) : stubAmountOut(amountIn);
     }
 
     return {
@@ -138,9 +166,9 @@ export function makeUniswap(deps: UniswapDeps = {}): ToolAdapter<BuyParams, BuyQ
 
   const buildTx: BuildTx<BuyParams> = async (params) => {
     const amountIn = parseUnits(params.usd, 6);
-    const expectedOut = deps.client
-      ? (await quote(params)).amountOutBaseUnits
-      : stubAmountOut(amountIn);
+    // Always go through quote() so the same tier order (RPC → Pyth → stub)
+    // determines the slippage floor used in calldata.
+    const expectedOut = (await quote(params)).amountOutBaseUnits;
     const slippageBps = BigInt(params.slippageBps ?? DEFAULT_SLIPPAGE_BPS);
     const amountOutMinimum = (expectedOut * (10_000n - slippageBps)) / 10_000n;
 

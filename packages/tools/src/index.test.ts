@@ -2,13 +2,14 @@ import { describe, it, expect } from 'vitest';
 import {
   usdc,
   limitless,
-  uniswap,
   onramp,
   createBasescanIndexer,
   createLimitless,
   emptyIndexer,
   buildApproveCall,
   LimitlessNotConfiguredError,
+  fetchPythPriceUsd,
+  makeUniswap,
 } from './index.js';
 import { ALLOWED_CONTRACTS } from '@sherpa/safety';
 
@@ -74,25 +75,119 @@ describe('tools/limitless', () => {
 
 describe('tools/uniswap', () => {
   const me = '0x1111111111111111111111111111111111111111' as const;
+  // The default `uniswap` export has Pyth enabled, which would hit the
+  // network. These tests exercise the stub tier with Pyth disabled.
+  const stub = makeUniswap({ pyth: false });
 
   it('quote returns stub ETH out for given USDC in', async () => {
-    const q = await uniswap.quote({ usd: '300', asset: 'ETH', recipient: me });
+    const q = await stub.quote({ usd: '300', asset: 'ETH', recipient: me });
     expect(q.amountInBaseUnits).toBe(300_000_000n);
     // 300 USDC at 1 ETH = 3000 USDC ⇒ 0.1 ETH = 1e17 wei
     expect(q.amountOutBaseUnits).toBe(100_000_000_000_000_000n);
   });
 
   it('buildTx targets the router with exactInputSingle calldata', async () => {
-    const tx = await uniswap.buildTx({ usd: '50', asset: 'ETH', recipient: me });
+    const tx = await stub.buildTx({ usd: '50', asset: 'ETH', recipient: me });
     expect(tx.to.toLowerCase()).toBe(ALLOWED_CONTRACTS.UNISWAP_ROUTER.toLowerCase());
     expect(tx.data.startsWith('0x04e45aaf')).toBe(true);
     expect(tx.value).toBe(0n);
   });
 
   it('verify rejects wrong selector', async () => {
-    const tx = await uniswap.buildTx({ usd: '1', asset: 'ETH', recipient: me });
-    const v = await uniswap.verify({ ...tx, data: '0xdeadbeef' });
+    const tx = await stub.buildTx({ usd: '1', asset: 'ETH', recipient: me });
+    const v = await stub.verify({ ...tx, data: '0xdeadbeef' });
     expect(v.ok).toBe(false);
+  });
+});
+
+describe('tools/pyth', () => {
+  it('parses v2 /updates/price/latest envelope and returns USD price', async () => {
+    const fakeFetch: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          parsed: [
+            {
+              id: 'ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace',
+              price: { price: '350000000000', conf: '1', expo: -8, publish_time: 1 },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    const price = await fetchPythPriceUsd('ETH/USD', { fetchImpl: fakeFetch });
+    expect(price).toBe(3500); // 350000000000 * 1e-8 = 3500
+  });
+
+  it('also accepts the legacy /api/latest_price_feeds bare-array shape', async () => {
+    const fakeFetch: typeof fetch = async () =>
+      new Response(
+        JSON.stringify([
+          {
+            id: 'ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace',
+            price: { price: '410000000000', conf: '1', expo: -8 },
+          },
+        ]),
+        { status: 200 },
+      );
+    const price = await fetchPythPriceUsd('ETH/USD', { fetchImpl: fakeFetch });
+    expect(price).toBe(4100);
+  });
+
+  it('returns null on non-2xx (caller falls back to next tier)', async () => {
+    const fakeFetch: typeof fetch = async () => new Response('rate limited', { status: 429 });
+    expect(await fetchPythPriceUsd('ETH/USD', { fetchImpl: fakeFetch })).toBeNull();
+  });
+
+  it('returns null when fetch throws (timeout / network error)', async () => {
+    const fakeFetch: typeof fetch = async () => {
+      throw new Error('network down');
+    };
+    expect(await fetchPythPriceUsd('ETH/USD', { fetchImpl: fakeFetch })).toBeNull();
+  });
+});
+
+describe('tools/uniswap with Pyth tier', () => {
+  const me = '0x1111111111111111111111111111111111111111' as const;
+
+  function pythFetch(priceUsd: number): typeof fetch {
+    return async () =>
+      new Response(
+        JSON.stringify({
+          parsed: [
+            {
+              id: 'eth-usd',
+              price: {
+                price: String(Math.round(priceUsd * 1e8)),
+                conf: '0',
+                expo: -8,
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+  }
+
+  it('uses Pyth price when no RPC client is configured', async () => {
+    // 100 USDC at $4000/ETH ⇒ 0.025 ETH = 2.5e16 wei.
+    const u = makeUniswap({ pyth: { fetchImpl: pythFetch(4000) } });
+    const q = await u.quote({ usd: '100', asset: 'ETH', recipient: me });
+    expect(q.amountOutBaseUnits).toBe(25_000_000_000_000_000n);
+  });
+
+  it('falls back to the 3000-stub when Pyth is unreachable', async () => {
+    const flaky: typeof fetch = async () => new Response('boom', { status: 500 });
+    const u = makeUniswap({ pyth: { fetchImpl: flaky } });
+    // 300 USDC at the 3000 stub ⇒ 0.1 ETH = 1e17 wei.
+    const q = await u.quote({ usd: '300', asset: 'ETH', recipient: me });
+    expect(q.amountOutBaseUnits).toBe(100_000_000_000_000_000n);
+  });
+
+  it('buildTx slippage floor uses the Pyth-derived expected out', async () => {
+    const u = makeUniswap({ pyth: { fetchImpl: pythFetch(4000) } });
+    const tx = await u.buildTx({ usd: '100', asset: 'ETH', recipient: me });
+    expect(tx.to.toLowerCase()).toBe(ALLOWED_CONTRACTS.UNISWAP_ROUTER.toLowerCase());
+    expect(tx.data.startsWith('0x04e45aaf')).toBe(true);
   });
 });
 

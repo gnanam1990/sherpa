@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseDeterministic, parseWithLLM, plan } from './index.js';
+import { makeUniswap } from '@sherpa/tools';
 import type { LLMResponse } from '@sherpa/llm';
 
 const USDC_RECIPIENT = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
@@ -96,7 +97,13 @@ describe('core/executor', () => {
   it('plans a BUY with approve+swap and an EIP-5792 envelope', async () => {
     const me = '0x1111111111111111111111111111111111111111' as const;
     const p = parseDeterministic('buy $50 of eth');
-    const out = await plan(p, { userAddress: me, paymasterUrl: 'https://paymaster.test' });
+    // makeUniswap({ pyth: false }) keeps the test deterministic against the
+    // 3000-USDC stub; the default uniswap adapter would call Pyth Hermes.
+    const out = await plan(p, {
+      userAddress: me,
+      paymasterUrl: 'https://paymaster.test',
+      uniswap: makeUniswap({ pyth: false }),
+    });
     expect(out.ok).toBe(true);
     if (out.ok) {
       expect(out.card.intent).toBe('BUY');

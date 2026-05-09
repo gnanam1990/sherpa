@@ -15,10 +15,13 @@ import {
   buildApproveCall,
   limitless as defaultLimitless,
   onramp,
-  uniswap,
+  uniswap as defaultUniswap,
   usdc,
   type LimitlessAdapter,
+  type BuyParams,
+  type BuyQuote,
 } from '@sherpa/tools';
+import type { ToolAdapter } from '@sherpa/tools';
 import type {
   ConfirmationCardProps,
   ExecutionStep,
@@ -39,6 +42,12 @@ export type ExecutorDeps = {
    * end-to-end without setting `LIMITLESS_FACTORY_ADDRESS` globally.
    */
   limitless?: LimitlessAdapter;
+  /**
+   * Override the default `uniswap` tool adapter. Useful in tests that want
+   * to disable the Pyth tier (`makeUniswap({ pyth: false })`) so quotes
+   * stay deterministic without a network call.
+   */
+  uniswap?: ToolAdapter<BuyParams, BuyQuote, BuyParams>;
 };
 
 export type PlanResult = { ok: true; card: ConfirmationCardProps } | { ok: false; error: string };
@@ -200,11 +209,12 @@ async function planBuy(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
     return { ok: false, error: 'BUY requires userAddress (recipient of swapped ETH)' };
   }
 
+  const uni = deps.uniswap ?? defaultUniswap;
   const params = { usd, asset: 'ETH' as const, recipient: deps.userAddress };
-  const tx = await uniswap.buildTx(params);
-  const verified = await uniswap.verify(tx);
+  const tx = await uni.buildTx(params);
+  const verified = await uni.verify(tx);
   if (!verified.ok) return { ok: false, error: `tx verify failed: ${verified.reason}` };
-  const quote = await uniswap.quote(params);
+  const quote = await uni.quote(params);
 
   const pending: PendingTx = {
     to: tx.to,
