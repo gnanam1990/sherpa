@@ -1,3 +1,4 @@
+import type { Address } from './types.js';
 import type { PendingTx, RingCheckResult, SafetyRing } from './types.js';
 import { assertAllowlisted } from './allowlist.js';
 import { assertAmountCap, DEFAULT_CAPS } from './caps.js';
@@ -19,6 +20,15 @@ export type RingsDependencies = {
   simulate?: (tx: PendingTx) => Promise<boolean> | boolean;
   /** User id / session id used for rate-limit keying. */
   userKey?: string;
+  /**
+   * Caller-vouched extra addresses to accept in Ring 1.
+   *
+   * Used by adapters that have been constructed with an explicit address
+   * the static allowlist does not yet know about (e.g. a
+   * `createLimitless({ factoryAddress })` test adapter). Production code
+   * paths should leave this empty.
+   */
+  extraAllowlistedAddresses?: readonly Address[];
 };
 
 async function runOne(ring: SafetyRing, fn: () => Promise<void> | void): Promise<RingCheckResult> {
@@ -36,7 +46,11 @@ export async function checkRings(
 ): Promise<RingCheckResult[]> {
   const results: RingCheckResult[] = [];
 
-  results.push(await runOne('ring1_allowlist', () => assertAllowlisted(tx.to)));
+  results.push(
+    await runOne('ring1_allowlist', () =>
+      assertAllowlisted(tx.to, deps.extraAllowlistedAddresses ?? []),
+    ),
+  );
   results.push(
     await runOne('ring2_amount_cap', () => assertAmountCap(tx.asset, tx.amount, DEFAULT_CAPS)),
   );

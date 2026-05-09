@@ -2,7 +2,6 @@ import { resolve, isResolved, type ResolverBackends } from '@sherpa/identity';
 import { createInMemoryRateLimiter, type RateLimiter } from '@sherpa/memory';
 import {
   ALLOWED_CONTRACTS,
-  LIMITLESS_FACTORY_ADDRESS,
   buildSendCallsParams,
   checkRings,
   firstFailure,
@@ -12,7 +11,17 @@ import {
   type Call,
   type PendingTx,
 } from '@sherpa/safety';
-import { buildApproveCall, limitless, onramp, uniswap, usdc } from '@sherpa/tools';
+import {
+  buildApproveCall,
+  limitless as defaultLimitless,
+  onramp,
+  uniswap as defaultUniswap,
+  usdc,
+  type LimitlessAdapter,
+  type BuyParams,
+  type BuyQuote,
+} from '@sherpa/tools';
+import type { ToolAdapter } from '@sherpa/tools';
 import type {
   ConfirmationCardProps,
   ExecutionStep,
@@ -27,6 +36,18 @@ export type ExecutorDeps = {
   userAddress?: Address;
   chainId?: number;
   paymasterUrl?: string;
+  /**
+   * Override the default `limitless` tool adapter. Tests pass a
+   * `createLimitless({ factoryAddress })` instance so the BET path runs
+   * end-to-end without setting `LIMITLESS_FACTORY_ADDRESS` globally.
+   */
+  limitless?: LimitlessAdapter;
+  /**
+   * Override the default `uniswap` tool adapter. Useful in tests that want
+   * to disable the Pyth tier (`makeUniswap({ pyth: false })`) so quotes
+   * stay deterministic without a network call.
+   */
+  uniswap?: ToolAdapter<BuyParams, BuyQuote, BuyParams>;
 };
 
 export type PlanResult = { ok: true; card: ConfirmationCardProps } | { ok: false; error: string };
@@ -96,7 +117,8 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
 }
 
 async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
-  if (!LIMITLESS_FACTORY_ADDRESS) {
+  const lim = deps.limitless ?? defaultLimitless;
+  if (!lim.factoryAddress) {
     return {
       ok: false,
       error:
@@ -120,10 +142,10 @@ async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
   const outcomeWord = explicitOutcome || (/\byes\b/i.test(predicate) ? 'YES' : 'NO');
   const outcome: 0 | 1 = outcomeWord === 'YES' ? 1 : 0;
 
-  const tx = await limitless.buildTx({ stake: stakeStr, marketId, outcome });
-  const verified = await limitless.verify(tx);
+  const tx = await lim.buildTx({ stake: stakeStr, marketId, outcome });
+  const verified = await lim.verify(tx);
   if (!verified.ok) return { ok: false, error: `tx verify failed: ${verified.reason}` };
-  const quote = await limitless.quote({ stake: stakeStr, marketId, outcome });
+  const quote = await lim.quote({ stake: stakeStr, marketId, outcome });
 
   const pending: PendingTx = {
     to: tx.to,
@@ -133,10 +155,10 @@ async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
     amount: quote.stakeBaseUnits,
     recipientSource: 'direct',
   };
-  const r = await runRings(pending, deps);
+  const r = await runRings(pending, deps, [lim.factoryAddress]);
   if (!r.ok) return r;
 
-  const approve = buildApproveCall(LIMITLESS_FACTORY_ADDRESS, quote.stakeBaseUnits);
+  const approve = buildApproveCall(lim.factoryAddress, quote.stakeBaseUnits);
   const steps: ExecutionStep[] = [
     {
       kind: 'approve',
@@ -187,11 +209,12 @@ async function planBuy(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
     return { ok: false, error: 'BUY requires userAddress (recipient of swapped ETH)' };
   }
 
+  const uni = deps.uniswap ?? defaultUniswap;
   const params = { usd, asset: 'ETH' as const, recipient: deps.userAddress };
-  const tx = await uniswap.buildTx(params);
-  const verified = await uniswap.verify(tx);
+  const tx = await uni.buildTx(params);
+  const verified = await uni.verify(tx);
   if (!verified.ok) return { ok: false, error: `tx verify failed: ${verified.reason}` };
-  const quote = await uniswap.quote(params);
+  const quote = await uni.quote(params);
 
   const pending: PendingTx = {
     to: tx.to,
@@ -335,12 +358,14 @@ async function planSend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
 async function runRings(
   pending: PendingTx,
   deps: ExecutorDeps,
+  extraAllowlistedAddresses: readonly Address[] = [],
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const rl = deps.rateLimiter ?? createInMemoryRateLimiter();
   const rings = await checkRings(pending, {
     userKey: deps.userKey ?? 'anon',
     checkRateLimit: async (key) => (await rl.check(key, 10, 60)).ok,
     simulate: () => true,
+    extraAllowlistedAddresses,
   });
   if (!ringsOk(rings)) {
     const fail = firstFailure(rings);

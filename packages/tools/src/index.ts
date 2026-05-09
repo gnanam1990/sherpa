@@ -14,9 +14,18 @@ export {
   buildApproveCall,
   LimitlessNotConfiguredError,
 } from './limitless.js';
-export type { BetParams, BetQuote, LimitlessConfig } from './limitless.js';
+export type {
+  BetParams,
+  BetQuote,
+  LimitlessConfig,
+  LimitlessAdapter,
+  LimitlessMarket,
+  FindMarketParams,
+} from './limitless.js';
 export { uniswap, makeUniswap } from './uniswap.js';
 export type { BuyParams, BuyQuote, UniswapDeps } from './uniswap.js';
+export { fetchPythPriceUsd, PYTH_FEED_IDS } from './pyth.js';
+export type { PythConfig, PythSupportedAsset } from './pyth.js';
 export { onramp, createOnramp } from './onramp.js';
 export type { OnrampParams, OnrampQuote, OnrampSession, OnrampConfig } from './onramp.js';
 export { getPublicClient, type ViemClientConfig } from './viem.js';

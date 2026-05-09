@@ -36,16 +36,24 @@ export type AllowedContractName = keyof typeof ALLOWED_CONTRACTS;
  */
 export const LIMITLESS_FACTORY_ADDRESS: Address | undefined = undefined;
 
-export function isAllowlisted(target: Address): boolean {
+export function isAllowlisted(target: Address, extras: readonly Address[] = []): boolean {
   const t = target.toLowerCase();
   if (Object.values(ALLOWED_CONTRACTS).some((addr) => addr.toLowerCase() === t)) return true;
   if (LIMITLESS_FACTORY_ADDRESS && LIMITLESS_FACTORY_ADDRESS.toLowerCase() === t) return true;
+  if (extras.some((addr) => addr.toLowerCase() === t)) return true;
   return false;
 }
 
-/** Throws if `target` is not in the allowlist. */
-export function assertAllowlisted(target: Address): void {
-  if (!isAllowlisted(target)) {
+/**
+ * Throws if `target` is not in the allowlist.
+ *
+ * `extras` are caller-vouched addresses — used by an adapter that knows it has
+ * been configured with a non-default address (e.g. a `createLimitless`
+ * adapter built with an explicit `factoryAddress`). Production code paths
+ * should leave `extras` empty.
+ */
+export function assertAllowlisted(target: Address, extras: readonly Address[] = []): void {
+  if (!isAllowlisted(target, extras)) {
     throw new Error(`[safety] target ${target} not in allowlist`);
   }
 }

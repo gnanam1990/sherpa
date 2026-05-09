@@ -2,13 +2,14 @@ import { describe, it, expect } from 'vitest';
 import {
   usdc,
   limitless,
-  uniswap,
   onramp,
   createBasescanIndexer,
   createLimitless,
   emptyIndexer,
   buildApproveCall,
   LimitlessNotConfiguredError,
+  fetchPythPriceUsd,
+  makeUniswap,
 } from './index.js';
 import { ALLOWED_CONTRACTS } from '@sherpa/safety';
 
@@ -74,25 +75,119 @@ describe('tools/limitless', () => {
 
 describe('tools/uniswap', () => {
   const me = '0x1111111111111111111111111111111111111111' as const;
+  // The default `uniswap` export has Pyth enabled, which would hit the
+  // network. These tests exercise the stub tier with Pyth disabled.
+  const stub = makeUniswap({ pyth: false });
 
   it('quote returns stub ETH out for given USDC in', async () => {
-    const q = await uniswap.quote({ usd: '300', asset: 'ETH', recipient: me });
+    const q = await stub.quote({ usd: '300', asset: 'ETH', recipient: me });
     expect(q.amountInBaseUnits).toBe(300_000_000n);
     // 300 USDC at 1 ETH = 3000 USDC ⇒ 0.1 ETH = 1e17 wei
     expect(q.amountOutBaseUnits).toBe(100_000_000_000_000_000n);
   });
 
   it('buildTx targets the router with exactInputSingle calldata', async () => {
-    const tx = await uniswap.buildTx({ usd: '50', asset: 'ETH', recipient: me });
+    const tx = await stub.buildTx({ usd: '50', asset: 'ETH', recipient: me });
     expect(tx.to.toLowerCase()).toBe(ALLOWED_CONTRACTS.UNISWAP_ROUTER.toLowerCase());
     expect(tx.data.startsWith('0x04e45aaf')).toBe(true);
     expect(tx.value).toBe(0n);
   });
 
   it('verify rejects wrong selector', async () => {
-    const tx = await uniswap.buildTx({ usd: '1', asset: 'ETH', recipient: me });
-    const v = await uniswap.verify({ ...tx, data: '0xdeadbeef' });
+    const tx = await stub.buildTx({ usd: '1', asset: 'ETH', recipient: me });
+    const v = await stub.verify({ ...tx, data: '0xdeadbeef' });
     expect(v.ok).toBe(false);
+  });
+});
+
+describe('tools/pyth', () => {
+  it('parses v2 /updates/price/latest envelope and returns USD price', async () => {
+    const fakeFetch: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          parsed: [
+            {
+              id: 'ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace',
+              price: { price: '350000000000', conf: '1', expo: -8, publish_time: 1 },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    const price = await fetchPythPriceUsd('ETH/USD', { fetchImpl: fakeFetch });
+    expect(price).toBe(3500); // 350000000000 * 1e-8 = 3500
+  });
+
+  it('also accepts the legacy /api/latest_price_feeds bare-array shape', async () => {
+    const fakeFetch: typeof fetch = async () =>
+      new Response(
+        JSON.stringify([
+          {
+            id: 'ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace',
+            price: { price: '410000000000', conf: '1', expo: -8 },
+          },
+        ]),
+        { status: 200 },
+      );
+    const price = await fetchPythPriceUsd('ETH/USD', { fetchImpl: fakeFetch });
+    expect(price).toBe(4100);
+  });
+
+  it('returns null on non-2xx (caller falls back to next tier)', async () => {
+    const fakeFetch: typeof fetch = async () => new Response('rate limited', { status: 429 });
+    expect(await fetchPythPriceUsd('ETH/USD', { fetchImpl: fakeFetch })).toBeNull();
+  });
+
+  it('returns null when fetch throws (timeout / network error)', async () => {
+    const fakeFetch: typeof fetch = async () => {
+      throw new Error('network down');
+    };
+    expect(await fetchPythPriceUsd('ETH/USD', { fetchImpl: fakeFetch })).toBeNull();
+  });
+});
+
+describe('tools/uniswap with Pyth tier', () => {
+  const me = '0x1111111111111111111111111111111111111111' as const;
+
+  function pythFetch(priceUsd: number): typeof fetch {
+    return async () =>
+      new Response(
+        JSON.stringify({
+          parsed: [
+            {
+              id: 'eth-usd',
+              price: {
+                price: String(Math.round(priceUsd * 1e8)),
+                conf: '0',
+                expo: -8,
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+  }
+
+  it('uses Pyth price when no RPC client is configured', async () => {
+    // 100 USDC at $4000/ETH ⇒ 0.025 ETH = 2.5e16 wei.
+    const u = makeUniswap({ pyth: { fetchImpl: pythFetch(4000) } });
+    const q = await u.quote({ usd: '100', asset: 'ETH', recipient: me });
+    expect(q.amountOutBaseUnits).toBe(25_000_000_000_000_000n);
+  });
+
+  it('falls back to the 3000-stub when Pyth is unreachable', async () => {
+    const flaky: typeof fetch = async () => new Response('boom', { status: 500 });
+    const u = makeUniswap({ pyth: { fetchImpl: flaky } });
+    // 300 USDC at the 3000 stub ⇒ 0.1 ETH = 1e17 wei.
+    const q = await u.quote({ usd: '300', asset: 'ETH', recipient: me });
+    expect(q.amountOutBaseUnits).toBe(100_000_000_000_000_000n);
+  });
+
+  it('buildTx slippage floor uses the Pyth-derived expected out', async () => {
+    const u = makeUniswap({ pyth: { fetchImpl: pythFetch(4000) } });
+    const tx = await u.buildTx({ usd: '100', asset: 'ETH', recipient: me });
+    expect(tx.to.toLowerCase()).toBe(ALLOWED_CONTRACTS.UNISWAP_ROUTER.toLowerCase());
+    expect(tx.data.startsWith('0x04e45aaf')).toBe(true);
   });
 });
 
@@ -127,6 +222,121 @@ describe('tools/limitless REST quote', () => {
     const q = await lim.quote({ stake: '5', marketId: `0x${'b'.repeat(64)}`, outcome: 1 });
     // 5 USDC at 0.25/share = 20 shares ⇒ ~4.0x odds
     expect(q.odds).toBe('4.00x');
+  });
+});
+
+describe('tools/limitless findMarket', () => {
+  const sampleRow = (id: string, title: string, volume: number) => ({
+    id,
+    title,
+    volume,
+  });
+
+  it('returns [] when no apiUrl configured', async () => {
+    const lim = createLimitless();
+    expect(await lim.findMarket({ predicate: 'eth tops 5k' })).toEqual([]);
+  });
+
+  it('hits /markets with search/limit/sortBy and parses bare-array response', async () => {
+    let capturedUrl = '';
+    const fakeFetch: typeof fetch = async (input) => {
+      capturedUrl = String(input);
+      return new Response(
+        JSON.stringify([
+          sampleRow(`0x${'a'.repeat(64)}`, 'ETH > 5k by EOY', 12000),
+          sampleRow(`0x${'b'.repeat(64)}`, 'ETH > 5k Dec 31', 4000),
+        ]),
+        { status: 200 },
+      );
+    };
+    const lim = createLimitless({ apiUrl: 'https://api.limitless.test', fetchImpl: fakeFetch });
+    const out = await lim.findMarket({
+      predicate: 'eth tops 5k',
+      asset: 'ETH',
+      threshold: 5000,
+    });
+    expect(capturedUrl).toContain('/markets?');
+    expect(capturedUrl).toContain('search=eth+tops+5k');
+    expect(capturedUrl).toContain('limit=10');
+    expect(capturedUrl).toContain('sortBy=volume');
+    expect(capturedUrl).toContain('asset=ETH');
+    expect(capturedUrl).toContain('threshold=5000');
+    expect(out.length).toBe(2);
+    expect(out[0]?.volume).toBe(12000);
+  });
+
+  it('also accepts a {markets:[...]} envelope and skips malformed ids', async () => {
+    const fakeFetch: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          markets: [
+            sampleRow(`0x${'c'.repeat(64)}`, 'ok', 1),
+            sampleRow('0xnotbytes32', 'malformed id', 99),
+            { marketId: `0x${'d'.repeat(64)}`, question: 'alt-key shape', volumeUsd: '42' },
+          ],
+        }),
+        { status: 200 },
+      );
+    const lim = createLimitless({ apiUrl: 'https://api.limitless.test', fetchImpl: fakeFetch });
+    const out = await lim.findMarket({ predicate: 'p' });
+    expect(out.length).toBe(2);
+    expect(out[1]?.title).toBe('alt-key shape');
+    expect(out[1]?.volume).toBe(42);
+  });
+
+  it('caches results for 5 minutes by query', async () => {
+    let calls = 0;
+    const fakeFetch: typeof fetch = async () => {
+      calls += 1;
+      return new Response(JSON.stringify([sampleRow(`0x${'e'.repeat(64)}`, 't', 1)]), {
+        status: 200,
+      });
+    };
+    let nowMs = 1_000_000;
+    const lim = createLimitless({
+      apiUrl: 'https://api.limitless.test',
+      fetchImpl: fakeFetch,
+      now: () => nowMs,
+    });
+    await lim.findMarket({ predicate: 'q1' });
+    await lim.findMarket({ predicate: 'q1' });
+    expect(calls).toBe(1); // cache hit
+    await lim.findMarket({ predicate: 'q2' });
+    expect(calls).toBe(2); // different key, miss
+    nowMs += 5 * 60 * 1000 + 1; // past TTL
+    await lim.findMarket({ predicate: 'q1' });
+    expect(calls).toBe(3); // expired, refetched
+  });
+
+  it('throws on non-2xx', async () => {
+    const fakeFetch: typeof fetch = async () => new Response('boom', { status: 500 });
+    const lim = createLimitless({ apiUrl: 'https://api.limitless.test', fetchImpl: fakeFetch });
+    await expect(lim.findMarket({ predicate: 'q' })).rejects.toThrow(/findMarket api 500/);
+  });
+});
+
+describe('tools/limitless factoryAddress override', () => {
+  it('exposes the configured factoryAddress on the adapter', () => {
+    const fake = '0xabababababababababababababababababababab' as const;
+    const lim = createLimitless({ factoryAddress: fake });
+    expect(lim.factoryAddress).toBe(fake);
+  });
+
+  it('default adapter has factoryAddress=undefined (production gate)', () => {
+    expect(limitless.factoryAddress).toBeUndefined();
+  });
+
+  it('configured adapter builds tx without throwing', async () => {
+    const fake = '0xabababababababababababababababababababab' as const;
+    const lim = createLimitless({ factoryAddress: fake });
+    const tx = await lim.buildTx({
+      stake: '1',
+      marketId: `0x${'a'.repeat(64)}`,
+      outcome: 0,
+    });
+    expect(tx.to).toBe(fake);
+    const v = await lim.verify(tx);
+    expect(v.ok).toBe(true);
   });
 });
 
