@@ -1,7 +1,14 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import * as Sentry from '@sentry/node';
 import { loadConfig, type SherpaConfig } from '@sherpa/config';
+import {
+  createLogger,
+  initSentry,
+  type Logger,
+  type SentryLike,
+} from '@sherpa/logger';
 import {
   parseDeterministic,
   parseWithLLM,
@@ -31,6 +38,7 @@ import {
 } from '@sherpa/memory';
 import { getPool } from '@sherpa/config';
 import { timingSafeEqual } from 'node:crypto';
+import { registerCronRoutes, HOURLY_TASKS } from './routes/cron.js';
 import {
   createBasescanIndexer,
   emptyIndexer,
@@ -73,6 +81,16 @@ export type BuildServerOptions = {
   llmComplete?: LLMComplete;
   /** Override identity resolver (tests inject a stub; production uses createResolver). */
   resolver?: IdentityResolver;
+  /**
+   * Override the Sentry SDK (tests pass a vi.fn-backed stub). Production
+   * uses `@sentry/node`. When neither is set AND no DSN is configured,
+   * initSentry is a no-op.
+   */
+  sentry?: SentryLike;
+  /** Override the logger (tests usually let the default rip and assert on stdout). */
+  logger?: Logger;
+  /** Override the cron task registry (tests inject failing tasks). */
+  cronTasks?: readonly import('./routes/cron.js').CronTask[];
 };
 
 /**
@@ -148,6 +166,17 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   // log) share state across requests. Callers may inject their own (Redis /
   // Postgres) implementations in production.
   const config = options.config ?? loadConfig();
+  // Sentry init is idempotent (singleton) — calling buildServer() twice in
+  // the same process (rare, but tests do) is safe. No-op without a DSN.
+  initSentry(
+    {
+      dsn: config.sentryDsn,
+      environment: config.sentryEnvironment,
+      release: process.env.VERCEL_GIT_COMMIT_SHA,
+    },
+    options.sentry ?? Sentry,
+  );
+  const log = options.logger ?? createLogger({ surface: 'api' });
   const auditStore = options.auditStore ?? createAuditStore(config);
   const rateLimiter = options.rateLimiter ?? createInMemoryRateLimiter();
   const resolver = options.resolver ?? defaultResolver(config);
@@ -344,6 +373,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
     },
   );
+
+  registerCronRoutes(app, {
+    auditStore,
+    cronSecret: config.cronSecret,
+    tasks: options.cronTasks ?? HOURLY_TASKS,
+    log: log.child({ surface: 'cron' }),
+  });
 
   return app;
 }
