@@ -238,6 +238,82 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  // ---- /api/cron/hourly ---------------------------------------------------
+
+  const CRON_SECRET = 'c'.repeat(64);
+
+  it('POST /api/cron/hourly returns 503 when CRON_SECRET is unset', async () => {
+    const app = buildServer({ config: { ...offlineConfig, cronSecret: undefined } });
+    const res = await app.inject({ method: 'POST', url: '/api/cron/hourly' });
+    expect(res.statusCode).toBe(503);
+    await app.close();
+  });
+
+  it('POST /api/cron/hourly 401s on missing/wrong bearer', async () => {
+    const app = buildServer({
+      config: { ...offlineConfig, cronSecret: CRON_SECRET },
+    });
+    const noAuth = await app.inject({ method: 'POST', url: '/api/cron/hourly' });
+    expect(noAuth.statusCode).toBe(401);
+    const wrong = await app.inject({
+      method: 'POST',
+      url: '/api/cron/hourly',
+      headers: { authorization: `Bearer ${'d'.repeat(64)}` },
+    });
+    expect(wrong.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it('POST /api/cron/hourly with empty registry returns 200 + empty tasks list', async () => {
+    const app = buildServer({
+      config: { ...offlineConfig, cronSecret: CRON_SECRET },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/cron/hourly',
+      headers: { authorization: `Bearer ${CRON_SECRET}` },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { ok: boolean; tasks: unknown[] };
+    expect(body.ok).toBe(true);
+    expect(body.tasks).toEqual([]);
+    await app.close();
+  });
+
+  it('POST /api/cron/hourly captures task failures into audit_log without aborting other tasks', async () => {
+    const auditStore = createInMemoryAuditStore();
+    const app = buildServer({
+      config: { ...offlineConfig, cronSecret: CRON_SECRET },
+      auditStore,
+      cronTasks: [
+        { name: 'failing', run: async () => { throw new Error('upstream rpc 502'); } },
+        { name: 'ok', run: async () => {} },
+      ],
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/cron/hourly',
+      headers: { authorization: `Bearer ${CRON_SECRET}` },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { tasks: Array<{ name: string; status: string; error?: string }> };
+    expect(body.tasks.map((t) => t.name)).toEqual(['failing', 'ok']);
+    expect(body.tasks[0]!.status).toBe('failed');
+    expect(body.tasks[0]!.error).toContain('upstream rpc 502');
+    expect(body.tasks[1]!.status).toBe('success');
+    // audit_log: one row per task, intent='CRON:<name>', surface='cron'
+    const rows = await auditStore.list('0x0000000000000000000000000000000000000000');
+    expect(rows.length).toBe(2);
+    const intents = rows.map((r) => r.intent);
+    expect(intents).toContain('CRON:failing');
+    expect(intents).toContain('CRON:ok');
+    expect(rows.every((r) => r.surface === 'cron')).toBe(true);
+    const failedRow = rows.find((r) => r.intent === 'CRON:failing')!;
+    expect(failedRow.patch.status).toBe('failed');
+    expect(failedRow.patch.error).toContain('upstream rpc 502');
+    await app.close();
+  });
+
   it('GET /admin/llm-usage/user/:address rejects malformed addresses with 400 (after auth)', async () => {
     // Strip provider API keys so defaultLlmComplete returns undefined and
     // doesn't try to wire a real Postgres SpendCap. Inject in-memory audit

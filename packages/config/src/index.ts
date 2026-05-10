@@ -70,6 +70,15 @@ export type SherpaConfig = {
    * not mis-authed.
    */
   adminApiKey?: string;
+  /** Sentry DSN. When unset, error reporting is a no-op. */
+  sentryDsn?: string;
+  /** Sentry environment tag (e.g. `production`, `staging`, `development`). */
+  sentryEnvironment: string;
+  /**
+   * Bearer token for `/api/cron/*`. 64-char lowercase hex (same shape as
+   * ADMIN_API_KEY). When unset, cron routes respond 503 — disabled.
+   */
+  cronSecret?: string;
 };
 
 /**
@@ -131,14 +140,18 @@ const IdentityEnvSchema = z.object({
 // 64 lowercase hex chars = 32 bytes = `openssl rand -hex 32`. Enforcing the
 // shape (rather than a free-form min-length string) means a typo'd / partial
 // paste fails fast at boot rather than silently letting requests through.
+const HexBearer = z
+  .string()
+  .regex(/^[0-9a-f]{64}$/, 'must be 64 lowercase hex chars (openssl rand -hex 32)');
+
 const AdminEnvSchema = z.object({
-  ADMIN_API_KEY: z.preprocess(
-    emptyToUndefined,
-    z
-      .string()
-      .regex(/^[0-9a-f]{64}$/, 'ADMIN_API_KEY must be 64 lowercase hex chars (openssl rand -hex 32)')
-      .optional(),
-  ),
+  ADMIN_API_KEY: z.preprocess(emptyToUndefined, HexBearer.optional()),
+});
+
+const ObservabilityEnvSchema = z.object({
+  SENTRY_DSN: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  SENTRY_ENVIRONMENT: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  CRON_SECRET: z.preprocess(emptyToUndefined, HexBearer.optional()),
 });
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
@@ -156,6 +169,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     KV_REST_API_TOKEN: env.KV_REST_API_TOKEN,
   });
   const adminEnv = AdminEnvSchema.parse({ ADMIN_API_KEY: env.ADMIN_API_KEY });
+  const obsEnv = ObservabilityEnvSchema.parse({
+    SENTRY_DSN: env.SENTRY_DSN,
+    SENTRY_ENVIRONMENT: env.SENTRY_ENVIRONMENT,
+    CRON_SECRET: env.CRON_SECRET,
+  });
   return {
     chain,
     rpcUrl: env.SHERPA_RPC_URL ?? chain.rpcUrl,
@@ -174,6 +192,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     kvRestApiUrl: idEnv.KV_REST_API_URL,
     kvRestApiToken: idEnv.KV_REST_API_TOKEN,
     adminApiKey: adminEnv.ADMIN_API_KEY,
+    sentryDsn: obsEnv.SENTRY_DSN,
+    sentryEnvironment: obsEnv.SENTRY_ENVIRONMENT ?? 'development',
+    cronSecret: obsEnv.CRON_SECRET,
   };
 }
 

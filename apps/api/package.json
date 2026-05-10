@@ -23,6 +23,7 @@
     "@sherpa/memory": "workspace:*",
     "@sherpa/safety": "workspace:*",
     "@sherpa/tools": "workspace:*",
+    "@sentry/node": "^8.40.0",
     "@vercel/kv": "^3.0.0",
     "fastify": "^5.2.0",
     "viem": "^2.21.54",
