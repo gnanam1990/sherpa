@@ -5,6 +5,8 @@
  * Do NOT read `process.env` anywhere else — go through `loadConfig()`.
  */
 
+import { z } from 'zod';
+
 export type ChainName = 'base-sepolia' | 'base-mainnet';
 
 export type ChainConfig = {
@@ -46,6 +48,12 @@ export type SherpaConfig = {
   useRealRpc: boolean;
   /** Coinbase Paymaster service URL (EIP-5792 capabilities.paymasterService.url). */
   paymasterUrl?: string;
+  /** Whether to use real Postgres-backed memory stores (audit_log, llm_usage, ...). */
+  useRealDb: boolean;
+  /** Supabase pooler connection string. Required when `useRealDb` is true. */
+  databaseUrl?: string;
+  /** Supabase service role key (server-side only). */
+  supabaseServiceKey?: string;
 };
 
 function pickChain(name: string | undefined): ChainConfig {
@@ -53,8 +61,29 @@ function pickChain(name: string | undefined): ChainConfig {
   return CHAINS['base-sepolia'];
 }
 
+const DbEnvSchema = z
+  .object({
+    SHERPA_USE_REAL_DB: z.enum(['true', 'false']).default('false'),
+    DATABASE_URL: z.string().url().optional(),
+    SUPABASE_SERVICE_KEY: z.string().min(1).optional(),
+  })
+  .superRefine((env, ctx) => {
+    if (env.SHERPA_USE_REAL_DB === 'true' && !env.DATABASE_URL) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'DATABASE_URL is required when SHERPA_USE_REAL_DB=true',
+        path: ['DATABASE_URL'],
+      });
+    }
+  });
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   const chain = pickChain(env.SHERPA_CHAIN);
+  const dbEnv = DbEnvSchema.parse({
+    SHERPA_USE_REAL_DB: env.SHERPA_USE_REAL_DB,
+    DATABASE_URL: env.DATABASE_URL,
+    SUPABASE_SERVICE_KEY: env.SUPABASE_SERVICE_KEY,
+  });
   return {
     chain,
     rpcUrl: env.SHERPA_RPC_URL ?? chain.rpcUrl,
@@ -64,5 +93,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     groqApiKey: env.GROQ_API_KEY,
     useRealRpc: env.SHERPA_USE_REAL_RPC !== 'false',
     paymasterUrl: env.SHERPA_PAYMASTER_URL,
+    useRealDb: dbEnv.SHERPA_USE_REAL_DB === 'true',
+    databaseUrl: dbEnv.DATABASE_URL,
+    supabaseServiceKey: dbEnv.SUPABASE_SERVICE_KEY,
   };
 }
+
+export { getPool, query, resetPool, type DbPool, type QueryResult } from './db.js';
