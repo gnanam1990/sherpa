@@ -15,7 +15,8 @@ import {
   groqProvider,
   openaiProvider,
 } from '@sherpa/llm';
-import { resolve, isResolved } from '@sherpa/identity';
+import { createResolver, isResolved, type IdentityResolver } from '@sherpa/identity';
+import { kv } from '@vercel/kv';
 import {
   createAuditLog,
   createAuditStore,
@@ -64,7 +65,20 @@ export type BuildServerOptions = {
   config?: SherpaConfig;
   /** Override LLM completion (tests inject a mock). */
   llmComplete?: LLMComplete;
+  /** Override identity resolver (tests inject a stub; production uses createResolver). */
+  resolver?: IdentityResolver;
 };
+
+/**
+ * Construct the production resolver. Engages the Vercel KV layer only
+ * when both KV creds are present in config; otherwise the LRU is the
+ * sole cache. `@vercel/kv`'s singleton reads `KV_REST_API_URL` /
+ * `KV_REST_API_TOKEN` from the environment automatically.
+ */
+function defaultResolver(config: SherpaConfig): IdentityResolver {
+  const kvLayer = config.kvRestApiUrl && config.kvRestApiToken ? kv : undefined;
+  return createResolver({ config, kv: kvLayer });
+}
 
 function defaultLlmComplete(config: SherpaConfig): LLMComplete | undefined {
   const providers: Parameters<typeof createRouter>[0]['providers'] = {};
@@ -99,6 +113,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const config = options.config ?? loadConfig();
   const auditStore = options.auditStore ?? createAuditStore(config);
   const rateLimiter = options.rateLimiter ?? createInMemoryRateLimiter();
+  const resolver = options.resolver ?? defaultResolver(config);
   const llmComplete = options.llmComplete ?? defaultLlmComplete(config);
   const parse = (input: string) =>
     llmComplete ? parseWithLLM(input, llmComplete) : Promise.resolve(parseDeterministic(input));
@@ -196,7 +211,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   });
 
   app.get<{ Params: { addr: string } }>('/api/balance/:addr', async (req, reply) => {
-    const resolved = await resolve(req.params.addr);
+    const resolved = await resolver(req.params.addr);
     if (!isResolved(resolved)) return reply.code(400).send({ error: resolved });
     if (!config.useRealRpc) {
       return reply.send({
@@ -227,7 +242,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   app.get<{ Params: { addr: string }; Querystring: { limit?: string } }>(
     '/api/history/:addr',
     async (req, reply) => {
-      const resolved = await resolve(req.params.addr);
+      const resolved = await resolver(req.params.addr);
       if (!isResolved(resolved)) return reply.code(400).send({ error: resolved });
       const rawLimit = Number(req.query.limit ?? 10);
       if (!Number.isFinite(rawLimit)) {

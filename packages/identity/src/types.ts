@@ -12,6 +12,8 @@ export type ResolvedAddress = {
     basename?: string;
     ens_name?: string;
     has_activity?: boolean;
+    /** True when getCode() returns non-empty bytecode (i.e. the address is a contract). */
+    is_contract?: boolean;
   };
 };
 
