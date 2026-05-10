@@ -5,7 +5,7 @@
     "outDir": "dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "references": [{ "path": "../config" }],
+  "references": [{ "path": "../config" }, { "path": "../llm" }],
   "include": ["src/**/*"],
   "exclude": ["src/**/*.test.ts", "dist", "node_modules"]
 }

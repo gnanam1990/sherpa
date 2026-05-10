@@ -34,12 +34,16 @@ export class LLMSpendCapExceeded extends Error {
 }
 
 export type SpendCap = {
-  /** Throws `LLMSpendCapExceeded` if day-to-date spend is at or over the cap. */
-  check(): void;
+  /**
+   * Throws `LLMSpendCapExceeded` if day-to-date spend is at or over the cap.
+   * Async-tolerant: the Postgres impl hydrates lazily on first call, so
+   * callers must `await` even though the in-memory impl returns synchronously.
+   */
+  check(): void | Promise<void>;
   /** Record a completed call's USD cost. Returns the running daily total. */
-  record(costUsd: number): number;
+  record(costUsd: number): number | Promise<number>;
   /** Current UTC-day spend. */
-  spentToday(): number;
+  spentToday(): number | Promise<number>;
   /** Configured cap for inspection. */
   capUsd(): number;
 };

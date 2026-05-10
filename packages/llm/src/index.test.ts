@@ -111,7 +111,7 @@ describe('llm/spend-cap', () => {
   function pricedProvider(costUsd: number) {
     return async () => ({
       text: 'ok',
-      usage: { provider: 'gpt-4o-mini' as const, promptTokens: 1, completionTokens: 1, costUsd },
+      usage: { provider: 'gpt-4o-mini' as const, model: 'gpt-4o-mini', promptTokens: 1, completionTokens: 1, costUsd, latencyMs: 0 },
     });
   }
 

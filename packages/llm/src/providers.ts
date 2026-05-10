@@ -41,6 +41,7 @@ async function openaiCompatible(
   req: LLMRequest,
 ): Promise<LLMResponse> {
   const f = cfg.fetchImpl ?? fetch;
+  const start = Date.now();
   const res = await f(endpoint, {
     method: 'POST',
     headers: {
@@ -66,7 +67,14 @@ async function openaiCompatible(
   const outTok = json.usage?.completion_tokens ?? Math.ceil(text.length / 4);
   return {
     text,
-    usage: { provider, promptTokens: inTok, completionTokens: outTok, costUsd: costUsd(provider, inTok, outTok) },
+    usage: {
+      provider,
+      model,
+      promptTokens: inTok,
+      completionTokens: outTok,
+      costUsd: costUsd(provider, inTok, outTok),
+      latencyMs: Date.now() - start,
+    },
   };
 }
 
@@ -97,9 +105,12 @@ type AnthropicResponse = {
   usage?: { input_tokens: number; output_tokens: number };
 };
 
+const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+
 export function anthropicProvider(cfg: HttpProviderConfig): ProviderFn {
   return async (req) => {
     const f = cfg.fetchImpl ?? fetch;
+    const start = Date.now();
     const res = await f('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -108,7 +119,7 @@ export function anthropicProvider(cfg: HttpProviderConfig): ProviderFn {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: ANTHROPIC_MODEL,
         max_tokens: 512,
         system: req.system,
         messages: [{ role: 'user', content: req.user }],
@@ -127,9 +138,11 @@ export function anthropicProvider(cfg: HttpProviderConfig): ProviderFn {
       text,
       usage: {
         provider: 'claude-haiku',
+        model: ANTHROPIC_MODEL,
         promptTokens: inTok,
         completionTokens: outTok,
         costUsd: costUsd('claude-haiku', inTok, outTok),
+        latencyMs: Date.now() - start,
       },
     };
   };

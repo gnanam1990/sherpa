@@ -21,10 +21,16 @@ import {
   createAuditLog,
   createAuditStore,
   createInMemoryRateLimiter,
+  createSpendCap,
+  createUsageSink,
+  fetchTodayUsage,
+  fetchUserUsage,
   updateAuditLog,
   type AuditStore,
   type RateLimiter,
 } from '@sherpa/memory';
+import { getPool } from '@sherpa/config';
+import { timingSafeEqual } from 'node:crypto';
 import {
   createBasescanIndexer,
   emptyIndexer,
@@ -87,8 +93,39 @@ function defaultLlmComplete(config: SherpaConfig): LLMComplete | undefined {
   if (config.anthropicApiKey)
     providers['claude-haiku'] = anthropicProvider({ apiKey: config.anthropicApiKey });
   if (Object.keys(providers).length === 0) return undefined;
-  const router = createRouter({ providers });
+  // Cap counter (in-memory or Postgres, depending on useRealDb) gates every
+  // call. UsageSink writes per-call rows when we're on Postgres; in-memory
+  // mode skips the sink entirely (returns undefined → router treats as no-op).
+  const router = createRouter({
+    providers,
+    spendCap: createSpendCap(config),
+    onUsage: createUsageSink(config),
+  });
   return (req) => router.complete(req);
+}
+
+/**
+ * Constant-time bearer-token check. `Authorization: Bearer <hex>` only; any
+ * other scheme or shape is rejected. Returns 503 (not 401) when the server
+ * has no admin key configured — the route is *disabled*, not mis-authed.
+ */
+function checkAdminAuth(
+  authHeader: string | undefined,
+  configured: string | undefined,
+): { ok: true } | { ok: false; status: 401 | 503; reason: string } {
+  if (!configured) return { ok: false, status: 503, reason: 'admin endpoints disabled' };
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { ok: false, status: 401, reason: 'missing bearer token' };
+  }
+  const supplied = authHeader.slice('Bearer '.length).trim();
+  if (supplied.length !== configured.length) {
+    return { ok: false, status: 401, reason: 'invalid token' };
+  }
+  // timingSafeEqual requires equal-length buffers; we pre-checked length.
+  const a = Buffer.from(supplied);
+  const b = Buffer.from(configured);
+  if (!timingSafeEqual(a, b)) return { ok: false, status: 401, reason: 'invalid token' };
+  return { ok: true };
 }
 
 function hashPlan(card: ConfirmationCardProps): string {
@@ -115,8 +152,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const rateLimiter = options.rateLimiter ?? createInMemoryRateLimiter();
   const resolver = options.resolver ?? defaultResolver(config);
   const llmComplete = options.llmComplete ?? defaultLlmComplete(config);
-  const parse = (input: string) =>
-    llmComplete ? parseWithLLM(input, llmComplete) : Promise.resolve(parseDeterministic(input));
+  // `userAddress` opt: thread the caller's address through to the router so
+  // execute-path parse calls record `llm_usage.user_address` (and pre-auth
+  // /api/parse calls record NULL). Wraps llmComplete with a stamper.
+  const parse = (input: string, userAddress?: `0x${string}`) =>
+    llmComplete
+      ? parseWithLLM(input, (req) => llmComplete({ ...req, userAddress }))
+      : Promise.resolve(parseDeterministic(input));
   const indexer =
     options.indexer ??
     (config.basescanApiKey
@@ -153,7 +195,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     if (!parsed.success) {
       return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
     }
-    const parsedIntent = await parse(parsed.data.input);
+    const parsedIntent = await parse(parsed.data.input, parsed.data.userAddress);
     const planResult = await plan(parsedIntent, {
       userKey: parsed.data.userAddress,
       userAddress: parsed.data.userAddress,
@@ -238,6 +280,51 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return reply.code(502).send({ error: 'rpc_error', message: (err as Error).message });
     }
   });
+
+  // ---- Admin: LLM usage reporting -----------------------------------------
+  // Both routes are gated by ADMIN_API_KEY (constant-time compared) and
+  // require `useRealDb`. In dev / tests without Postgres they 503 — the
+  // tables they read don't exist there.
+  const adminGuard = (req: { headers: Record<string, string | string[] | undefined> } & {
+    raw?: unknown;
+  }, reply: { code: (n: number) => { send: (b: unknown) => unknown } }) => {
+    const auth = req.headers['authorization'];
+    const header = Array.isArray(auth) ? auth[0] : auth;
+    const guard = checkAdminAuth(header, config.adminApiKey);
+    if (!guard.ok) {
+      reply.code(guard.status).send({ error: guard.reason });
+      return false;
+    }
+    if (!config.useRealDb) {
+      reply.code(503).send({ error: 'admin endpoints require SHERPA_USE_REAL_DB=true' });
+      return false;
+    }
+    return true;
+  };
+
+  app.get('/admin/llm-usage/today', async (req, reply) => {
+    if (!adminGuard(req, reply)) return;
+    const pool = getPool(config);
+    const report = await fetchTodayUsage(pool);
+    return reply.send({
+      total_usd: report.totalUsd,
+      by_task: report.byTask,
+      by_provider: report.byProvider,
+    });
+  });
+
+  app.get<{ Params: { address: string } }>(
+    '/admin/llm-usage/user/:address',
+    async (req, reply) => {
+      if (!adminGuard(req, reply)) return;
+      if (!/^0x[a-fA-F0-9]{40}$/.test(req.params.address)) {
+        return reply.code(400).send({ error: 'address must be 0x-prefixed 20-byte hex' });
+      }
+      const pool = getPool(config);
+      const rows = await fetchUserUsage(pool, req.params.address);
+      return reply.send({ address: req.params.address, count: rows.length, rows });
+    },
+  );
 
   app.get<{ Params: { addr: string }; Querystring: { limit?: string } }>(
     '/api/history/:addr',

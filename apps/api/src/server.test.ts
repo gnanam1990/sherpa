@@ -178,4 +178,87 @@ describe('apps/api', () => {
     expect(res.statusCode).toBe(400);
     await app.close();
   });
+
+  // ---- /admin/llm-usage ---------------------------------------------------
+  // The success path (200 with aggregated rows) requires a live Postgres
+  // pool and is exercised by the integration tests under @sherpa/memory.
+  // Here we cover the four failure / disabled paths that the apps/api shell
+  // owns: no key configured, missing bearer, wrong bearer, useRealDb=false,
+  // malformed address.
+
+  const ADMIN_KEY = 'a'.repeat(64);
+
+  it('GET /admin/llm-usage/today returns 503 when ADMIN_API_KEY is unset', async () => {
+    const app = buildServer({ config: { ...offlineConfig, adminApiKey: undefined } });
+    const res = await app.inject({ method: 'GET', url: '/admin/llm-usage/today' });
+    expect(res.statusCode).toBe(503);
+    expect(res.json()).toMatchObject({ error: expect.stringContaining('disabled') });
+    await app.close();
+  });
+
+  it('GET /admin/llm-usage/today returns 401 on missing/wrong bearer', async () => {
+    // Strip provider API keys so defaultLlmComplete returns undefined and
+    // doesn't try to wire a real Postgres SpendCap. Inject in-memory audit
+    // store so createAuditStore() doesn't reach for a pool either.
+    const app = buildServer({
+      config: {
+        ...offlineConfig,
+        openaiApiKey: undefined,
+        groqApiKey: undefined,
+        anthropicApiKey: undefined,
+        adminApiKey: ADMIN_KEY,
+        useRealDb: true,
+      },
+      auditStore: createInMemoryAuditStore(),
+    });
+    const noAuth = await app.inject({ method: 'GET', url: '/admin/llm-usage/today' });
+    expect(noAuth.statusCode).toBe(401);
+    const wrong = await app.inject({
+      method: 'GET',
+      url: '/admin/llm-usage/today',
+      headers: { authorization: `Bearer ${'b'.repeat(64)}` },
+    });
+    expect(wrong.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it('GET /admin/llm-usage/today returns 503 when key is set but useRealDb=false (route disabled in dev)', async () => {
+    const app = buildServer({
+      config: { ...offlineConfig, adminApiKey: ADMIN_KEY, useRealDb: false },
+    });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/llm-usage/today',
+      headers: { authorization: `Bearer ${ADMIN_KEY}` },
+    });
+    expect(res.statusCode).toBe(503);
+    expect(res.json()).toMatchObject({
+      error: expect.stringContaining('SHERPA_USE_REAL_DB'),
+    });
+    await app.close();
+  });
+
+  it('GET /admin/llm-usage/user/:address rejects malformed addresses with 400 (after auth)', async () => {
+    // Strip provider API keys so defaultLlmComplete returns undefined and
+    // doesn't try to wire a real Postgres SpendCap. Inject in-memory audit
+    // store so createAuditStore() doesn't reach for a pool either.
+    const app = buildServer({
+      config: {
+        ...offlineConfig,
+        openaiApiKey: undefined,
+        groqApiKey: undefined,
+        anthropicApiKey: undefined,
+        adminApiKey: ADMIN_KEY,
+        useRealDb: true,
+      },
+      auditStore: createInMemoryAuditStore(),
+    });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/llm-usage/user/not-an-address',
+      headers: { authorization: `Bearer ${ADMIN_KEY}` },
+    });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
 });
