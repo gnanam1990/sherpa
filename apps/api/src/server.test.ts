@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { loadConfig } from '@sherpa/config';
-import { createInMemoryRateLimiter } from '@sherpa/memory';
+import { createInMemoryAuditStore, createInMemoryRateLimiter } from '@sherpa/memory';
 import { buildServer } from './server.js';
 
 const offlineConfig = { ...loadConfig(), useRealRpc: false } as const;
@@ -46,6 +46,26 @@ describe('apps/api', () => {
     expect(body.ok).toBe(true);
     expect(body.auditLogId).toBeGreaterThan(0);
     expect(body.planHash).toMatch(/^0x[a-f0-9]{64}$/);
+    await app.close();
+  });
+
+  it('POST /api/execute populates Stage-2 audit fields (surface, rawInput, parsedIntent, plan)', async () => {
+    const auditStore = createInMemoryAuditStore();
+    const app = buildServer({ auditStore });
+    const input = `send 2 usdc to ${USDC_RECIPIENT}`;
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/execute',
+      payload: { input, userAddress: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(200);
+    const rows = await auditStore.list(USDC_RECIPIENT);
+    expect(rows.length).toBe(1);
+    const row = rows[0]!;
+    expect(row.surface).toBe('api');
+    expect(row.rawInput).toBe(input);
+    expect(row.parsedIntent?.intent).toBe('SEND');
+    expect(row.plan).toBeDefined();
     await app.close();
   });
 

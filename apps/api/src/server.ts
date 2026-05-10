@@ -18,7 +18,7 @@ import {
 import { resolve, isResolved } from '@sherpa/identity';
 import {
   createAuditLog,
-  createInMemoryAuditStore,
+  createAuditStore,
   createInMemoryRateLimiter,
   updateAuditLog,
   type AuditStore,
@@ -96,9 +96,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   // Long-lived, per-server instances so Rings 3 (rate limit) and 5 (audit
   // log) share state across requests. Callers may inject their own (Redis /
   // Postgres) implementations in production.
-  const auditStore = options.auditStore ?? createInMemoryAuditStore();
-  const rateLimiter = options.rateLimiter ?? createInMemoryRateLimiter();
   const config = options.config ?? loadConfig();
+  const auditStore = options.auditStore ?? createAuditStore(config);
+  const rateLimiter = options.rateLimiter ?? createInMemoryRateLimiter();
   const llmComplete = options.llmComplete ?? defaultLlmComplete(config);
   const parse = (input: string) =>
     llmComplete ? parseWithLLM(input, llmComplete) : Promise.resolve(parseDeterministic(input));
@@ -156,6 +156,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         intent: parsedIntent.intent,
         planHash,
         submittedAt: Date.now(),
+        surface: 'api',
+        rawInput: parsed.data.input,
+        parsedIntent: parsedIntent as unknown as Record<string, unknown>,
+        plan: serializeCard(planResult.card),
       },
       auditStore,
     );
