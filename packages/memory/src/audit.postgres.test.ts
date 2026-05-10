@@ -133,6 +133,48 @@ describe('audit.postgres / update', () => {
     const store = createPostgresAuditStore(pool);
     await expect(store.update(7, { error: 'x' })).rejects.toBeInstanceOf(ConcurrentAuditUpdate);
   });
+
+  it('truncates updated_at on both sides of the WHERE/SET (regression: PR #10 review bug 1)', async () => {
+    // The previous SQL was `WHERE updated_at = $2` — broken because PG
+    // TIMESTAMPTZ has microsecond precision but JS Date is millisecond-only,
+    // so a row whose stored updated_at had any non-zero µs component would
+    // never match. The fix wraps both sides with `date_trunc('milliseconds')`.
+    const { pool, calls } = makePool([
+      { rows: [{ updated_at: now }] },
+      { rows: [], rowCount: 1 },
+    ]);
+    const store = createPostgresAuditStore(pool);
+    await store.update(7, { txHash: '0xbeef' });
+    const sql = calls[1]!.sql;
+    expect(sql).toContain(`date_trunc('milliseconds', updated_at) = $2`);
+    expect(sql).toContain(`updated_at = date_trunc('milliseconds', NOW())`);
+    expect(sql).not.toMatch(/AND\s+updated_at\s*=\s*\$2/);
+  });
+
+  it('update() succeeds when the stored row had microsecond precision (semantic regression)', async () => {
+    // Simulate the bug class with a smarter pool: the "row" has a hidden
+    // microsecond suffix the JS Date can't represent. The mock asserts the
+    // SQL truncates before comparing — i.e. it returns rowCount=1 only
+    // when the WHERE clause uses date_trunc.
+    const stored = new Date('2026-05-11T12:34:56.789Z');
+    let i = 0;
+    const pool = {
+      async query(sql: string, params: unknown[] = []) {
+        if (i++ === 0) {
+          return { rows: [{ updated_at: stored }], rowCount: 1 };
+        }
+        const truncatesUpdatedAt = /date_trunc\('milliseconds',\s*updated_at\)\s*=\s*\$2/.test(
+          sql,
+        );
+        const paramMatches =
+          params[1] instanceof Date && (params[1] as Date).getTime() === stored.getTime();
+        const ok = truncatesUpdatedAt && paramMatches;
+        return { rows: [], rowCount: ok ? 1 : 0 };
+      },
+    } as unknown as import('pg').Pool;
+    const store = createPostgresAuditStore(pool);
+    await expect(store.update(7, { error: 'oops' })).resolves.toBeUndefined();
+  });
 });
 
 describe('audit.postgres / list + snapshot', () => {

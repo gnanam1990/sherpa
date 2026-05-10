@@ -61,11 +61,18 @@ function pickChain(name: string | undefined): ChainConfig {
   return CHAINS['base-sepolia'];
 }
 
+// `process.env` exposes unset values as `undefined`, but a `.env` file with
+// `DATABASE_URL=` produces an empty string. `.optional()` only treats
+// `undefined` as absent, so the empty string is fed into `.url()` /
+// `.min(1)` and crashes `loadConfig()` even when SHERPA_USE_REAL_DB=false.
+// Coerce '' → undefined before validating.
+const emptyToUndefined = (v: unknown) => (v === '' ? undefined : v);
+
 const DbEnvSchema = z
   .object({
     SHERPA_USE_REAL_DB: z.enum(['true', 'false']).default('false'),
-    DATABASE_URL: z.string().url().optional(),
-    SUPABASE_SERVICE_KEY: z.string().min(1).optional(),
+    DATABASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    SUPABASE_SERVICE_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   })
   .superRefine((env, ctx) => {
     if (env.SHERPA_USE_REAL_DB === 'true' && !env.DATABASE_URL) {

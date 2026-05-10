@@ -1,0 +1,41 @@
+import { describe, it, expect } from 'vitest';
+import { loadConfig } from './index.js';
+
+describe('loadConfig', () => {
+  it('treats empty DATABASE_URL/SUPABASE_SERVICE_KEY as absent (regression: PR #10 review bug 2)', () => {
+    // Mirrors the .env.example default — operator unsets feature flags but
+    // leaves the empty `DATABASE_URL=` line in place. Pre-fix: this threw
+    // because `.optional()` only allows undefined, not ''.
+    const cfg = loadConfig({
+      SHERPA_USE_REAL_DB: 'false',
+      DATABASE_URL: '',
+      SUPABASE_SERVICE_KEY: '',
+    });
+    expect(cfg.useRealDb).toBe(false);
+    expect(cfg.databaseUrl).toBeUndefined();
+    expect(cfg.supabaseServiceKey).toBeUndefined();
+  });
+
+  it('still requires DATABASE_URL when SHERPA_USE_REAL_DB=true', () => {
+    expect(() =>
+      loadConfig({ SHERPA_USE_REAL_DB: 'true', DATABASE_URL: '' }),
+    ).toThrow(/DATABASE_URL is required/);
+  });
+
+  it('passes through a real DATABASE_URL', () => {
+    const cfg = loadConfig({
+      SHERPA_USE_REAL_DB: 'true',
+      DATABASE_URL: 'postgres://u:p@db.example.com:6543/postgres',
+      SUPABASE_SERVICE_KEY: 'svc-key',
+    });
+    expect(cfg.useRealDb).toBe(true);
+    expect(cfg.databaseUrl).toContain('db.example.com');
+    expect(cfg.supabaseServiceKey).toBe('svc-key');
+  });
+
+  it('rejects malformed DATABASE_URL', () => {
+    expect(() =>
+      loadConfig({ SHERPA_USE_REAL_DB: 'true', DATABASE_URL: 'not-a-url' }),
+    ).toThrow();
+  });
+});
