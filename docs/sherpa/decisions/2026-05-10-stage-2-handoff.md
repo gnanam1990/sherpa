@@ -9,18 +9,19 @@ Context: End of Priority 3 — pause point before Stage 2
 - Parser: deterministic + LLM fallback for 8 intents (5 active, 3 stubbed)
 - Executor: handles SEND, BUY, BET, DEPOSIT, BALANCE, HISTORY end-to-end
 - LLM router: 3 providers, fallback chain, $50/day spend cap
+- 119 tests passing across 8 packages
 
 ## Open items for Stage 2
 - Wire SWAP intent in executor (compare Aerodrome vs Uniswap quotes)
 - Wire LEND intent (Morpho primary, Aave fallback, real APY reads)
 - Real Sepolia addresses for Aerodrome/Morpho/Aave (currently undefined)
-- Replace per-process spend cap with M3's Postgres-backed counter
+- Replace per-process spend cap with M3 Postgres-backed counter
 - Real Limitless API endpoint validation (currently best-guess shape)
 
 ## Pause rationale
-M1 has shipped 3 PRs in one day. Stage 2 work blocked behind:
+M1 has shipped 3 PRs in one day (PR #6, #8, #9). Stage 2 work blocked behind:
 1. M2 needs to wire real wallet (apps/web) for end-to-end demo
 2. M3 needs Postgres migrations + Neynar wiring for production audit log
-3. Real Sepolia addresses for Aerodrome/Morpho need team contact / research
+3. Real Sepolia addresses for Aerodrome/Morpho/Aave need team contact or research
 
 Resuming M1 work in parallel with M2/M3 once their Day 1 lands.
