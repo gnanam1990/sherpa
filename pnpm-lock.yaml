@@ -214,6 +214,9 @@ importers:
       '@sherpa/config':
         specifier: workspace:^
         version: link:../config
+      '@sherpa/llm':
+        specifier: workspace:^
+        version: link:../llm
       pg:
         specifier: ^8.20.0
         version: 8.20.0

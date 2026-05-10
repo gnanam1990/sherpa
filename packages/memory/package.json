@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@sherpa/config": "workspace:^",
+    "@sherpa/llm": "workspace:^",
     "pg": "^8.20.0"
   }
 }

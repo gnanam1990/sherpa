@@ -64,6 +64,12 @@ export type SherpaConfig = {
   kvRestApiUrl?: string;
   /** Vercel KV REST bearer token. */
   kvRestApiToken?: string;
+  /**
+   * Bearer token guarding `/admin/*` routes. 64-char lowercase hex.
+   * When unset, admin endpoints respond 503 (not 401) — they're disabled,
+   * not mis-authed.
+   */
+  adminApiKey?: string;
 };
 
 /**
@@ -122,6 +128,19 @@ const IdentityEnvSchema = z.object({
   KV_REST_API_TOKEN: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
 });
 
+// 64 lowercase hex chars = 32 bytes = `openssl rand -hex 32`. Enforcing the
+// shape (rather than a free-form min-length string) means a typo'd / partial
+// paste fails fast at boot rather than silently letting requests through.
+const AdminEnvSchema = z.object({
+  ADMIN_API_KEY: z.preprocess(
+    emptyToUndefined,
+    z
+      .string()
+      .regex(/^[0-9a-f]{64}$/, 'ADMIN_API_KEY must be 64 lowercase hex chars (openssl rand -hex 32)')
+      .optional(),
+  ),
+});
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   const chain = pickChain(env.SHERPA_CHAIN);
   const dbEnv = DbEnvSchema.parse({
@@ -136,6 +155,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     KV_REST_API_URL: env.KV_REST_API_URL,
     KV_REST_API_TOKEN: env.KV_REST_API_TOKEN,
   });
+  const adminEnv = AdminEnvSchema.parse({ ADMIN_API_KEY: env.ADMIN_API_KEY });
   return {
     chain,
     rpcUrl: env.SHERPA_RPC_URL ?? chain.rpcUrl,
@@ -153,6 +173,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     ethMainnetRpcUrl: idEnv.ALCHEMY_ETH_MAINNET_RPC ?? PUBLIC_ETH_MAINNET_RPC,
     kvRestApiUrl: idEnv.KV_REST_API_URL,
     kvRestApiToken: idEnv.KV_REST_API_TOKEN,
+    adminApiKey: adminEnv.ADMIN_API_KEY,
   };
 }
 

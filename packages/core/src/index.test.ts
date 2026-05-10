@@ -209,7 +209,7 @@ describe('core/executor', () => {
 });
 
 describe('core/parseWithLLM', () => {
-  const fakeUsage = { provider: 'gpt-4o-mini' as const, promptTokens: 1, completionTokens: 1, costUsd: 0 };
+  const fakeUsage = { provider: 'gpt-4o-mini' as const, model: 'gpt-4o-mini', promptTokens: 1, completionTokens: 1, costUsd: 0, latencyMs: 0 };
 
   it('uses deterministic parse when it matches (no LLM call)', async () => {
     let called = 0;

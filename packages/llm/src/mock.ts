@@ -17,9 +17,11 @@ export function mockProvider(
       text,
       usage: {
         provider,
+        model: `mock-${provider}`,
         promptTokens: Math.ceil(promptTokens),
         completionTokens: Math.ceil(completionTokens),
         costUsd: 0,
+        latencyMs: 0,
       },
     };
     return response;
