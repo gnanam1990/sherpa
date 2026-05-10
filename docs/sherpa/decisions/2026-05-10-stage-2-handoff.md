@@ -25,3 +25,10 @@ M1 has shipped 3 PRs in one day (PR #6, #8, #9). Stage 2 work blocked behind:
 3. Real Sepolia addresses for Aerodrome/Morpho/Aave need team contact or research
 
 Resuming M1 work in parallel with M2/M3 once their Day 1 lands.
+
+## Tech debt added in PR #10 (M3 P1)
+- audit_log has redundant columns: intent (TEXT) + parsed_intent (JSONB),
+  plan_hash (TEXT) + plan (JSONB). M1 writes to legacy fields today.
+  Resolve in M1 Stage 2 by switching writes to JSONB columns and dropping
+  TEXT columns in migration 0005 (or wherever the next M1-touching
+  migration lands).
