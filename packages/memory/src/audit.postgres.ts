@@ -118,7 +118,14 @@ export function createPostgresAuditStore(pool: pg.Pool): AuditStore {
       if (cur.rows.length === 0) throw new AuditRowNotFound(id);
       const prev = cur.rows[0]!.updated_at;
 
-      const sets: string[] = ['updated_at = NOW()'];
+      // PG TIMESTAMPTZ stores microseconds; JS Date is millisecond-precision,
+      // so the round-trip through the pg driver truncates. If we compared
+      // raw `updated_at` here the WHERE clause would never match a row whose
+      // stored timestamp has a non-zero µs component, and every concurrent
+      // update path would throw `ConcurrentAuditUpdate`. Truncate both
+      // sides to milliseconds — and write `updated_at` truncated too, so
+      // every subsequent update keeps round-tripping cleanly.
+      const sets: string[] = [`updated_at = date_trunc('milliseconds', NOW())`];
       const params: unknown[] = [id, prev];
       let p = params.length;
 
@@ -147,7 +154,8 @@ export function createPostgresAuditStore(pool: pg.Pool): AuditStore {
       }
 
       const sql = `UPDATE audit_log SET ${sets.join(', ')}
-                   WHERE id = $1 AND updated_at = $2`;
+                   WHERE id = $1
+                     AND date_trunc('milliseconds', updated_at) = $2`;
       const res = await query(pool, sql, params);
       if (res.rowCount === 0) throw new ConcurrentAuditUpdate(id);
     },
