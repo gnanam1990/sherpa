@@ -76,6 +76,29 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  it('GET /api/balance/:addr routes through the injected resolver (Basename path)', async () => {
+    // Stub resolver returning a basename-resolved address. Proves the
+    // server hands non-direct inputs to createResolver, not the bare
+    // dispatcher (which would return api_error: backend not configured).
+    const stubAddress = '0xd8da6bf26964af9d7eed9e03e53415d37aa96045';
+    const app = buildServer({
+      config: offlineConfig,
+      resolver: async () => ({
+        address: stubAddress as `0x${string}`,
+        source: 'basename',
+        display: 'jesse.base.eth',
+        metadata: { basename: 'jesse.base.eth' },
+      }),
+    });
+    const res = await app.inject({ method: 'GET', url: '/api/balance/jesse.base.eth' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { address: string; source: string; stage?: string };
+    expect(body.address).toBe(stubAddress);
+    expect(body.source).toBe('basename');
+    expect(body.stage).toBe('stub');
+    await app.close();
+  });
+
   it('GET /api/balance/:addr resolves direct 0x addresses (offline)', async () => {
     const app = buildServer({ config: offlineConfig });
     const res = await app.inject({ method: 'GET', url: `/api/balance/${USDC_RECIPIENT}` });

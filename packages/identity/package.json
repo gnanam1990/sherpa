@@ -24,10 +24,12 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.8",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   },
   "dependencies": {
+    "@sherpa/config": "workspace:^",
     "viem": "^2.21.54"
   }
 }
