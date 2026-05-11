@@ -39,7 +39,10 @@ function emit(level: LogLevel, bindings: Record<string, unknown>) {
       const err = meta && meta.err instanceof Error ? meta.err : msg;
       // `extra` excludes `err` (already the exception subject) and
       // `surface` (already a tag) so the Sentry event isn't redundant.
-      const extra: Record<string, unknown> = { ...bindings };
+      const extra: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(bindings)) {
+        if (k !== 'surface') extra[k] = v;
+      }
       if (meta) {
         for (const [k, v] of Object.entries(meta)) {
           if (k !== 'err' && k !== 'surface') extra[k] = v;

@@ -59,12 +59,11 @@ async function checkDatabase(): Promise<void> {
     );
     if (Number(r.rows[0]!.c) < 1) throw new Error('llm_usage row not visible');
     record('DATABASE_URL', 'PASS', `audit_log + llm_usage round-trip ok (audit id=${auditId})`);
-    // cleanup
-    await pool.query('DELETE FROM audit_log WHERE user_address = $1', [user]);
-    await pool.query('DELETE FROM llm_usage WHERE user_address = $1', [user]);
   } catch (err) {
     record('DATABASE_URL', 'FAIL', (err as Error).message);
   } finally {
+    await pool.query('DELETE FROM audit_log WHERE user_address = $1', [user]).catch(() => {});
+    await pool.query('DELETE FROM llm_usage WHERE user_address = $1', [user]).catch(() => {});
     await pool.end();
   }
 }
