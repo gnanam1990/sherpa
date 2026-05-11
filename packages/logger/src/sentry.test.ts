@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  _resetSentryForTests,
-  captureError,
-  initSentry,
-  type SentryLike,
-} from './sentry.js';
+import { _resetSentryForTests, captureError, initSentry, type SentryLike } from './sentry.js';
 import { createLogger } from './index.js';
 
 function makeStub(): SentryLike & {
@@ -36,10 +31,7 @@ describe('logger/sentry / initSentry', () => {
 
   it('initializes the SDK with environment + release + tracesSampleRate=0', () => {
     const sdk = makeStub();
-    initSentry(
-      { dsn: 'https://example/0', environment: 'production', release: 'abc123' },
-      sdk,
-    );
+    initSentry({ dsn: 'https://example/0', environment: 'production', release: 'abc123' }, sdk);
     expect(sdk.init).toHaveBeenCalledTimes(1);
     expect(sdk.init).toHaveBeenCalledWith({
       dsn: 'https://example/0',
@@ -52,9 +44,7 @@ describe('logger/sentry / initSentry', () => {
   it('falls back environment="development" when SENTRY_ENVIRONMENT is unset', () => {
     const sdk = makeStub();
     initSentry({ dsn: 'https://example/0', release: 'r' }, sdk);
-    expect(sdk.init).toHaveBeenCalledWith(
-      expect.objectContaining({ environment: 'development' }),
-    );
+    expect(sdk.init).toHaveBeenCalledWith(expect.objectContaining({ environment: 'development' }));
   });
 
   it('is idempotent — second init() with same singleton is a no-op', () => {
@@ -102,9 +92,7 @@ describe('logger / createLogger forwards error() to Sentry', () => {
     const log = createLogger({ surface: 'cron' });
     log.error('task failed', { task: 'price_refresh', auditLogId: 7 });
     // Stdout still gets the structured line
-    expect(stderr).toHaveBeenCalledWith(
-      expect.stringContaining('"surface":"cron"'),
-    );
+    expect(stderr).toHaveBeenCalledWith(expect.stringContaining('"surface":"cron"'));
     // Sentry gets the same context — surface as a tag, rest as extras,
     // with the synthetic Error message matching the log message.
     expect(sdk._scope.setTag).toHaveBeenCalledWith('surface', 'cron');
@@ -113,6 +101,23 @@ describe('logger / createLogger forwards error() to Sentry', () => {
     const captured = sdk.captureException.mock.calls[0]![0] as Error;
     expect(captured.message).toBe('task failed');
     stderr.mockRestore();
+  });
+
+  it('uses surface only as a Sentry tag, not as duplicate extra context', () => {
+    const sdk = makeStub();
+    initSentry({ dsn: 'https://example/0' }, sdk);
+    const stderr = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const log = createLogger({ surface: 'cron', requestId: 'r1' });
+
+    try {
+      log.error('test');
+
+      expect(sdk._scope.setTag).toHaveBeenCalledWith('surface', 'cron');
+      expect(sdk._scope.setExtra).toHaveBeenCalledWith('requestId', 'r1');
+      expect(sdk._scope.setExtra).not.toHaveBeenCalledWith('surface', expect.anything());
+    } finally {
+      stderr.mockRestore();
+    }
   });
 
   it('passing meta.err uses the underlying Error (preserves real stack)', () => {
