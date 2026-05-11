@@ -3,12 +3,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
 import { loadConfig, type SherpaConfig } from '@sherpa/config';
-import {
-  createLogger,
-  initSentry,
-  type Logger,
-  type SentryLike,
-} from '@sherpa/logger';
+import { createLogger, initSentry, type Logger, type SentryLike } from '@sherpa/logger';
 import {
   parseDeterministic,
   parseWithLLM,
@@ -16,12 +11,7 @@ import {
   type ConfirmationCardProps,
   type LLMComplete,
 } from '@sherpa/core';
-import {
-  anthropicProvider,
-  createRouter,
-  groqProvider,
-  openaiProvider,
-} from '@sherpa/llm';
+import { anthropicProvider, createRouter, groqProvider, openaiProvider } from '@sherpa/llm';
 import { createResolver, isResolved, type IdentityResolver } from '@sherpa/identity';
 import { kv } from '@vercel/kv';
 import {
@@ -38,7 +28,8 @@ import {
 } from '@sherpa/memory';
 import { getPool } from '@sherpa/config';
 import { timingSafeEqual } from 'node:crypto';
-import { registerCronRoutes, HOURLY_TASKS } from './routes/cron.js';
+import { HOURLY_TASKS, type HourlyTask } from '@sherpa/scheduler';
+import { registerCronRoutes } from './routes/cron.js';
 import {
   createBasescanIndexer,
   emptyIndexer,
@@ -90,7 +81,7 @@ export type BuildServerOptions = {
   /** Override the logger (tests usually let the default rip and assert on stdout). */
   logger?: Logger;
   /** Override the cron task registry (tests inject failing tasks). */
-  cronTasks?: readonly import('./routes/cron.js').CronTask[];
+  cronTasks?: readonly HourlyTask[];
 };
 
 /**
@@ -106,7 +97,8 @@ function defaultResolver(config: SherpaConfig): IdentityResolver {
 
 function defaultLlmComplete(config: SherpaConfig): LLMComplete | undefined {
   const providers: Parameters<typeof createRouter>[0]['providers'] = {};
-  if (config.openaiApiKey) providers['gpt-4o-mini'] = openaiProvider({ apiKey: config.openaiApiKey });
+  if (config.openaiApiKey)
+    providers['gpt-4o-mini'] = openaiProvider({ apiKey: config.openaiApiKey });
   if (config.groqApiKey) providers['groq-llama'] = groqProvider({ apiKey: config.groqApiKey });
   if (config.anthropicApiKey)
     providers['claude-haiku'] = anthropicProvider({ apiKey: config.anthropicApiKey });
@@ -136,13 +128,15 @@ function checkAdminAuth(
     return { ok: false, status: 401, reason: 'missing bearer token' };
   }
   const supplied = authHeader.slice('Bearer '.length).trim();
-  if (supplied.length !== configured.length) {
+  const suppliedBytes = Buffer.from(supplied);
+  const configuredBytes = Buffer.from(configured);
+  if (suppliedBytes.length !== configuredBytes.length) {
     return { ok: false, status: 401, reason: 'invalid token' };
   }
   // timingSafeEqual requires equal-length buffers; we pre-checked length.
-  const a = Buffer.from(supplied);
-  const b = Buffer.from(configured);
-  if (!timingSafeEqual(a, b)) return { ok: false, status: 401, reason: 'invalid token' };
+  if (!timingSafeEqual(suppliedBytes, configuredBytes)) {
+    return { ok: false, status: 401, reason: 'invalid token' };
+  }
   return { ok: true };
 }
 
@@ -177,6 +171,20 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     options.sentry ?? Sentry,
   );
   const log = options.logger ?? createLogger({ surface: 'api' });
+  app.setErrorHandler((err, req, reply) => {
+    const routeError = err as { message?: string; status?: number; statusCode?: number };
+    const statusCode = routeError.statusCode ?? routeError.status;
+    if (statusCode && statusCode < 500) {
+      return reply.code(statusCode).send({ error: routeError.message ?? 'bad_request' });
+    }
+    log.error('uncaught route error', {
+      err,
+      method: req.method,
+      url: req.url,
+      requestId: req.id,
+    });
+    return reply.code(500).send({ error: 'internal_error' });
+  });
   const auditStore = options.auditStore ?? createAuditStore(config);
   const rateLimiter = options.rateLimiter ?? createInMemoryRateLimiter();
   const resolver = options.resolver ?? defaultResolver(config);
@@ -314,9 +322,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   // Both routes are gated by ADMIN_API_KEY (constant-time compared) and
   // require `useRealDb`. In dev / tests without Postgres they 503 — the
   // tables they read don't exist there.
-  const adminGuard = (req: { headers: Record<string, string | string[] | undefined> } & {
-    raw?: unknown;
-  }, reply: { code: (n: number) => { send: (b: unknown) => unknown } }) => {
+  const adminGuard = (
+    req: { headers: Record<string, string | string[] | undefined> } & {
+      raw?: unknown;
+    },
+    reply: { code: (n: number) => { send: (b: unknown) => unknown } },
+  ) => {
     const auth = req.headers['authorization'];
     const header = Array.isArray(auth) ? auth[0] : auth;
     const guard = checkAdminAuth(header, config.adminApiKey);
@@ -342,18 +353,15 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
-  app.get<{ Params: { address: string } }>(
-    '/admin/llm-usage/user/:address',
-    async (req, reply) => {
-      if (!adminGuard(req, reply)) return;
-      if (!/^0x[a-fA-F0-9]{40}$/.test(req.params.address)) {
-        return reply.code(400).send({ error: 'address must be 0x-prefixed 20-byte hex' });
-      }
-      const pool = getPool(config);
-      const rows = await fetchUserUsage(pool, req.params.address);
-      return reply.send({ address: req.params.address, count: rows.length, rows });
-    },
-  );
+  app.get<{ Params: { address: string } }>('/admin/llm-usage/user/:address', async (req, reply) => {
+    if (!adminGuard(req, reply)) return;
+    if (!/^0x[a-fA-F0-9]{40}$/.test(req.params.address)) {
+      return reply.code(400).send({ error: 'address must be 0x-prefixed 20-byte hex' });
+    }
+    const pool = getPool(config);
+    const rows = await fetchUserUsage(pool, req.params.address);
+    return reply.send({ address: req.params.address, count: rows.length, rows });
+  });
 
   app.get<{ Params: { addr: string }; Querystring: { limit?: string } }>(
     '/api/history/:addr',

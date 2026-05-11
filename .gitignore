@@ -34,3 +34,4 @@ yarn-error.log*
 # Misc
 *.local
 *.zip
+worktrees/

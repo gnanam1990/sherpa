@@ -5,38 +5,38 @@ the schema; M1 writes via `@sherpa/memory` wrappers, never raw SQL.
 
 ## One-time provisioning
 
-1. **Create a Supabase project** at https://supabase.com/dashboard.
-   Pick the region closest to your Vercel deployment region.
+1.  **Create a Supabase project** at https://supabase.com/dashboard.
+    Pick the region closest to your Vercel deployment region.
 
-2. **Get the pooler connection string** (transaction-mode, port 6543).
-   Settings → Database → Connection pooling → Mode: Transaction. Copy
-   the URL — it's the value of `DATABASE_URL`.
+2.  **Get the pooler connection string** (transaction-mode, port 6543).
+    Settings → Database → Connection pooling → Mode: Transaction. Copy
+    the URL — it's the value of `DATABASE_URL`.
 
-3. **Set env vars** (Production + Preview):
+3.  **Set env vars** (Production + Preview):
 
-       vercel env add DATABASE_URL production
-       vercel env add DATABASE_URL preview
-       vercel env add SHERPA_USE_REAL_DB production   # value: true
-       vercel env add SHERPA_USE_REAL_DB preview      # value: true
-       vercel env add SUPABASE_SERVICE_KEY production # if used by future surfaces
+        vercel env add DATABASE_URL production
+        vercel env add DATABASE_URL preview
+        vercel env add SHERPA_USE_REAL_DB production   # value: true
+        vercel env add SHERPA_USE_REAL_DB preview      # value: true
+        vercel env add SUPABASE_SERVICE_KEY production # if used by future surfaces
 
-   Local `.env.local` mirrors these. With `SHERPA_USE_REAL_DB=false`
-   (default) every storage adapter falls back to in-memory — handy for
-   unit tests, harmful for integration smokes.
+    Local `.env.local` mirrors these. With `SHERPA_USE_REAL_DB=false`
+    (default) every storage adapter falls back to in-memory — handy for
+    unit tests, harmful for integration smokes.
 
 ## Run migrations
 
-       pnpm tsx scripts/db/migrate.sh        # applies every migration in order
+       DATABASE_URL=postgres://... ./scripts/db/migrate.sh
 
 Applied migrations are tracked by `_migrations` (created on first
-run). Re-running is idempotent.
+run). Re-running is idempotent. Requires `psql` on PATH.
 
 Current migrations:
 
-| File                          | Adds                                  |
-| ----------------------------- | ------------------------------------- |
-| `0001_audit_log.sql`          | `audit_log` table + RLS               |
-| `0002_llm_usage.sql`          | `llm_usage` table + 2 indexes + RLS   |
+| File                 | Adds                                |
+| -------------------- | ----------------------------------- |
+| `0001_audit_log.sql` | `audit_log` table + RLS             |
+| `0002_llm_usage.sql` | `llm_usage` table + 2 indexes + RLS |
 
 ## Smoke before stage gate
 

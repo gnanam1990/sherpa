@@ -15,7 +15,7 @@
  *   1. DATABASE_URL              — audit_log + llm_usage round-trip
  *   2. NEYNAR_API_KEY            — resolve @vitalik (Farcaster)
  *   3. (always)                  — resolve jesse.base.eth (Basenames, no key needed)
- *   4. CRON_SECRET + SMOKE_API_URL — POST /api/cron/hourly returns 200
+ *   4. CRON_SECRET + config.smokeApiUrl — POST /api/cron/hourly returns 200
  */
 
 import pg from 'pg';
@@ -58,11 +58,7 @@ async function checkDatabase(): Promise<void> {
       [user],
     );
     if (Number(r.rows[0]!.c) < 1) throw new Error('llm_usage row not visible');
-    record(
-      'DATABASE_URL',
-      'PASS',
-      `audit_log + llm_usage round-trip ok (audit id=${auditId})`,
-    );
+    record('DATABASE_URL', 'PASS', `audit_log + llm_usage round-trip ok (audit id=${auditId})`);
     // cleanup
     await pool.query('DELETE FROM audit_log WHERE user_address = $1', [user]);
     await pool.query('DELETE FROM llm_usage WHERE user_address = $1', [user]);
@@ -106,10 +102,9 @@ async function checkBasenames(): Promise<void> {
 
 async function checkCron(): Promise<void> {
   const secret = process.env.CRON_SECRET;
-  const apiUrl = process.env.SMOKE_API_URL;
   if (!secret) return record('CRON_SECRET', 'SKIP', 'env not set');
-  if (!apiUrl) return record('CRON_SECRET', 'SKIP', 'SMOKE_API_URL not set');
   try {
+    const apiUrl = loadConfig().smokeApiUrl;
     const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/cron/hourly`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${secret}` },
