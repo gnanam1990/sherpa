@@ -17,9 +17,9 @@ describe('loadConfig', () => {
   });
 
   it('still requires DATABASE_URL when SHERPA_USE_REAL_DB=true', () => {
-    expect(() =>
-      loadConfig({ SHERPA_USE_REAL_DB: 'true', DATABASE_URL: '' }),
-    ).toThrow(/DATABASE_URL is required/);
+    expect(() => loadConfig({ SHERPA_USE_REAL_DB: 'true', DATABASE_URL: '' })).toThrow(
+      /DATABASE_URL is required/,
+    );
   });
 
   it('passes through a real DATABASE_URL', () => {
@@ -34,8 +34,16 @@ describe('loadConfig', () => {
   });
 
   it('rejects malformed DATABASE_URL', () => {
-    expect(() =>
-      loadConfig({ SHERPA_USE_REAL_DB: 'true', DATABASE_URL: 'not-a-url' }),
-    ).toThrow();
+    expect(() => loadConfig({ SHERPA_USE_REAL_DB: 'true', DATABASE_URL: 'not-a-url' })).toThrow();
+  });
+
+  it('defaults empty SMOKE_API_URL to localhost API', () => {
+    const cfg = loadConfig({ SMOKE_API_URL: '' });
+    expect(cfg.smokeApiUrl).toBe('http://localhost:3001');
+  });
+
+  it('passes through a valid SMOKE_API_URL override', () => {
+    const cfg = loadConfig({ SMOKE_API_URL: 'https://preview.example.com' });
+    expect(cfg.smokeApiUrl).toBe('https://preview.example.com');
   });
 });

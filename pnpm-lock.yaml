@@ -59,6 +59,9 @@ importers:
       '@sherpa/safety':
         specifier: workspace:*
         version: link:../../packages/safety
+      '@sherpa/scheduler':
+        specifier: workspace:*
+        version: link:../../packages/scheduler
       '@sherpa/tools':
         specifier: workspace:*
         version: link:../../packages/tools
@@ -205,6 +208,9 @@ importers:
 
   packages/logger:
     devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^2.1.8
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.17))
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
@@ -252,6 +258,9 @@ importers:
 
   packages/scheduler:
     devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^2.1.8
+        version: 2.1.9(vitest@2.1.9(@types/node@22.19.17))
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

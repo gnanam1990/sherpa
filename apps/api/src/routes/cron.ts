@@ -19,34 +19,14 @@
 
 import type { FastifyInstance } from 'fastify';
 import { timingSafeEqual } from 'node:crypto';
-import {
-  createAuditLog,
-  updateAuditLog,
-  type AuditStore,
-} from '@sherpa/memory';
-
-export type CronDeps = {
-  /** Bound logger (surface='cron') for tasks to write into. */
-  log: { error(msg: string, meta?: Record<string, unknown>): void };
-};
-
-export type CronTask = {
-  name: string;
-  run(deps: CronDeps): Promise<void>;
-};
-
-/**
- * The hourly registry. Empty in Stage 1; Stage 4 adds refresh tasks.
- * Append-only — never reorder, since `intent='CRON:${name}'` is
- * grep-keyed in dashboards.
- */
-export const HOURLY_TASKS: readonly CronTask[] = Object.freeze([]);
+import { HOURLY_TASKS, type HourlyTask, type TaskContext } from '@sherpa/scheduler';
+import { createAuditLog, updateAuditLog, type AuditStore } from '@sherpa/memory';
 
 export type RegisterCronOptions = {
   auditStore: AuditStore;
   cronSecret?: string;
-  tasks?: readonly CronTask[];
-  log?: CronDeps['log'];
+  tasks?: readonly HourlyTask[];
+  log?: TaskContext['log'];
 };
 
 /**
@@ -65,19 +45,18 @@ function checkCronAuth(
     return { ok: false, status: 401, reason: 'missing bearer token' };
   }
   const supplied = authHeader.slice('Bearer '.length).trim();
-  if (supplied.length !== configured.length) {
+  const suppliedBytes = Buffer.from(supplied);
+  const configuredBytes = Buffer.from(configured);
+  if (suppliedBytes.length !== configuredBytes.length) {
     return { ok: false, status: 401, reason: 'invalid token' };
   }
-  if (!timingSafeEqual(Buffer.from(supplied), Buffer.from(configured))) {
+  if (!timingSafeEqual(suppliedBytes, configuredBytes)) {
     return { ok: false, status: 401, reason: 'invalid token' };
   }
   return { ok: true };
 }
 
-export function registerCronRoutes(
-  app: FastifyInstance,
-  opts: RegisterCronOptions,
-): void {
+export function registerCronRoutes(app: FastifyInstance, opts: RegisterCronOptions): void {
   const { auditStore, cronSecret, log } = opts;
   const tasks = opts.tasks ?? HOURLY_TASKS;
   const tracelog = log ?? {
@@ -111,7 +90,10 @@ export function registerCronRoutes(
         auditStore,
       );
       try {
-        await task.run({ log: tracelog });
+        const result = await task.run({ log: tracelog });
+        if (!result.ok) {
+          throw new Error(result.detail ?? 'task returned ok=false');
+        }
         await updateAuditLog(
           auditLogId,
           { status: 'success', confirmedAt: Date.now() },

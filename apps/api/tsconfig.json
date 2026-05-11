@@ -13,6 +13,7 @@
     { "path": "../../packages/llm" },
     { "path": "../../packages/logger" },
     { "path": "../../packages/memory" },
+    { "path": "../../packages/scheduler" },
     { "path": "../../packages/safety" },
     { "path": "../../packages/tools" }
   ],

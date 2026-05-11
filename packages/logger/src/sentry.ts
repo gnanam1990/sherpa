@@ -49,13 +49,10 @@ export type SentryLike = {
 let active: SentryLike | undefined;
 let initialized = false;
 
-export function initSentry(
-  config: SentryConfig,
-  sdk: SentryLike,
-): SentryLike | undefined {
+export function initSentry(config: SentryConfig, sdk: SentryLike): SentryLike | undefined {
   if (initialized) return active;
-  initialized = true;
   if (!config.dsn) return undefined;
+  initialized = true;
   sdk.init({
     dsn: config.dsn,
     environment: config.environment ?? 'development',
@@ -73,11 +70,7 @@ export function initSentry(
  * `extra` payload mirrors what we log to stdout, so a Sentry event
  * and the corresponding log line carry identical context.
  */
-export function captureError(
-  err: unknown,
-  surface: string,
-  extra?: Record<string, unknown>,
-): void {
+export function captureError(err: unknown, surface: string, extra?: Record<string, unknown>): void {
   if (!active) return;
   const error = err instanceof Error ? err : new Error(String(err));
   active.withScope((scope) => {

@@ -12,12 +12,17 @@
     `surface` as a tag and the rest of `meta` as extras
   - `web.ts` — separate browser-side helper for M2 to opt into later
 - `apps/api`:
-  - `src/routes/cron.ts` — `CronTask` type, `HOURLY_TASKS` registry
-    (empty for Stage 1), `registerCronRoutes(app, deps)` mounted in
+  - `src/routes/cron.ts` — `registerCronRoutes(app, deps)` mounted in
     `buildServer()`
   - Sentry init in `buildServer()` (no-op without DSN)
+  - Global Fastify error handler that logs uncaught route errors through
+    `@sherpa/logger` and returns opaque 500s
+- `@sherpa/scheduler`:
+  - `hourly-tasks.ts` — `HourlyTask`, `TaskContext`, and empty
+    `HOURLY_TASKS` registry for Stage 4 task registration
 - `scripts/smoke/m3-smoke.ts` — human-run pre-stage-gate smoke
-- `.env.example`: `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `CRON_SECRET`
+- `.env.example`: `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `CRON_SECRET`,
+  `SMOKE_API_URL`
 - Docs: `setup/CRON_JOB_ORG_SETUP.md`, `setup/DATABASE_SETUP.md`,
   this file
 
@@ -89,11 +94,29 @@ bearer-token timing oracle is the kind of thing that ages badly.
 ### 7. Smoke test exit policy: skip-when-unset, fail-when-broken
 
 Each check looks for its own env var (`DATABASE_URL`,
-`NEYNAR_API_KEY`, `CRON_SECRET`+`SMOKE_API_URL`). Unset → SKIP, set
-but the call fails → FAIL, all good → PASS. Process exits 1 only
-if anything FAILed. Lets a partially configured laptop smoke the
-configured surfaces without spurious "everything is broken"
-output, while still being CI-friendly when run with everything set.
+`NEYNAR_API_KEY`, `CRON_SECRET`). `SMOKE_API_URL` is config-owned,
+uses the same empty-string coercion as other optional env vars, and
+defaults to `http://localhost:3001`. Unset dependency vars → SKIP, set
+but the call fails → FAIL, all good → PASS. Process exits 1 only if
+anything FAILed. Lets a partially configured laptop smoke the configured
+surfaces without spurious "everything is broken" output, while still
+being CI-friendly when run with everything set.
+
+## Deliberate divergences from kickoff
+
+- Cron response shape stays `{ ok, ranAt, tasks }` rather than aggregate
+  counters. Per-task results are more useful during incident debugging and
+  still let callers derive counts if they need them.
+- 401 responses keep explicit `{ error }` bodies. The opaque-body kickoff
+  spec was overcautious; explicit auth errors are standard API behavior and
+  make smoke/debug sessions faster.
+- Cron audit logging is per task, not per POST. Ten tasks produce ten rows;
+  an empty Stage 1 registry produces zero rows because there is no task
+  outcome to audit.
+- `SMOKE_API_URL` is owned by `@sherpa/config` instead of being an
+  undocumented smoke-script-only env var.
+- The migration runner is Bash, not `tsx`: run
+  `DATABASE_URL=postgres://... ./scripts/db/migrate.sh`.
 
 ## Cross-domain notes
 
@@ -114,4 +137,4 @@ output, while still being CI-friendly when run with everything set.
 - Stage 4 cron tasks: `price_refresh` (gas/fee snapshot), gas-cap
   recalibration, optional rate-limiter prune.
 - Vercel KV runtime cache for the resolver layer (currently in-memory
-  + KV stub).
+  - KV stub).

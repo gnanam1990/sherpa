@@ -1,11 +1,27 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { loadConfig } from '@sherpa/config';
 import { createInMemoryAuditStore, createInMemoryRateLimiter } from '@sherpa/memory';
+import { _resetSentryForTests, type Logger, type SentryLike } from '@sherpa/logger';
 import { buildServer } from './server.js';
 
 const offlineConfig = { ...loadConfig(), useRealRpc: false } as const;
 
 const USDC_RECIPIENT = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
+
+function makeSentryStub(): SentryLike & {
+  init: ReturnType<typeof vi.fn>;
+  captureException: ReturnType<typeof vi.fn>;
+  withScope: ReturnType<typeof vi.fn>;
+  _scope: { setTag: ReturnType<typeof vi.fn>; setExtra: ReturnType<typeof vi.fn> };
+} {
+  const _scope = { setTag: vi.fn(), setExtra: vi.fn() };
+  return {
+    _scope,
+    init: vi.fn(),
+    captureException: vi.fn(),
+    withScope: vi.fn((cb: (scope: typeof _scope) => void) => cb(_scope)),
+  };
+}
 
 describe('apps/api', () => {
   it('GET /api/health returns ok:true', async () => {
@@ -73,6 +89,102 @@ describe('apps/api', () => {
     const app = buildServer();
     const res = await app.inject({ method: 'POST', url: '/api/parse', payload: { input: '' } });
     expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('logs uncaught route errors and returns an opaque 500', async () => {
+    const err = new Error('provider exploded with secret-token-123');
+    const logger: Logger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      child: vi.fn(() => logger),
+    };
+    const app = buildServer({
+      config: offlineConfig,
+      logger,
+      llmComplete: async () => {
+        throw err;
+      },
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse',
+      payload: { input: 'please parse this unknown thing' },
+    });
+
+    expect(res.statusCode).toBe(500);
+    expect(res.json()).toEqual({ error: 'internal_error' });
+    expect(res.body).not.toContain('secret-token-123');
+    expect(logger.error).toHaveBeenCalledWith(
+      'uncaught route error',
+      expect.objectContaining({
+        err,
+        method: 'POST',
+        url: '/api/parse',
+      }),
+    );
+    await app.close();
+  });
+
+  it('reports uncaught route errors to Sentry through the wrapped logger', async () => {
+    const err = new Error('provider exploded with secret-token-123');
+    const sentry = makeSentryStub();
+    const stderr = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const app = buildServer({
+      config: {
+        ...offlineConfig,
+        sentryDsn: 'https://example.com/1',
+        sentryEnvironment: 'test',
+      },
+      sentry,
+      llmComplete: async () => {
+        throw err;
+      },
+    });
+
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/parse',
+        payload: { input: 'please parse this unknown thing' },
+      });
+
+      expect(res.statusCode).toBe(500);
+      expect(res.json()).toEqual({ error: 'internal_error' });
+      expect(res.body).not.toContain('secret-token-123');
+      expect(sentry.captureException).toHaveBeenCalledWith(err);
+      expect(sentry._scope.setTag).toHaveBeenCalledWith('surface', 'api');
+      expect(sentry._scope.setExtra).toHaveBeenCalledWith('method', 'POST');
+      expect(sentry._scope.setExtra).toHaveBeenCalledWith('url', '/api/parse');
+    } finally {
+      stderr.mockRestore();
+      await app.close();
+      _resetSentryForTests();
+    }
+  });
+
+  it('preserves Fastify client errors without logging them as uncaught route errors', async () => {
+    const logger: Logger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      child: vi.fn(() => logger),
+    };
+    const app = buildServer({ config: offlineConfig, logger });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse',
+      headers: { 'content-type': 'application/json' },
+      payload: '{',
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(logger.error).not.toHaveBeenCalled();
     await app.close();
   });
 
@@ -222,6 +334,28 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  it('GET /admin/llm-usage/today returns 401 for same-length non-ASCII bearer', async () => {
+    const app = buildServer({
+      config: {
+        ...offlineConfig,
+        openaiApiKey: undefined,
+        groqApiKey: undefined,
+        anthropicApiKey: undefined,
+        adminApiKey: ADMIN_KEY,
+        useRealDb: true,
+      },
+      auditStore: createInMemoryAuditStore(),
+    });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/llm-usage/today',
+      headers: { authorization: `Bearer ${'é'.repeat(64)}` },
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toMatchObject({ error: 'invalid token' });
+    await app.close();
+  });
+
   it('GET /admin/llm-usage/today returns 503 when key is set but useRealDb=false (route disabled in dev)', async () => {
     const app = buildServer({
       config: { ...offlineConfig, adminApiKey: ADMIN_KEY, useRealDb: false },
@@ -264,6 +398,20 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  it('POST /api/cron/hourly 401s on same-length non-ASCII bearer', async () => {
+    const app = buildServer({
+      config: { ...offlineConfig, cronSecret: CRON_SECRET },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/cron/hourly',
+      headers: { authorization: `Bearer ${'é'.repeat(64)}` },
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toMatchObject({ error: 'invalid token' });
+    await app.close();
+  });
+
   it('POST /api/cron/hourly with empty registry returns 200 + empty tasks list', async () => {
     const app = buildServer({
       config: { ...offlineConfig, cronSecret: CRON_SECRET },
@@ -286,8 +434,13 @@ describe('apps/api', () => {
       config: { ...offlineConfig, cronSecret: CRON_SECRET },
       auditStore,
       cronTasks: [
-        { name: 'failing', run: async () => { throw new Error('upstream rpc 502'); } },
-        { name: 'ok', run: async () => {} },
+        {
+          name: 'failing',
+          run: async () => {
+            throw new Error('upstream rpc 502');
+          },
+        },
+        { name: 'ok', run: async () => ({ ok: true }) },
       ],
     });
     const res = await app.inject({
@@ -311,6 +464,24 @@ describe('apps/api', () => {
     const failedRow = rows.find((r) => r.intent === 'CRON:failing')!;
     expect(failedRow.patch.status).toBe('failed');
     expect(failedRow.patch.error).toContain('upstream rpc 502');
+    await app.close();
+  });
+
+  it('POST /api/cron/hourly runs scheduler-shaped task results', async () => {
+    const run = vi.fn(async () => ({ ok: true, detail: 'sample completed' }));
+    const app = buildServer({
+      config: { ...offlineConfig, cronSecret: CRON_SECRET },
+      cronTasks: [{ name: 'sample', run }],
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/cron/hourly',
+      headers: { authorization: `Bearer ${CRON_SECRET}` },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { tasks: Array<{ name: string; status: string }> };
+    expect(body.tasks).toEqual([{ name: 'sample', auditLogId: 1, status: 'success' }]);
+    expect(run).toHaveBeenCalledTimes(1);
     await app.close();
   });
 
