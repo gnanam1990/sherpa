@@ -75,8 +75,10 @@ describe('HomeContent', () => {
     expect(toast.custom).toHaveBeenCalledTimes(1);
   });
 
-  it('fetches fresh history when an account connects', async () => {
-    const fetchMock = vi.fn(async () => ({ ok: true }));
+  it('fetches fresh chat history when an account connects', async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({ address: wagmiState.address, chain: 'base-sepolia', items: [] }),
+    );
     vi.stubGlobal('fetch', fetchMock);
     wagmiState.address = '0x1234567890123456789012345678901234567890';
     wagmiState.isConnected = true;
@@ -84,13 +86,15 @@ describe('HomeContent', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/history/0x1234567890123456789012345678901234567890',
+        '/api/history/0x1234567890123456789012345678901234567890?limit=50',
       ),
     );
   });
 
-  it('fetches fresh history when the connected address changes', async () => {
-    const fetchMock = vi.fn(async () => ({ ok: true }));
+  it('fetches fresh chat history when the connected address changes', async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({ address: wagmiState.address, chain: 'base-sepolia', items: [] }),
+    );
     vi.stubGlobal('fetch', fetchMock);
     wagmiState.address = '0x1234567890123456789012345678901234567890';
     wagmiState.isConnected = true;
@@ -101,7 +105,7 @@ describe('HomeContent', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/history/0x0000000000000000000000000000000000000001',
+        '/api/history/0x0000000000000000000000000000000000000001?limit=50',
       ),
     );
   });

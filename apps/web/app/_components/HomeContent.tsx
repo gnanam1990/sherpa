@@ -13,7 +13,6 @@ function truncateAddress(address: string): string {
 export function HomeContent() {
   const { address, isConnected } = useAccount();
   const previousAddress = useRef<`0x${string}` | undefined>(address);
-  const lastHistoryAddress = useRef<`0x${string}` | undefined>(undefined);
   const [connectionEpoch, setConnectionEpoch] = useState(0);
   const [sessionKey, setSessionKey] = useState(0);
   const [hasConnectedBefore, setHasConnectedBefore] = useState(false);
@@ -31,9 +30,6 @@ export function HomeContent() {
     }
 
     previousAddress.current = address;
-    if (lastHistoryAddress.current?.toLowerCase() === address.toLowerCase()) return;
-    lastHistoryAddress.current = address;
-    void fetch(`/api/history/${address}`).catch(() => undefined);
   }, [address, isConnected]);
 
   useAccountEffect({
@@ -49,13 +45,13 @@ export function HomeContent() {
   });
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-6 bg-sherpa-bg px-6 py-6 text-sherpa-fg sm:px-8">
+    <main className="flex h-[100dvh] flex-col items-center gap-4 overflow-hidden bg-sherpa-bg px-4 py-4 text-sherpa-fg sm:px-6">
       <header className="flex w-full max-w-5xl items-center justify-between gap-4">
         <span className="text-sm font-semibold tracking-[-0.02em] text-sherpa-blue">Sherpa</span>
         <ConnectButton variant="compact" />
       </header>
 
-      <section className="mt-6 flex w-full max-w-2xl flex-col items-center gap-5 text-center">
+      <section className="flex w-full max-w-2xl flex-col items-center gap-3 text-center">
         <h1 className="m-0 text-5xl font-semibold tracking-[-0.04em] text-sherpa-blue sm:text-6xl">
           Sherpa
         </h1>
@@ -81,7 +77,7 @@ export function HomeContent() {
         }
       />
 
-      <footer className="mt-auto text-xs text-sherpa-muted">
+      <footer className="text-xs text-sherpa-muted">
         Stage 1 · Base Sepolia · <span className="text-sherpa-success">sponsored gas</span>
       </footer>
     </main>
