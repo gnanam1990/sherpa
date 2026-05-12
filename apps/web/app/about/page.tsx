@@ -76,7 +76,7 @@ const faqs = [
   },
   {
     q: 'Where do I report a bug?',
-    a: 'Open an issue at github.com/gnanam1990/sherpa/issues, or ping us on Farcaster. Errors in the browser are routed to Sentry (you can opt out in your browser settings; we never ship the DSN with PII).',
+    a: 'Open an issue at github.com/gnanam1990/sherpa/issues, or ping us on Farcaster. Browser errors are currently logged locally while Sentry browser wiring is being finalized.',
   },
 ];
 

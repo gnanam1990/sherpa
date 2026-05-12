@@ -1,6 +1,7 @@
 export default function Loading() {
   return (
     <main
+      id="main-content"
       aria-busy="true"
       aria-label="Loading"
       className="flex h-[100dvh] flex-col items-center gap-4 overflow-hidden bg-sherpa-bg px-4 py-4 text-sherpa-fg sm:px-6"

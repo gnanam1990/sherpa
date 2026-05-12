@@ -55,7 +55,7 @@ See [docs/sherpa/setup/STAGE_1_LAUNCH_CHECKLIST.md](../../docs/sherpa/setup/STAG
 | `/` | `app/page.tsx` → `_components/HomeContent.tsx` | Home (connect + prompt) |
 | `/about` | `app/about/page.tsx` | Marketing page |
 | `/not-found` | `app/not-found.tsx` | 404 handler |
-| `/error` | `app/error.tsx` | Error boundary — reports to Sentry, offers refresh |
+| `/error` | `app/error.tsx` | Error boundary — logs to console, offers refresh |
 | `/loading` | `app/loading.tsx` | Skeleton shown during route transitions |
 
 ## Accessibility
