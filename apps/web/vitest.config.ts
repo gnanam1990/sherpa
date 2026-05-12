@@ -6,7 +6,7 @@ export default defineConfig({
   },
   test: {
     coverage: {
-      include: ['app/_components/**/*.{ts,tsx}', 'lib/**/*.{ts,tsx}'],
+      include: ['app/_components/**/*.{ts,tsx}', 'hooks/**/*.{ts,tsx}', 'lib/**/*.{ts,tsx}'],
       exclude: ['**/*.test.{ts,tsx}'],
       thresholds: {
         statements: 60,
