@@ -45,10 +45,21 @@ export function HomeContent() {
   });
 
   return (
-    <main className="flex h-[100dvh] flex-col items-center gap-4 overflow-hidden bg-sherpa-bg px-4 py-4 text-sherpa-fg sm:px-6">
+    <main
+      id="main-content"
+      className="flex h-[100dvh] flex-col items-center gap-4 overflow-hidden bg-sherpa-bg px-4 py-4 text-sherpa-fg sm:px-6"
+    >
       <header className="flex w-full max-w-5xl items-center justify-between gap-4">
         <span className="text-sm font-semibold tracking-[-0.02em] text-sherpa-blue">Sherpa</span>
-        <ConnectButton variant="compact" />
+        <nav className="flex items-center gap-3" aria-label="Primary">
+          <a
+            href="/about"
+            className="rounded-full px-3 py-1 text-sm text-sherpa-muted transition hover:text-sherpa-fg"
+          >
+            About
+          </a>
+          <ConnectButton variant="compact" />
+        </nav>
       </header>
 
       <section className="flex w-full max-w-2xl flex-col items-center gap-3 text-center">
