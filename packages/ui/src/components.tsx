@@ -9,7 +9,7 @@
  */
 
 import type { CSSProperties, ReactNode } from 'react';
-import { tokens } from './index.js';
+import { tokens } from './tokens.js';
 
 export type SerializedStep = {
   kind: string;
@@ -93,8 +93,9 @@ const badgeStyle = (bg: string): CSSProperties => ({
 export function ConfirmationCard(props: {
   card: SerializedConfirmationCardProps;
   onConfirm?: () => void;
+  disabled?: boolean;
 }) {
-  const { card, onConfirm } = props;
+  const { card, disabled = false, onConfirm } = props;
   return (
     <div style={cardStyle} data-testid="confirmation-card">
       <div style={rowStyle}>
@@ -142,7 +143,7 @@ export function ConfirmationCard(props: {
           ))}
         </ul>
       ) : null}
-      {card.redirect_url ? (
+      {card.redirect_url && !disabled ? (
         <a
           href={card.redirect_url}
           target="_blank"
@@ -153,7 +154,7 @@ export function ConfirmationCard(props: {
           {card.primary_action_label}
         </a>
       ) : (
-        <button style={buttonStyle} onClick={onConfirm} type="button">
+        <button disabled={disabled} style={buttonStyle} onClick={onConfirm} type="button">
           {card.primary_action_label}
         </button>
       )}

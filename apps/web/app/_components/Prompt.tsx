@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ConfirmationCard,
-  tokens,
   type SerializedConfirmationCardProps,
   type SerializedSendCallsEnvelope,
 } from '@sherpa/ui';
+import { useSherpaSendCalls } from '../../lib/wagmi';
 
 type ParseResponse = {
   parsed?: { intent: string; confidence: number };
@@ -23,50 +23,53 @@ type ExecuteResponse =
     }
   | { ok: false; error: string };
 
-const DEMO_USER = '0x1111111111111111111111111111111111111111';
-
-const inputStyle = {
-  background: tokens.color.surface,
-  color: tokens.color.fg,
-  border: `1px solid ${tokens.color.surface2}`,
-  borderRadius: tokens.radius.md,
-  padding: tokens.space.md,
-  fontSize: 16,
-  width: '100%',
-  outline: 'none',
+type PromptProps = {
+  connectionEpoch?: number;
+  isConnected: boolean;
+  userAddress?: `0x${string}`;
+  disconnectedCopy?: string;
 };
 
-const buttonStyle = {
-  background: tokens.color.baseBlue,
-  color: '#fff',
-  border: 'none',
-  borderRadius: tokens.radius.md,
-  padding: `${tokens.space.sm} ${tokens.space.md}`,
-  fontSize: 14,
-  fontWeight: 500,
-  cursor: 'pointer',
-};
+function toSendCallsVariables(batch: SerializedSendCallsEnvelope) {
+  return {
+    chainId: (batch.chainId.startsWith('0x')
+      ? Number.parseInt(batch.chainId, 16)
+      : Number(batch.chainId)) as 84532,
+    capabilities: batch.capabilities,
+    calls: batch.calls.map((call) => ({
+      to: call.to as `0x${string}`,
+      data: call.data as `0x${string}`,
+      value: BigInt(call.value),
+    })),
+  };
+}
 
-const codeStyle = {
-  background: tokens.color.surface,
-  border: `1px solid ${tokens.color.surface2}`,
-  borderRadius: tokens.radius.md,
-  padding: tokens.space.md,
-  fontSize: 11,
-  color: tokens.color.muted,
-  whiteSpace: 'pre-wrap' as const,
-  wordBreak: 'break-all' as const,
-  maxHeight: 240,
-  overflow: 'auto',
-};
-
-export function Prompt() {
+export function Prompt({
+  connectionEpoch = 0,
+  isConnected,
+  userAddress,
+  disconnectedCopy = 'Connect wallet to start',
+}: PromptProps) {
   const [input, setInput] = useState('send 5 usdc to 0x036CbD53842c5426634e7929541eC2318f3dCF7e');
   const [busy, setBusy] = useState(false);
   const [parsed, setParsed] = useState<ParseResponse | null>(null);
   const [executed, setExecuted] = useState<ExecuteResponse | null>(null);
+  const { sendSponsoredCallsAsync } = useSherpaSendCalls();
+  const walletState = useRef({ connectionEpoch, isConnected, userAddress });
+
+  useEffect(() => {
+    walletState.current = { connectionEpoch, isConnected, userAddress };
+    return () => {
+      walletState.current = {
+        connectionEpoch: connectionEpoch + 1,
+        isConnected: false,
+        userAddress: undefined,
+      };
+    };
+  }, [connectionEpoch, isConnected, userAddress]);
 
   const submitParse = async () => {
+    if (!isConnected || !userAddress) return;
     setBusy(true);
     setParsed(null);
     setExecuted(null);
@@ -74,7 +77,7 @@ export function Prompt() {
       const res = await fetch('/api/parse', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ input, userKey: DEMO_USER }),
+        body: JSON.stringify({ input, userKey: userAddress }),
       });
       setParsed((await res.json()) as ParseResponse);
     } catch (err) {
@@ -85,16 +88,32 @@ export function Prompt() {
   };
 
   const confirm = async () => {
+    if (!isConnected || !userAddress) return;
+    const requestUserAddress = userAddress;
+    const requestConnectionEpoch = connectionEpoch;
     setBusy(true);
     try {
       const res = await fetch('/api/execute', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ input, userAddress: DEMO_USER }),
+        body: JSON.stringify({ input, userAddress }),
       });
-      setExecuted((await res.json()) as ExecuteResponse);
-    } catch (err) {
-      setExecuted({ ok: false, error: String(err) });
+      const body = (await res.json()) as ExecuteResponse;
+      const latestWallet = walletState.current;
+      if (
+        !latestWallet.isConnected ||
+        latestWallet.connectionEpoch !== requestConnectionEpoch ||
+        latestWallet.userAddress?.toLowerCase() !== requestUserAddress.toLowerCase()
+      ) {
+        setExecuted({ ok: false, error: 'Wallet disconnected. Connect to continue.' });
+        return;
+      }
+      if (body.ok && body.card.batch) {
+        await sendSponsoredCallsAsync(toSendCallsVariables(body.card.batch));
+      }
+      setExecuted(body);
+    } catch {
+      setExecuted({ ok: false, error: 'Wallet request failed. Try again.' });
     } finally {
       setBusy(false);
     }
@@ -105,57 +124,58 @@ export function Prompt() {
     : parsed?.card?.batch;
 
   return (
-    <section
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: tokens.space.md,
-        width: '100%',
-        maxWidth: 560,
-      }}
-    >
-      <div style={{ display: 'flex', gap: tokens.space.sm, alignItems: 'stretch' }}>
+    <section className="flex w-full max-w-xl flex-col gap-4">
+      <div className="flex items-stretch gap-2">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') void submitParse();
           }}
-          placeholder="send 5 usdc to vitalik.eth"
-          style={inputStyle}
+          placeholder={isConnected ? 'send 5 usdc to vitalik.eth' : disconnectedCopy}
+          className="min-h-11 w-full rounded-lg border border-sherpa-surface2 bg-sherpa-surface px-4 py-3 text-base text-sherpa-fg outline-none focus:border-sherpa-blue focus:ring-2 focus:ring-sherpa-blue/40 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Sherpa prompt"
+          disabled={!isConnected || busy}
+          title={!isConnected ? disconnectedCopy : undefined}
         />
-        <button type="button" style={buttonStyle} disabled={busy} onClick={submitParse}>
+        <button
+          type="button"
+          className="min-h-11 rounded-lg bg-sherpa-blue px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!isConnected || busy}
+          onClick={submitParse}
+        >
           {busy ? '…' : 'Preview'}
         </button>
       </div>
 
       {parsed?.error ? (
-        <div style={{ color: tokens.color.danger, fontSize: 14 }}>Error: {parsed.error}</div>
+        <div className="text-sm text-sherpa-danger">Error: {parsed.error}</div>
       ) : null}
       {parsed?.parsed ? (
-        <div style={{ color: tokens.color.muted, fontSize: 12 }}>
+        <div className="text-xs text-sherpa-muted">
           parsed: {parsed.parsed.intent} (conf {parsed.parsed.confidence.toFixed(2)})
         </div>
       ) : null}
-      {parsed?.card ? <ConfirmationCard card={parsed.card} onConfirm={confirm} /> : null}
+      {parsed?.card ? (
+        <ConfirmationCard card={parsed.card} disabled={!isConnected || busy} onConfirm={confirm} />
+      ) : null}
 
       {executed && !executed.ok ? (
-        <div style={{ color: tokens.color.danger, fontSize: 14 }}>
-          Execute failed: {executed.error}
-        </div>
+        <div className="text-sm text-sherpa-danger">Execute failed: {executed.error}</div>
       ) : null}
       {executed?.ok ? (
-        <div style={{ color: tokens.color.success, fontSize: 13 }}>
+        <div className="text-sm text-sherpa-success">
           ✓ audit-log #{executed.auditLogId} · plan {executed.planHash.slice(0, 14)}…
         </div>
       ) : null}
       {batch ? (
         <details>
-          <summary style={{ cursor: 'pointer', color: tokens.color.muted, fontSize: 12 }}>
+          <summary className="cursor-pointer text-xs text-sherpa-muted">
             EIP-5792 wallet_sendCalls payload ({batch.calls.length} calls)
           </summary>
-          <pre style={codeStyle}>{JSON.stringify(batch, null, 2)}</pre>
+          <pre className="mt-2 max-h-60 overflow-auto break-all whitespace-pre-wrap rounded-lg border border-sherpa-surface2 bg-sherpa-surface p-4 text-[11px] text-sherpa-muted">
+            {JSON.stringify(batch, null, 2)}
+          </pre>
         </details>
       ) : null}
     </section>

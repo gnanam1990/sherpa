@@ -59,7 +59,7 @@ Run the web app locally:
 
 ```bash
 pnpm --filter @sherpa/web dev
-# → http://localhost:3000
+# → http://localhost:3100
 ```
 
 ## Task reference (Turbo)
