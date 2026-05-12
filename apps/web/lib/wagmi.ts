@@ -9,8 +9,10 @@ import { baseSepolia } from 'wagmi/chains';
 export const walletEnv = {
   walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID ?? 'sherpa-dev-walletconnect',
   coinbaseProjectId: process.env.NEXT_PUBLIC_CDP_PROJECT_ID ?? '',
-  paymasterRpc: process.env.NEXT_PUBLIC_PAYMASTER_RPC ?? '',
 } as const;
+
+// Paymaster proxy in apps/api keeps the real URL server-side. See docs/sherpa/devlog/2026-05-15-m2-week-1-priority-1.md
+const PAYMASTER_PROXY_URL = '/api/paymaster';
 
 coinbaseWallet.preference = 'smartWalletOnly';
 
@@ -38,7 +40,7 @@ export const wagmiConfig = createConfig({
   },
 });
 
-export function getPaymasterCapabilities(url = walletEnv.paymasterRpc) {
+export function getPaymasterCapabilities(url = PAYMASTER_PROXY_URL) {
   if (!url) return undefined;
   return {
     paymasterService: { url },
@@ -47,13 +49,13 @@ export function getPaymasterCapabilities(url = walletEnv.paymasterRpc) {
 
 export function withPaymasterCapabilities<
   Variables extends { capabilities?: Record<string, unknown> },
->(variables: Variables, paymasterRpc = walletEnv.paymasterRpc): Variables {
-  const paymasterCapabilities = getPaymasterCapabilities(paymasterRpc);
+>(variables: Variables, paymasterUrl = PAYMASTER_PROXY_URL): Variables {
+  const paymasterCapabilities = getPaymasterCapabilities(paymasterUrl);
   return {
     ...variables,
     capabilities: {
-      ...(paymasterCapabilities ?? {}),
       ...(variables.capabilities ?? {}),
+      ...(paymasterCapabilities ?? {}),
     },
   };
 }
