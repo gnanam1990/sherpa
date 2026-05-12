@@ -8,4 +8,5 @@
 
 export * from './tokens.js';
 export * from './ConnectButton.js';
+export * from './ConfirmationCard.js';
 export * from './components.js';
