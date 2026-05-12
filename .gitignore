@@ -35,3 +35,6 @@ yarn-error.log*
 *.local
 *.zip
 worktrees/
+.env.local
+apps/*/.env.local
+packages/*/.env.local
