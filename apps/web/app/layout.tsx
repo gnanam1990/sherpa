@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { tokens } from '@sherpa/ui';
+import { Providers } from './providers';
+import '@rainbow-me/rainbowkit/styles.css';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Sherpa',
@@ -10,15 +12,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body
-        style={{
-          margin: 0,
-          background: tokens.color.bg,
-          color: tokens.color.fg,
-          fontFamily: tokens.font.sans,
-        }}
-      >
-        {children}
+      <body className="m-0 bg-sherpa-bg font-sans text-sherpa-fg">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
