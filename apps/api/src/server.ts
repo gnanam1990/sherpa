@@ -18,18 +18,21 @@ import {
   createAuditLog,
   createAuditStore,
   createInMemoryRateLimiter,
+  createPaymasterRateLimiter,
   createSpendCap,
   createUsageSink,
   fetchTodayUsage,
   fetchUserUsage,
   updateAuditLog,
   type AuditStore,
+  type PaymasterRateLimiter,
   type RateLimiter,
 } from '@sherpa/memory';
 import { getPool } from '@sherpa/config';
 import { timingSafeEqual } from 'node:crypto';
 import { HOURLY_TASKS, type HourlyTask } from '@sherpa/scheduler';
 import { registerCronRoutes } from './routes/cron.js';
+import { registerPaymasterRoutes } from './routes/paymaster.js';
 import {
   createBasescanIndexer,
   emptyIndexer,
@@ -82,6 +85,10 @@ export type BuildServerOptions = {
   logger?: Logger;
   /** Override the cron task registry (tests inject failing tasks). */
   cronTasks?: readonly HourlyTask[];
+  /** Override the paymaster rate limiter (tests script consume/refund). */
+  paymasterRateLimiter?: PaymasterRateLimiter;
+  /** Override fetch for the paymaster proxy (tests assert request shape). */
+  paymasterFetch?: typeof globalThis.fetch;
 };
 
 /**
@@ -387,6 +394,23 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     cronSecret: config.cronSecret,
     tasks: options.cronTasks ?? HOURLY_TASKS,
     log: log.child({ surface: 'cron' }),
+  });
+
+  // Defer Postgres pool acquisition when the route is effectively
+  // disabled (no paymasterRpcUrl). Tests that flip `useRealDb=true` to
+  // exercise admin-route guards must not pay for a paymaster pool they
+  // never use — mirrors how createSpendCap/createUsageSink are only
+  // constructed when their respective surfaces are wired.
+  const paymasterRateLimiter =
+    options.paymasterRateLimiter ??
+    (config.paymasterRpcUrl
+      ? createPaymasterRateLimiter(config)
+      : createPaymasterRateLimiter({ ...config, useRealDb: false }));
+  registerPaymasterRoutes(app, {
+    auditStore,
+    rateLimiter: paymasterRateLimiter,
+    paymasterRpcUrl: config.paymasterRpcUrl,
+    fetch: options.paymasterFetch,
   });
 
   return app;

@@ -48,6 +48,11 @@ export type SherpaConfig = {
   useRealRpc: boolean;
   /** Coinbase Paymaster service URL (EIP-5792 capabilities.paymasterService.url). */
   paymasterUrl?: string;
+  /**
+   * Coinbase Paymaster RPC URL (server-side only). Forwarded to by the
+   * `/api/paymaster` proxy; never proxied through NEXT_PUBLIC_*.
+   */
+  paymasterRpcUrl?: string;
   /** Base URL used by human-run M3 smoke checks. */
   smokeApiUrl: string;
   /** Whether to use real Postgres-backed memory stores (audit_log, llm_usage, ...). */
@@ -160,6 +165,10 @@ const SmokeEnvSchema = z.object({
   SMOKE_API_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
 });
 
+const PaymasterEnvSchema = z.object({
+  SHERPA_PAYMASTER_RPC: z.preprocess(emptyToUndefined, z.string().url().optional()),
+});
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   const chain = pickChain(env.SHERPA_CHAIN);
   const dbEnv = DbEnvSchema.parse({
@@ -181,6 +190,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     CRON_SECRET: env.CRON_SECRET,
   });
   const smokeEnv = SmokeEnvSchema.parse({ SMOKE_API_URL: env.SMOKE_API_URL });
+  const paymasterEnv = PaymasterEnvSchema.parse({
+    SHERPA_PAYMASTER_RPC: env.SHERPA_PAYMASTER_RPC,
+  });
   return {
     chain,
     rpcUrl: env.SHERPA_RPC_URL ?? chain.rpcUrl,
@@ -190,6 +202,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     groqApiKey: env.GROQ_API_KEY,
     useRealRpc: env.SHERPA_USE_REAL_RPC !== 'false',
     paymasterUrl: env.SHERPA_PAYMASTER_URL,
+    paymasterRpcUrl: paymasterEnv.SHERPA_PAYMASTER_RPC,
     smokeApiUrl: smokeEnv.SMOKE_API_URL ?? 'http://localhost:3001',
     useRealDb: dbEnv.SHERPA_USE_REAL_DB === 'true',
     databaseUrl: dbEnv.DATABASE_URL,
