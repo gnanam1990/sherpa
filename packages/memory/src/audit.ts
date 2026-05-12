@@ -12,7 +12,7 @@
  */
 
 export type AuditStatus = 'pending' | 'success' | 'failed' | 'cancelled' | 'partial';
-export type AuditSurface = 'web' | 'miniapp' | 'telegram' | 'api' | 'cron';
+export type AuditSurface = 'web' | 'miniapp' | 'telegram' | 'api' | 'cron' | 'paymaster';
 
 export type CreateAuditLogInput = {
   userAddress: `0x${string}`;
