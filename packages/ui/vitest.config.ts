@@ -8,6 +8,9 @@ export default defineConfig({
     coverage: {
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.{ts,tsx}', 'test/**'],
+      thresholds: {
+        statements: 70,
+      },
     },
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],

@@ -45,6 +45,10 @@ export type SendCallsEnvelope = {
   capabilities?: { paymasterService?: { url: string } };
 };
 
+export type RiskIndicator =
+  | string
+  | { level?: 'info' | 'warning' | 'danger'; label: string; detail?: string };
+
 /**
  * Contract with M2 (frontend). The executor produces this shape; the UI
  * renders it. Never break without 24h notice — see M1_BACKEND_PACK §3.
@@ -56,6 +60,8 @@ export type ConfirmationCardProps = {
   secondary_amount_display?: string;
   recipient_display?: string;
   recipient_metadata?: Record<string, unknown>;
+  /** Optional risk indicators rendered by M2 when M3/safety provides them. */
+  risk_indicators?: RiskIndicator[];
   steps: ExecutionStep[];
   /** Sponsored EIP-5792 batch the frontend should submit (when steps.length > 0). */
   batch?: SendCallsEnvelope;

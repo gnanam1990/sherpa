@@ -3,10 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ConfirmationCard,
+  ExecutionFailureCard,
+  ExecutionPendingCard,
+  ExecutionSuccessCard,
   type SerializedConfirmationCardProps,
   type SerializedSendCallsEnvelope,
 } from '@sherpa/ui';
 import { useSherpaSendCalls } from '../../lib/wagmi';
+import { useExecuteConfirm } from './useExecuteConfirm';
 
 type ParseResponse = {
   parsed?: { intent: string; confidence: number };
@@ -21,7 +25,19 @@ type ExecuteResponse =
       planHash: string;
       card: SerializedConfirmationCardProps;
     }
-  | { ok: false; error: string };
+  | { ok: false; error: string; error_detail?: string };
+
+type FlowPhase = 'idle' | 'preview' | 'executing' | 'confirming' | 'success' | 'failure';
+
+type FlowFailure = {
+  actionDescription: string;
+  errorDetail: string;
+};
+
+type FlowSuccess = {
+  actionDescription: string;
+  txHash?: string;
+};
 
 type PromptProps = {
   connectionEpoch?: number;
@@ -44,6 +60,29 @@ function toSendCallsVariables(batch: SerializedSendCallsEnvelope) {
   };
 }
 
+const actionVerb: Record<string, string> = {
+  SEND: 'Send',
+  BUY: 'Buy',
+  BET: 'Bet',
+  BALANCE: 'Show balance',
+  HISTORY: 'Show history',
+};
+
+function actionDescription(card: SerializedConfirmationCardProps | undefined): string {
+  if (!card) return 'complete this action';
+  const verb = actionVerb[card.intent] ?? card.primary_action_label;
+  if (!card.primary_amount_display || card.primary_amount_display === '—') return verb;
+  if (card.primary_amount_display.toLowerCase().startsWith(verb.toLowerCase())) {
+    return card.primary_amount_display;
+  }
+  return `${verb} ${card.primary_amount_display}`;
+}
+
+function errorDetailFrom(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
 export function Prompt({
   connectionEpoch = 0,
   isConnected,
@@ -51,11 +90,17 @@ export function Prompt({
   disconnectedCopy = 'Connect wallet to start',
 }: PromptProps) {
   const [input, setInput] = useState('send 5 usdc to 0x036CbD53842c5426634e7929541eC2318f3dCF7e');
-  const [busy, setBusy] = useState(false);
+  const [parseBusy, setParseBusy] = useState(false);
   const [parsed, setParsed] = useState<ParseResponse | null>(null);
-  const [executed, setExecuted] = useState<ExecuteResponse | null>(null);
+  const [phase, setPhase] = useState<FlowPhase>('idle');
+  const [failure, setFailure] = useState<FlowFailure | null>(null);
+  const [success, setSuccess] = useState<FlowSuccess | null>(null);
   const { sendSponsoredCallsAsync } = useSherpaSendCalls();
+  const executeConfirm = useExecuteConfirm();
   const walletState = useRef({ connectionEpoch, isConnected, userAddress });
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const busy = parseBusy || phase === 'executing' || phase === 'confirming';
 
   useEffect(() => {
     walletState.current = { connectionEpoch, isConnected, userAddress };
@@ -70,28 +115,39 @@ export function Prompt({
 
   const submitParse = async () => {
     if (!isConnected || !userAddress) return;
-    setBusy(true);
+    setParseBusy(true);
     setParsed(null);
-    setExecuted(null);
+    setFailure(null);
+    setSuccess(null);
+    executeConfirm.reset();
+    setPhase('idle');
     try {
       const res = await fetch('/api/parse', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ input, userKey: userAddress }),
       });
-      setParsed((await res.json()) as ParseResponse);
+      const body = (await res.json()) as ParseResponse;
+      setParsed(body);
+      setPhase(body.card ? 'preview' : 'idle');
     } catch (err) {
       setParsed({ error: String(err) });
     } finally {
-      setBusy(false);
+      setParseBusy(false);
     }
   };
 
   const confirm = async () => {
     if (!isConnected || !userAddress) return;
+    const card = parsed?.card;
+    if (!card) return;
+    const description = actionDescription(card);
     const requestUserAddress = userAddress;
     const requestConnectionEpoch = connectionEpoch;
-    setBusy(true);
+    setFailure(null);
+    setSuccess(null);
+    executeConfirm.reset();
+    setPhase('executing');
     try {
       const res = await fetch('/api/execute', {
         method: 'POST',
@@ -105,28 +161,98 @@ export function Prompt({
         latestWallet.connectionEpoch !== requestConnectionEpoch ||
         latestWallet.userAddress?.toLowerCase() !== requestUserAddress.toLowerCase()
       ) {
-        setExecuted({ ok: false, error: 'Wallet disconnected. Connect to continue.' });
+        setFailure({
+          actionDescription: description,
+          errorDetail: 'Wallet disconnected. Connect to continue.',
+        });
+        setPhase('failure');
+        return;
+      }
+      if (!body.ok) {
+        setFailure({
+          actionDescription: description,
+          errorDetail: body.error_detail ?? body.error,
+        });
+        setPhase('failure');
         return;
       }
       if (body.ok && body.card.batch) {
         await sendSponsoredCallsAsync(toSendCallsVariables(body.card.batch));
       }
-      setExecuted(body);
-    } catch {
-      setExecuted({ ok: false, error: 'Wallet request failed. Try again.' });
-    } finally {
-      setBusy(false);
+      if (!body.card.batch) {
+        setSuccess({ actionDescription: description });
+        setPhase('success');
+        return;
+      }
+      setPhase('confirming');
+      executeConfirm.start(body.auditLogId);
+    } catch (err) {
+      setFailure({ actionDescription: description, errorDetail: errorDetailFrom(err) });
+      setPhase('failure');
     }
   };
 
-  const batch: SerializedSendCallsEnvelope | undefined = executed?.ok
-    ? executed.card.batch
-    : parsed?.card?.batch;
+  useEffect(() => {
+    if (phase !== 'confirming') return;
+    const description = actionDescription(parsed?.card);
+    if (executeConfirm.status === 'success') {
+      setSuccess({ actionDescription: description, txHash: executeConfirm.txHash });
+      setPhase('success');
+    }
+    if (executeConfirm.status === 'failure' || executeConfirm.status === 'timeout') {
+      setFailure({
+        actionDescription: description,
+        errorDetail: executeConfirm.errorDetail ?? 'Confirmation failed',
+      });
+      setPhase('failure');
+    }
+  }, [
+    executeConfirm.errorDetail,
+    executeConfirm.status,
+    executeConfirm.txHash,
+    parsed?.card,
+    phase,
+  ]);
+
+  const focusPrompt = () => {
+    inputRef.current?.focus();
+  };
+
+  const resetActionWorkspace = () => {
+    setInput('');
+    setParsed(null);
+    setFailure(null);
+    setSuccess(null);
+    executeConfirm.reset();
+    setPhase('idle');
+    focusPrompt();
+  };
+
+  const editAndRetry = () => {
+    setFailure(null);
+    setSuccess(null);
+    executeConfirm.reset();
+    setPhase(parsed?.card ? 'preview' : 'idle');
+    focusPrompt();
+  };
+
+  const cancel = () => {
+    setParsed(null);
+    setFailure(null);
+    setSuccess(null);
+    executeConfirm.reset();
+    setPhase('idle');
+  };
+
+  const retry = () => {
+    void confirm();
+  };
 
   return (
     <section className="flex w-full max-w-xl flex-col gap-4">
       <div className="flex items-stretch gap-2">
         <input
+          ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -156,27 +282,33 @@ export function Prompt({
           parsed: {parsed.parsed.intent} (conf {parsed.parsed.confidence.toFixed(2)})
         </div>
       ) : null}
-      {parsed?.card ? (
-        <ConfirmationCard card={parsed.card} disabled={!isConnected || busy} onConfirm={confirm} />
+      {phase === 'success' && success ? (
+        <ExecutionSuccessCard
+          actionDescription={success.actionDescription}
+          onSendAnother={resetActionWorkspace}
+          txHash={success.txHash}
+        />
       ) : null}
 
-      {executed && !executed.ok ? (
-        <div className="text-sm text-sherpa-danger">Execute failed: {executed.error}</div>
+      {phase === 'failure' && failure ? (
+        <ExecutionFailureCard
+          actionDescription={failure.actionDescription}
+          errorDetail={failure.errorDetail}
+          onEditAndRetry={editAndRetry}
+          onSendAnother={resetActionWorkspace}
+          onTryAgain={retry}
+        />
       ) : null}
-      {executed?.ok ? (
-        <div className="text-sm text-sherpa-success">
-          ✓ audit-log #{executed.auditLogId} · plan {executed.planHash.slice(0, 14)}…
-        </div>
-      ) : null}
-      {batch ? (
-        <details>
-          <summary className="cursor-pointer text-xs text-sherpa-muted">
-            EIP-5792 wallet_sendCalls payload ({batch.calls.length} calls)
-          </summary>
-          <pre className="mt-2 max-h-60 overflow-auto break-all whitespace-pre-wrap rounded-lg border border-sherpa-surface2 bg-sherpa-surface p-4 text-[11px] text-sherpa-muted">
-            {JSON.stringify(batch, null, 2)}
-          </pre>
-        </details>
+
+      {phase === 'confirming' ? <ExecutionPendingCard message={executeConfirm.message} /> : null}
+
+      {phase === 'preview' && parsed?.card ? (
+        <ConfirmationCard
+          card={parsed.card}
+          disabled={!isConnected || busy}
+          onCancel={cancel}
+          onConfirm={confirm}
+        />
       ) : null}
     </section>
   );
