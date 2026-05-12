@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useAccount, useAccountEffect } from 'wagmi';
 import { toast } from 'sonner';
 import { ConnectButton } from '@sherpa/ui';
@@ -52,12 +53,12 @@ export function HomeContent() {
       <header className="flex w-full max-w-5xl items-center justify-between gap-4">
         <span className="text-sm font-semibold tracking-[-0.02em] text-sherpa-blue">Sherpa</span>
         <nav className="flex items-center gap-3" aria-label="Primary">
-          <a
+          <Link
             href="/about"
             className="rounded-full px-3 py-1 text-sm text-sherpa-muted transition hover:text-sherpa-fg"
           >
             About
-          </a>
+          </Link>
           <ConnectButton variant="compact" />
         </nav>
       </header>

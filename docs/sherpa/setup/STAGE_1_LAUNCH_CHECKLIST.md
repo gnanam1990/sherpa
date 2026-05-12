@@ -66,11 +66,11 @@ For Stage 1, **keep both surfaces on one project** (`apps/api` mounted as Next.j
 
 Before announcing the deploy, do this in order on the live URL:
 
-1. **Cold load**: open the prod URL in an incognito window. `/` should render the hero in under 2 seconds. No console errors. Sentry session start visible in the dashboard.
+1. **Cold load**: open the prod URL in an incognito window. `/` should render the hero in under 2 seconds. No console errors.
 2. **Marketing**: navigate `/` → `/about`. All sections render. FAQ items expand. All three footer social links resolve (200).
 3. **Connect**: click Connect → Coinbase Smart Wallet → passkey provisioning. Confirm wallet address appears in the header.
 4. **Send (Sepolia)**: type `send 0.001 ETH to <test address>`. Confirmation card renders with correct amount + recipient. Sign with passkey. Tx appears on Sepolia basescan within ~10 seconds. **Gas should be sponsored** (your wallet balance unchanged).
-5. **Error path**: open devtools → throw a render error in a component → `app/error.tsx` should render with "Something went wrong" + Refresh CTA. Confirm the error appears in Sentry within 60 seconds.
+5. **Error path**: open devtools → throw a render error in a component → `app/error.tsx` should render with "Something went wrong" + Refresh CTA. Confirm the error is logged in the browser console.
 6. **404**: navigate to `/this-does-not-exist`. ASCII art renders. Back-to-home link works.
 7. **A11y**: Tab through `/` and `/about` from the URL bar. Focus visible on every step, logical order. Skip-to-content link appears on first Tab.
 

@@ -27,6 +27,24 @@ vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { custom: vi.fn() }),
 }));
 
+// Sentinel for the Next Link assertion below. The component-under-test
+// must import the About link from 'next/link' (client-side route) and
+// NOT use a plain <a> (full page reload).
+vi.mock('next/link', () => ({
+  default: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href: string;
+    children: React.ReactNode;
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href} data-testid="next-link" {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
 vi.mock('../../lib/wagmi', () => ({
   useSherpaSendCalls: () => ({ sendSponsoredCalls: vi.fn() }),
 }));
@@ -53,6 +71,19 @@ describe('HomeContent', () => {
     expect(document.body.contains(screen.getByRole('button', { name: 'Connect wallet' }))).toBe(
       true,
     );
+  });
+
+  it('renders the About link via next/link (not a plain anchor)', () => {
+    wagmiState.address = undefined;
+    wagmiState.isConnected = false;
+
+    render(<HomeContent />);
+
+    const link = screen.getByRole('link', { name: 'About' });
+    expect(link.getAttribute('href')).toBe('/about');
+    // The mock above tags Next's Link with data-testid="next-link".
+    // A bare <a href="/about"> would fail this assertion.
+    expect(link.getAttribute('data-testid')).toBe('next-link');
   });
 
   it('shows the connected wallet address and hides the hero connect button', () => {
