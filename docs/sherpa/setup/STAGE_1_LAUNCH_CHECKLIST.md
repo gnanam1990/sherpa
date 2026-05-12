@@ -33,6 +33,7 @@ Required for **`sherpa-web`** (Production + Preview):
 | --- | --- | --- | --- |
 | `NEXT_PUBLIC_WC_PROJECT_ID` | from cloud.reown.com | Public | WalletConnect — required for Coinbase Smart Wallet connection |
 | `NEXT_PUBLIC_CDP_PROJECT_ID` | from portal.cdp.coinbase.com | Public | Coinbase Developer Platform identifier |
+| `SHERPA_API_BASE` | `https://sherpa-api.vercel.app` | Public-ish — server-only | Drives the `next.config.mjs` rewrite that proxies `/api/*` to the API project. Server-side only (no `NEXT_PUBLIC_` prefix) so the browser sees same-origin and never pays a CORS preflight. See `docs/sherpa/decisions/2026-05-15-deploy-architecture.md`. |
 | `NEXT_PUBLIC_SENTRY_DSN` | from sentry.io browser project | Public by design | **Deferred** — wired in follow-up PR via `@sentry/nextjs` (see notes below). Reserve the slot in the dashboard so it's ready when the follow-up lands. |
 
 Required for **`sherpa-api`** (Production + Preview):
@@ -41,8 +42,12 @@ Required for **`sherpa-api`** (Production + Preview):
 | --- | --- | --- | --- |
 | `SHERPA_PAYMASTER_RPC` | Coinbase CDP paymaster URL | **Secret — server only** | Anyone with this URL can drain the gas budget |
 | `DATABASE_URL` | Supabase pooler URL | Secret | Transaction-mode pooler (see DATABASE_SETUP.md) |
+| `SUPABASE_SERVICE_KEY` | Supabase service role key | Secret | Server-side only — bypasses RLS |
 | `SHERPA_USE_REAL_DB` | `true` | Public | Falls back to in-memory if `false` |
 | `SENTRY_DSN` | from sentry.io node project | Secret | **Different DSN than browser** — Sentry scopes by platform |
+| `CRON_SECRET` | `openssl rand -hex 32` | Secret | Bearer token for `/api/cron/hourly`. Same value goes in cron-job.org. Unset = route 503s (disabled). |
+| `ADMIN_API_KEY` | `openssl rand -hex 32` | Secret | Bearer token for `/admin/llm-usage/*`. Unset = routes 503 (disabled). |
+| `NEYNAR_API_KEY` | from neynar.com | Secret | Farcaster username resolution. Optional — identity falls back gracefully. |
 
 Provision with:
 
@@ -54,13 +59,43 @@ vercel env add NEXT_PUBLIC_WC_PROJECT_ID preview --cwd apps/web
 
 Or paste in the dashboard UI under Settings → Environment Variables.
 
-## 3. Custom domain
+## 3. Routing between web and api
 
-In the `sherpa-web` project: Settings → Domains → add `sherpa.app` (or whichever apex) and the `www.` alias. Vercel auto-provisions the TLS cert.
+The two projects are deployed as two Vercel projects (above), but the **browser only ever sees one origin** — the web project. Here's how:
 
-The API surface stays on its own subdomain — wire `api.sherpa.app` to the `sherpa-api` project. Then update the Next.js rewrite (or use `NEXT_PUBLIC_API_BASE`) so `/api/paymaster` proxies cross-origin if you split surfaces.
+`apps/web/next.config.mjs` rewrites every `/api/*` request to `${SHERPA_API_BASE}/api/*` on the server side. So when wagmi POSTs `/api/paymaster` from the browser:
 
-For Stage 1, **keep both surfaces on one project** (`apps/api` mounted as Next.js Route Handlers) to avoid CORS — that's the simpler path and matches the current code. The two-project layout above is the path for Stage 2 if you want to scale them independently.
+1. Request lands on `sherpa-web` at `/api/paymaster`.
+2. Next.js rewrite proxies it server-side to `${SHERPA_API_BASE}/api/paymaster` (= `sherpa-api`).
+3. Response comes back through `sherpa-web` to the browser.
+
+From the browser, it's same-origin. **No CORS preflight, no `@fastify/cors`, no `NEXT_PUBLIC_API_BASE`.** The full rationale (why we didn't port Fastify → Next.js Route Handlers, why we didn't do CORS) is in [`docs/sherpa/decisions/2026-05-15-deploy-architecture.md`](../decisions/2026-05-15-deploy-architecture.md).
+
+**Operational implications:**
+
+- Set `SHERPA_API_BASE=https://sherpa-api.vercel.app` on `sherpa-web` for **Production**. The web project's prod build will 502 every `/api/*` if this is unset.
+- **Preview environment:** point `sherpa-web` Preview at the **prod** API URL too for Stage 1. Per-PR API previews need branch-aware env wiring (Vercel preview URLs are computed, not stable), which we'll add when someone actually needs to iterate on `apps/api` from a PR. Until then, a PR that changes API behavior must be smoke-tested against a manually-promoted API preview, not the web preview.
+- Local dev: leave `SHERPA_API_BASE` unset and `next.config.mjs` falls back to `http://localhost:3001`, where `apps/api` runs by default.
+- **Custom domain (when ready):** add the apex to `sherpa-web` only. The API stays on its `*.vercel.app` URL; you don't need to expose `api.sherpa.app` since the browser never calls it directly. If you later split origins (e.g. mobile clients hitting the API), that's the moment to add CORS.
+
+## 3a. Deploy order
+
+`sherpa-api` ships first, **always**. Reason: the moment `sherpa-web` deploys with `SHERPA_API_BASE` pointed at the new API URL, every `/api/*` request from the browser depends on the API being live. Reverse the order and the launch window is bracketed by 502s.
+
+```bash
+# 1. Apply migrations (idempotent — see scripts/db/migrate.sh)
+DATABASE_URL=postgres://... bash scripts/db/migrate.sh
+
+# 2. Deploy API first
+vercel --prod --cwd apps/api
+
+# 3. Smoke-test the API directly before exposing it to the web tier
+curl -sf https://sherpa-api.vercel.app/api/health
+# {"ok":true,"ts":...}
+
+# 4. Then deploy web
+vercel --prod --cwd apps/web
+```
 
 ## 4. Smoke test plan
 
