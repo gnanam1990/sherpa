@@ -2,7 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "corepack enable && corepack prepare pnpm@9.15.1 --activate && pnpm install --frozen-lockfile && pnpm --filter @sherpa/api... build"
+    "buildCommand": "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sherpa/api... build"
   },
   "deploy": {
     "startCommand": "pnpm --filter @sherpa/api start",
