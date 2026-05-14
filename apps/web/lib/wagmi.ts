@@ -1,9 +1,8 @@
 'use client';
 
-import { connectorsForWallets } from '@rainbow-me/rainbowkit';
-import { coinbaseWallet } from '@rainbow-me/rainbowkit/wallets';
 import { createConfig, createStorage, http, noopStorage, useSendCalls } from 'wagmi';
 import type { UseSendCallsParameters } from 'wagmi';
+import { coinbaseWallet } from 'wagmi/connectors';
 import { baseSepolia } from 'wagmi/chains';
 
 export const walletEnv = {
@@ -14,21 +13,12 @@ export const walletEnv = {
 // Paymaster proxy in apps/api keeps the real URL server-side. See docs/sherpa/devlog/2026-05-15-m2-week-1-priority-1.md
 const PAYMASTER_PROXY_URL = '/api/paymaster';
 
-coinbaseWallet.preference = 'smartWalletOnly';
-
-const connectors = connectorsForWallets(
-  [
-    {
-      groupName: 'Recommended',
-      wallets: [coinbaseWallet],
-    },
-  ],
-  {
+const connectors = [
+  coinbaseWallet({
     appName: 'Sherpa',
-    appDescription: 'The natural-language Base agent.',
-    projectId: walletEnv.walletConnectProjectId,
-  },
-);
+    preference: 'smartWalletOnly',
+  }),
+];
 
 export const wagmiConfig = createConfig({
   chains: [baseSepolia],
