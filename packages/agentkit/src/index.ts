@@ -1,6 +1,7 @@
 /**
- * @sherpa/agentkit — Coinbase AgentKit fallback adapter (M1 ownership).
- * Week-1 scope: export marker type.
+ * @sherpa/agentkit — Coinbase AgentKit fallback adapter + simulation planner (M1 ownership).
  */
 
 export const AGENTKIT_FALLBACK_ENABLED = false as const;
+export { shouldSimulate, createSimulationCallback, type SimulationCallbackOptions } from './planner.js';
+export { simulationErrorMessage, formatSimulationError } from './errors.js';

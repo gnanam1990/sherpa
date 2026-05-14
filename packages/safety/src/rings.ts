@@ -1,5 +1,5 @@
 import type { Address } from './types.js';
-import type { PendingTx, RingCheckResult, SafetyRing } from './types.js';
+import type { PendingTx, RingCheckResult, SafetyRing, SimulationCheckResult } from './types.js';
 import { assertAllowlisted } from './allowlist.js';
 import { assertAmountCap, DEFAULT_CAPS } from './caps.js';
 
@@ -16,8 +16,11 @@ import { assertAmountCap, DEFAULT_CAPS } from './caps.js';
 export type RingsDependencies = {
   /** Optional rate-limit hook. Defaults to always-ok for tests. */
   checkRateLimit?: (key: string) => Promise<boolean> | boolean;
-  /** Optional tx simulator. Defaults to always-ok. */
-  simulate?: (tx: PendingTx) => Promise<boolean> | boolean;
+  /**
+   * Optional tx simulator for Ring 6. Returns SimulationCheckResult —
+   * caller is responsible for fail-open/fail-closed policy.
+   */
+  simulate?: (tx: PendingTx) => Promise<SimulationCheckResult> | SimulationCheckResult;
   /** User id / session id used for rate-limit keying. */
   userKey?: string;
   /**
@@ -71,8 +74,10 @@ export async function checkRings(
   results.push(
     await runOne('ring6_simulation', async () => {
       if (!deps.simulate) return;
-      const ok = await deps.simulate(tx);
-      if (!ok) throw new Error('simulation failed');
+      const sim = await deps.simulate(tx);
+      if (!sim.ok) {
+        throw new Error(`simulation failed: ${sim.errorMessage}`);
+      }
     }),
   );
 

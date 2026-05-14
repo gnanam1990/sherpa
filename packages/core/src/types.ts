@@ -81,3 +81,32 @@ export type ParseResponse = {
 export type ExecuteResponse =
   | { ok: true; auditLogId: number; planHash: string }
   | { ok: false; error: string };
+
+// ── Simulation types (Stage 2 — Tenderly) ──────────────────────────────
+
+export type SimulationErrorCode =
+  | 'INSUFFICIENT_FUNDS_FOR_GAS'
+  | 'SIMULATION_REVERT'
+  | 'NETWORK_ERROR'
+  | 'TIMEOUT'
+  | 'INVALID_USEROP';
+
+export type SimulationTrace = {
+  readonly op: string;
+  readonly address: string;
+  readonly value?: string;
+  readonly gasUsed?: string;
+};
+
+export type SimulationResult =
+  | {
+      ok: true;
+      gasEstimate: bigint;
+      traces?: SimulationTrace[];
+      simulatedAt: number;
+    }
+  | {
+      ok: false;
+      errorCode: SimulationErrorCode;
+      errorMessage: string;
+    };

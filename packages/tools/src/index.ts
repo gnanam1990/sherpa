@@ -45,3 +45,4 @@ export { getPublicClient, type ViemClientConfig } from './viem.js';
 export { fetchBalance, type BalanceSnapshot } from './balance.js';
 export { emptyIndexer, type HistoryIndexer, type HistoryItem } from './history.js';
 export { createBasescanIndexer, type BasescanConfig } from './basescan.js';
+export { createSimulator, type Simulator, type SimulatorCall, type TenderlyConfig, type SimulationResult, type SimulationErrorCode } from './simulator/tenderly.js';

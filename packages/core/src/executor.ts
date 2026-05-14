@@ -10,6 +10,7 @@ import {
   type Address,
   type Call,
   type PendingTx,
+  type SimulationCheckResult,
 } from '@sherpa/safety';
 import {
   buildApproveCall,
@@ -48,6 +49,12 @@ export type ExecutorDeps = {
    * stay deterministic without a network call.
    */
   uniswap?: ToolAdapter<BuyParams, BuyQuote, BuyParams>;
+  /**
+   * Optional simulation callback for Ring 6. When provided, the planner
+   * runs simulation after building steps and rejects if the tx would fail.
+   * Caller is responsible for fail-open/fail-closed policy.
+   */
+  simulate?: (tx: PendingTx) => Promise<SimulationCheckResult> | SimulationCheckResult;
 };
 
 export type PlanResult = { ok: true; card: ConfirmationCardProps } | { ok: false; error: string };
@@ -364,7 +371,7 @@ async function runRings(
   const rings = await checkRings(pending, {
     userKey: deps.userKey ?? 'anon',
     checkRateLimit: async (key) => (await rl.check(key, 10, 60)).ok,
-    simulate: () => true,
+    simulate: deps.simulate,
     extraAllowlistedAddresses,
   });
   if (!ringsOk(rings)) {

@@ -45,3 +45,14 @@ export type PendingTx = {
   /** Recipient resolution source; must not be `'llm'`. */
   recipientSource: 'farcaster' | 'basename' | 'ens' | 'direct';
 };
+
+/**
+ * Minimal simulation result for Ring 6. Mirrors `SimulationResult` from
+ * `@sherpa/core` but defined here to avoid a circular dependency (safety
+ * cannot import from core). The full `SimulationResult` in core adds
+ * `traces` and `simulatedAt` — those are enrichments the executor uses
+ * downstream; Ring 6 only needs the pass/fail + error code.
+ */
+export type SimulationCheckResult =
+  | { ok: true; gasEstimate: bigint }
+  | { ok: false; errorCode: string; errorMessage: string };
