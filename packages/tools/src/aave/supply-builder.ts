@@ -1,5 +1,5 @@
 import { encodeFunctionData } from 'viem';
-import { ALLOWED_CONTRACTS, AAVE_V3_POOL_ADDRESS, assertAllowlisted, type Address } from '@sherpa/safety';
+import { AAVE_V3_POOL_ADDRESS, assertAllowlisted, type Address } from '@sherpa/safety';
 import { AaveNotConfiguredError } from './quoter.js';
 import { AAVE_POOL_ABI } from './pool.js';
 import type { AaveDeps } from './types.js';

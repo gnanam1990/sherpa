@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { verifySupply } from './verify.js';
 import { buildSupplyCall } from './supply-builder.js';
-import { SUPPLY_SELECTOR } from './pool.js';
 
 const FAKE_POOL = '0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' as const;
 const FAKE_USER = '0x1111111111111111111111111111111111111111' as const;

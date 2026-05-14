@@ -21,7 +21,6 @@ import {
   usdc,
   type AaveAdapter,
   type AaveLendParams,
-  type AaveLendQuote,
   type LimitlessAdapter,
   type BuyParams,
   type BuyQuote,
@@ -32,7 +31,6 @@ import { buildSwapCall, verifySwap } from '@sherpa/tools';
 import type {
   ConfirmationCardProps,
   ExecutionStep,
-  LendPlan,
   ParsedIntent,
   SendCallsEnvelope,
 } from './types.js';
@@ -536,18 +534,6 @@ async function planLend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
         label: `Supply ${amount} USDC to Aave @ ${(q.supplyApyBps / 100).toFixed(2)}% APY`,
       },
     ];
-
-    const deadline = Math.floor(Date.now() / 1000) + 600;
-    const lendPlan: LendPlan = {
-      type: 'LEND',
-      asset: resolveToken('USDC')!,
-      amount: q.amountBaseUnits,
-      supplyApyBps: q.supplyApyBps,
-      interestMode: 'variable',
-      pool: { address: tx.to, chainId: deps.chainId ?? DEFAULT_CHAIN_ID },
-      deadline,
-      calls: steps.map(stepToCall),
-    };
 
     return {
       ok: true,
