@@ -46,6 +46,10 @@ const HISTORY_RE =
   /^(?:show\s+)?(?:my\s+)?(?:last\s+(\d+)\s+)?(?:recent\s+)?(?:tx|txs|transactions|history)\s*$/i;
 // SWAP: "swap 100 USDC for ETH", "convert 0.5 ETH to USDC", "trade 50 USDC to ETH"
 // Optional slippage suffix: "with 1% slippage"
+// LEND: "lend 100 USDC", "supply 200 USDC"
+const LEND_RE = /^(?:lend|supply)\s+([\d.]+)\s+(\w+)\s*$/i;
+// LEND with explicit Aave target: "deposit 50 USDC to aave", "deposit 100 USDC into aave"
+const LEND_DEPOSIT_RE = /^deposit\s+([\d.]+)\s+(\w+)\s+(?:to|on|into|in)\s+aave\s*$/i;
 const SWAP_RE =
   /^(?:swap|convert|trade)\s+([\d.]+)\s+(\w+)\s+(?:for|to|→|->)\s+(\w+)(?:\s+with\s+([\d.]+)%\s+slippage)?\s*$/i;
 
@@ -103,6 +107,14 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('DEPOSIT', raw, { usd: m[1], asset: 'USDC' }, 0.9);
   }
 
+  // LEND patterns (must come after DEPOSIT_RE to avoid conflict)
+  if ((m = raw.match(LEND_DEPOSIT_RE))) {
+    return make('LEND', raw, { amount: m[1], asset: (m[2] ?? '').toUpperCase() }, 0.9);
+  }
+  if ((m = raw.match(LEND_RE))) {
+    return make('LEND', raw, { amount: m[1], asset: (m[2] ?? '').toUpperCase() }, 0.9);
+  }
+
   if (BALANCE_RE.test(raw)) {
     return make('BALANCE', raw, {}, 0.95);
   }
@@ -150,13 +162,14 @@ const VALID_INTENTS: readonly Intent[] = [
 const PARSE_SYSTEM = `You translate a user's natural-language Web3 instruction into a strict JSON object.
 
 Output ONLY a single JSON object, no prose, with this shape:
-{ "intent": "SEND|BUY|BET|SWAP|DEPOSIT|BALANCE|HISTORY|UNKNOWN", "slots": { ... }, "confidence": 0..1 }
+{ "intent": "SEND|BUY|BET|SWAP|LEND|DEPOSIT|BALANCE|HISTORY|UNKNOWN", "slots": { ... }, "confidence": 0..1 }
 
 Slot conventions:
 - SEND     { "amount": "5", "asset": "USDC", "to": "<address|handle|ens>" }
 - BUY      { "usd": "50", "asset": "ETH" }
 - BET      { "usd": "5", "predicate": "<text>", "outcome": "YES|NO" }
 - DEPOSIT  { "usd": "50", "asset": "USDC" }
+- LEND     { "amount": "100", "asset": "USDC" }
 - BALANCE  {}
 - HISTORY  { "limit": 10 }
 

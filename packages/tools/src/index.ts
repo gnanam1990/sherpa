@@ -55,8 +55,8 @@ export type {
   MorphoMarketParams,
   LendAction,
 } from './morpho.js';
-export { aave, createAave, AaveNotConfiguredError } from './aave.js';
-export type { AaveAdapter, AaveConfig, AaveLendParams, AaveLendQuote, AaveLendAction } from './aave.js';
+export { aave, createAave, AaveNotConfiguredError } from './aave/index.js';
+export type { AaveAdapter, AaveConfig, AaveLendParams, AaveLendQuote, AaveLendAction } from './aave/index.js';
 export { onramp, createOnramp } from './onramp.js';
 export type { OnrampParams, OnrampQuote, OnrampSession, OnrampConfig } from './onramp.js';
 export { getPublicClient, type ViemClientConfig } from './viem.js';

@@ -92,3 +92,17 @@ export function assertAllowlisted(target: Address, extras: readonly Address[] = 
     throw new Error(`[safety] target ${target} not in allowlist`);
   }
 }
+
+/**
+ * Verify that a target address matches the known Aave V3 Pool.
+ * Used by the LEND adapter to ensure we're only interacting with
+ * the audited Aave deployment.
+ */
+export function assertAavePool(target: Address): void {
+  if (!AAVE_V3_POOL_ADDRESS) {
+    throw new Error('[safety] Aave V3 Pool address not configured');
+  }
+  if (target.toLowerCase() !== AAVE_V3_POOL_ADDRESS.toLowerCase()) {
+    throw new Error(`[safety] target ${target} is not the Aave V3 Pool`);
+  }
+}

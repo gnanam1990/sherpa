@@ -13,11 +13,15 @@ import {
   type SimulationCheckResult,
 } from '@sherpa/safety';
 import {
+  aave as defaultAave,
   buildApproveCall,
   limitless as defaultLimitless,
   onramp,
   uniswap as defaultUniswap,
   usdc,
+  type AaveAdapter,
+  type AaveLendParams,
+  type AaveLendQuote,
   type LimitlessAdapter,
   type BuyParams,
   type BuyQuote,
@@ -28,6 +32,7 @@ import { buildSwapCall, verifySwap } from '@sherpa/tools';
 import type {
   ConfirmationCardProps,
   ExecutionStep,
+  LendPlan,
   ParsedIntent,
   SendCallsEnvelope,
 } from './types.js';
@@ -51,6 +56,8 @@ export type ExecutorDeps = {
    * stay deterministic without a network call.
    */
   uniswap?: ToolAdapter<BuyParams, BuyQuote, BuyParams>;
+  /** Override the default Aave adapter for LEND. */
+  aave?: AaveAdapter;
   /**
    * Optional simulation callback for Ring 6. When provided, the planner
    * runs simulation after building steps and rejects if the tx would fail.
@@ -95,6 +102,7 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'BUY') return planBuy(parsed, deps);
   if (parsed.intent === 'DEPOSIT') return planDeposit(parsed, deps);
   if (parsed.intent === 'SWAP') return planSwap(parsed, deps);
+  if (parsed.intent === 'LEND') return planLend(parsed, deps);
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,
@@ -458,6 +466,110 @@ async function planSwap(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
     const msg = (err as Error).message;
     if (msg.includes('not yet configured') || msg.includes('not configured')) {
       return { ok: false, error: "SWAP isn't available on this network yet." };
+    }
+    return { ok: false, error: msg };
+  }
+}
+
+async function planLend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const amount = typeof slots.amount === 'string' ? slots.amount : '';
+  const asset = (typeof slots.asset === 'string' ? slots.asset : '').toUpperCase();
+
+  if (!amount || !asset) {
+    return { ok: false, error: 'missing slots: amount/asset' };
+  }
+  if (asset !== 'USDC') {
+    return { ok: false, error: `Aave doesn't support ${asset} on this network. Try USDC.` };
+  }
+  if (!deps.userAddress) {
+    return { ok: false, error: 'LEND requires a connected wallet.' };
+  }
+
+  const aaveAdapter = deps.aave ?? defaultAave;
+
+  // Guard: Aave not configured → graceful error
+  try {
+    const lendParams: AaveLendParams = {
+      action: 'deposit',
+      asset: 'USDC',
+      amount,
+      recipient: deps.userAddress,
+    };
+
+    const q = await aaveAdapter.quote(lendParams);
+    const tx = await aaveAdapter.buildTx(lendParams);
+    const verified = await aaveAdapter.verify(tx);
+    if (!verified.ok) return { ok: false, error: `tx verify failed: ${verified.reason}` };
+
+    const pending: PendingTx = {
+      to: tx.to,
+      data: tx.data,
+      value: tx.value,
+      asset: ALLOWED_CONTRACTS.USDC,
+      amount: q.amountBaseUnits,
+      recipientSource: 'direct',
+    };
+    const r = await runRings(pending, deps, [tx.to]);
+    if (!r.ok) return r;
+
+    const warnings: string[] = [];
+    if (q.supplyApyBps < 100) {
+      warnings.push(`Low supply APY (${(q.supplyApyBps / 100).toFixed(2)}%). Consider waiting for better rates.`);
+    }
+
+    // Build steps: approve + supply
+    const approve = buildApproveCall(tx.to, q.amountBaseUnits);
+    const steps: ExecutionStep[] = [
+      {
+        kind: 'approve',
+        to: approve.to,
+        data: approve.data,
+        value: approve.value,
+        label: `Approve ${amount} USDC for Aave`,
+      },
+      {
+        kind: 'custom',
+        to: tx.to,
+        data: tx.data,
+        value: tx.value,
+        label: `Supply ${amount} USDC to Aave @ ${(q.supplyApyBps / 100).toFixed(2)}% APY`,
+      },
+    ];
+
+    const deadline = Math.floor(Date.now() / 1000) + 600;
+    const lendPlan: LendPlan = {
+      type: 'LEND',
+      asset: resolveToken('USDC')!,
+      amount: q.amountBaseUnits,
+      supplyApyBps: q.supplyApyBps,
+      interestMode: 'variable',
+      pool: { address: tx.to, chainId: deps.chainId ?? DEFAULT_CHAIN_ID },
+      deadline,
+      calls: steps.map(stepToCall),
+    };
+
+    return {
+      ok: true,
+      card: {
+        intent: 'LEND',
+        primary_action_label: 'Lend',
+        primary_amount_display: `${amount} USDC`,
+        secondary_amount_display: q.display,
+        steps,
+        batch: envelopeFor(steps, deps),
+        gas_display: gasDisplay(steps, deps),
+        warnings,
+        estimated_completion_ms: 6_000,
+      },
+    };
+  } catch (err) {
+    const msg = (err as Error).message;
+    if (msg.includes('not yet configured') || msg.includes('not configured')) {
+      return { ok: false, error: "LEND isn't available on this network yet. Try a different intent." };
+    }
+    if (msg.includes('unsupported asset')) {
+      return { ok: false, error: `Aave doesn't support ${asset} on this network. Try USDC.` };
     }
     return { ok: false, error: msg };
   }

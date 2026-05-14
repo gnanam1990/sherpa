@@ -52,3 +52,16 @@ export const SWAP_ERRORS = {
   SLIPPAGE_HIGH: (pct: string) =>
     `High slippage tolerance (${pct}%). Price may move significantly.`,
 } as const;
+
+// ── LEND-specific error messages ───────────────────────────────────
+
+export const LEND_ERRORS = {
+  AAVE_NOT_CONFIGURED: () =>
+    "LEND isn't available on this network yet. Try a different intent.",
+  ASSET_NOT_SUPPORTED: (symbol: string) =>
+    `Aave doesn't support ${symbol} on this network. Try USDC.`,
+  INSUFFICIENT_BALANCE: (symbol: string) =>
+    `You don't have enough ${symbol} to lend.`,
+  AMOUNT_TOO_SMALL: () =>
+    'Lend amount is very small. Minimum recommended is $0.10.',
+} as const;

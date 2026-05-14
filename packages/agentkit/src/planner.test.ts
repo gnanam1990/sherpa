@@ -45,6 +45,13 @@ describe('agentkit/shouldSimulate', () => {
   });
 });
 
+describe('planner/shouldSimulate LEND', () => {
+  it('shouldSimulate returns true for LEND', () => {
+    const result = shouldSimulate({ intent: 'LEND', confidence: 0.9, raw: 'lend 100 USDC', slots: {} });
+    expect(result).toBe(true);
+  });
+});
+
 describe('agentkit/createSimulationCallback', () => {
   function mockSimulator(result: { ok: boolean; gasEstimate?: bigint; errorCode?: string; errorMessage?: string }): Simulator {
     return {
