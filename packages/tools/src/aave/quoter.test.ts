@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { quote, AaveNotConfiguredError, AssetNotSupportedError } from './quoter.js';
-
-const FAKE_POOL = '0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' as const;
+import { quote, AssetNotSupportedError } from './quoter.js';
 
 describe('aave/quoter', () => {
   it('quotes USDC deposit with correct amount and APY', async () => {
