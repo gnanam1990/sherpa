@@ -71,8 +71,42 @@ describe('safety/rings', () => {
   });
 
   it('fails ring6 when simulation rejects', async () => {
-    const results = await checkRings(goodTx, { simulate: () => false });
+    const results = await checkRings(goodTx, {
+      simulate: () => ({ ok: false, errorCode: 'SIMULATION_REVERT', errorMessage: 'reverted' }),
+    });
     expect(firstFailure(results)?.ring).toBe('ring6_simulation');
+  });
+
+  it('ring6 passes with successful simulation', async () => {
+    const results = await checkRings(goodTx, {
+      simulate: () => ({ ok: true, gasEstimate: 50000n }),
+    });
+    expect(ringsOk(results)).toBe(true);
+  });
+
+  it('ring6 passes when no simulate callback provided', async () => {
+    const results = await checkRings(goodTx);
+    expect(ringsOk(results)).toBe(true);
+  });
+
+  it('ring6 passes through async simulate returning SimulationCheckResult', async () => {
+    const results = await checkRings(goodTx, {
+      simulate: async () => ({ ok: true, gasEstimate: 75000n }),
+    });
+    expect(ringsOk(results)).toBe(true);
+  });
+
+  it('ring6 fails with INSUFFICIENT_FUNDS_FOR_GAS', async () => {
+    const results = await checkRings(goodTx, {
+      simulate: () => ({
+        ok: false,
+        errorCode: 'INSUFFICIENT_FUNDS_FOR_GAS',
+        errorMessage: 'insufficient balance',
+      }),
+    });
+    const fail = firstFailure(results);
+    expect(fail?.ring).toBe('ring6_simulation');
+    expect(fail && !fail.ok && fail.reason).toContain('insufficient balance');
   });
 });
 

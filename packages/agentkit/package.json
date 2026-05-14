@@ -23,6 +23,11 @@
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
+  "dependencies": {
+    "@sherpa/core": "workspace:*",
+    "@sherpa/safety": "workspace:*",
+    "@sherpa/tools": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

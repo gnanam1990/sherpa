@@ -86,6 +86,16 @@ export type SherpaConfig = {
    * ADMIN_API_KEY). When unset, cron routes respond 503 — disabled.
    */
   cronSecret?: string;
+  /** Tenderly API key for transaction simulation (Stage 2). */
+  tenderlyApiKey?: string;
+  /** Tenderly account user/org slug. */
+  tenderlyUser?: string;
+  /** Tenderly project slug. */
+  tenderlyProject?: string;
+  /** Whether transaction simulation is enabled (default: true). */
+  simulationEnabled: boolean;
+  /** Whether the current chain is mainnet (derived from chain config). */
+  isMainnet: boolean;
 };
 
 /**
@@ -169,6 +179,13 @@ const PaymasterEnvSchema = z.object({
   SHERPA_PAYMASTER_RPC: z.preprocess(emptyToUndefined, z.string().url().optional()),
 });
 
+const TenderlyEnvSchema = z.object({
+  TENDERLY_API_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  TENDERLY_USER: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  TENDERLY_PROJECT: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+  SHERPA_SIMULATION_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).optional()),
+});
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   const chain = pickChain(env.SHERPA_CHAIN);
   const dbEnv = DbEnvSchema.parse({
@@ -193,6 +210,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   const paymasterEnv = PaymasterEnvSchema.parse({
     SHERPA_PAYMASTER_RPC: env.SHERPA_PAYMASTER_RPC,
   });
+  const tenderlyEnv = TenderlyEnvSchema.parse({
+    TENDERLY_API_KEY: env.TENDERLY_API_KEY,
+    TENDERLY_USER: env.TENDERLY_USER,
+    TENDERLY_PROJECT: env.TENDERLY_PROJECT,
+    SHERPA_SIMULATION_ENABLED: env.SHERPA_SIMULATION_ENABLED,
+  });
   return {
     chain,
     rpcUrl: env.SHERPA_RPC_URL ?? chain.rpcUrl,
@@ -216,6 +239,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     sentryDsn: obsEnv.SENTRY_DSN,
     sentryEnvironment: obsEnv.SENTRY_ENVIRONMENT ?? 'development',
     cronSecret: obsEnv.CRON_SECRET,
+    tenderlyApiKey: tenderlyEnv.TENDERLY_API_KEY,
+    tenderlyUser: tenderlyEnv.TENDERLY_USER,
+    tenderlyProject: tenderlyEnv.TENDERLY_PROJECT,
+    simulationEnabled: tenderlyEnv.SHERPA_SIMULATION_ENABLED !== 'false',
+    isMainnet: chain.name === 'base-mainnet',
   };
 }
 
