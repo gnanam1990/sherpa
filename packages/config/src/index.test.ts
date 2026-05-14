@@ -46,4 +46,21 @@ describe('loadConfig', () => {
     const cfg = loadConfig({ SMOKE_API_URL: 'https://preview.example.com' });
     expect(cfg.smokeApiUrl).toBe('https://preview.example.com');
   });
+
+  it('loadConfig parses Aave env vars', () => {
+    const cfg = loadConfig({
+      AAVE_POOL_ADDRESS: '0x1234567890abcdef1234567890abcdef12345678',
+    });
+    expect(cfg.aavePoolAddress).toBe('0x1234567890abcdef1234567890abcdef12345678');
+  });
+
+  it('loadConfig treats empty AAVE_POOL_ADDRESS as undefined', () => {
+    const cfg = loadConfig({ AAVE_POOL_ADDRESS: '' });
+    expect(cfg.aavePoolAddress).toBeUndefined();
+  });
+
+  it('loadConfig treats missing AAVE_POOL_ADDRESS as undefined', () => {
+    const cfg = loadConfig({});
+    expect(cfg.aavePoolAddress).toBeUndefined();
+  });
 });

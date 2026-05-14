@@ -142,3 +142,22 @@ export type SwapPlan = {
   /** EIP-5792-ready call sequence: [approve?, swap]. */
   calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
 };
+
+// ── Lend types (Stage 2 — Aave V3) ──────────────────────────────────
+
+export type LendPlan = {
+  type: 'LEND';
+  asset: TokenInfo;
+  /** Amount in base units (e.g. 100 USDC = 100_000_000n). */
+  amount: bigint;
+  /** Current supply APY in basis points. */
+  supplyApyBps: number;
+  /** Aave V3 default variable rate. */
+  interestMode: 'variable';
+  /** Target Aave Pool contract. */
+  pool: { address: Address; chainId: number };
+  /** Unix-seconds deadline. */
+  deadline: number;
+  /** EIP-5792-ready call sequence: [approve?, supply]. */
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};

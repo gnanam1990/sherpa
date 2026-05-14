@@ -96,6 +96,10 @@ export type SherpaConfig = {
   simulationEnabled: boolean;
   /** Whether the current chain is mainnet (derived from chain config). */
   isMainnet: boolean;
+  /** Aave V3 Pool address (optional — LEND gated on this). */
+  aavePoolAddress?: `0x${string}`;
+  /** Aave V3 Data Provider address (optional — for reserve data). */
+  aaveDataProviderAddress?: `0x${string}`;
 };
 
 /**
@@ -186,6 +190,11 @@ const TenderlyEnvSchema = z.object({
   SHERPA_SIMULATION_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).optional()),
 });
 
+const AaveEnvSchema = z.object({
+  AAVE_POOL_ADDRESS: z.preprocess(emptyToUndefined, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional()),
+  AAVE_DATA_PROVIDER_ADDRESS: z.preprocess(emptyToUndefined, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional()),
+});
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   const chain = pickChain(env.SHERPA_CHAIN);
   const dbEnv = DbEnvSchema.parse({
@@ -216,6 +225,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     TENDERLY_PROJECT: env.TENDERLY_PROJECT,
     SHERPA_SIMULATION_ENABLED: env.SHERPA_SIMULATION_ENABLED,
   });
+  const aaveEnv = AaveEnvSchema.parse({
+    AAVE_POOL_ADDRESS: env.AAVE_POOL_ADDRESS,
+    AAVE_DATA_PROVIDER_ADDRESS: env.AAVE_DATA_PROVIDER_ADDRESS,
+  });
   return {
     chain,
     rpcUrl: env.SHERPA_RPC_URL ?? chain.rpcUrl,
@@ -244,6 +257,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     tenderlyProject: tenderlyEnv.TENDERLY_PROJECT,
     simulationEnabled: tenderlyEnv.SHERPA_SIMULATION_ENABLED !== 'false',
     isMainnet: chain.name === 'base-mainnet',
+    aavePoolAddress: aaveEnv.AAVE_POOL_ADDRESS as `0x${string}` | undefined,
+    aaveDataProviderAddress: aaveEnv.AAVE_DATA_PROVIDER_ADDRESS as `0x${string}` | undefined,
   };
 }
 

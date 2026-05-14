@@ -52,6 +52,22 @@ export function resolveToken(symbol: string): TokenInfo | undefined {
   return BY_SYMBOL.get(symbol.toUpperCase());
 }
 
+/**
+ * Receipt tokens (aTokens) are NOT registered here for Stage 2 P3.
+ * When BORROW (P4) adds health factor tracking, aUSDC will be added
+ * with isReceiptToken: true to prevent it from appearing in SWAP/LEND
+ * input token lists.
+ *
+ * Future:
+ * {
+ *   symbol: 'aUSDC',
+ *   address: '<aave-ausdc-address>',
+ *   decimals: 6,
+ *   chainId: BASE_SEPOLIA_CHAIN_ID,
+ *   isReceiptToken: true,
+ * }
+ */
+
 /** All registered tokens. */
 export function allTokens(): readonly TokenInfo[] {
   return TOKENS;

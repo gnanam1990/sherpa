@@ -136,6 +136,67 @@ describe('core/parser', () => {
     const p = parseDeterministic('swap 100 USDC');
     expect(p.intent).toBe('UNKNOWN');
   });
+
+  // ── LEND parsing ────────────────────────────────────────────────────
+
+  it('parses "lend 100 USDC"', () => {
+    const p = parseDeterministic('lend 100 USDC');
+    expect(p.intent).toBe('LEND');
+    expect(p.slots.amount).toBe('100');
+    expect(p.slots.asset).toBe('USDC');
+    expect(p.confidence).toBe(0.9);
+  });
+
+  it('parses "supply 200 USDC"', () => {
+    const p = parseDeterministic('supply 200 USDC');
+    expect(p.intent).toBe('LEND');
+    expect(p.slots.amount).toBe('200');
+    expect(p.slots.asset).toBe('USDC');
+  });
+
+  it('parses "deposit 50 USDC to aave"', () => {
+    const p = parseDeterministic('deposit 50 USDC to aave');
+    expect(p.intent).toBe('LEND');
+    expect(p.slots.amount).toBe('50');
+    expect(p.slots.asset).toBe('USDC');
+  });
+
+  it('parses "deposit 100 USDC into aave"', () => {
+    const p = parseDeterministic('deposit 100 USDC into aave');
+    expect(p.intent).toBe('LEND');
+    expect(p.slots.amount).toBe('100');
+  });
+
+  it('parses "deposit 75 USDC on aave"', () => {
+    const p = parseDeterministic('deposit 75 USDC on aave');
+    expect(p.intent).toBe('LEND');
+  });
+
+  it('parses "deposit 50 USDC in aave"', () => {
+    const p = parseDeterministic('deposit 50 USDC in aave');
+    expect(p.intent).toBe('LEND');
+  });
+
+  it('parses LEND case-insensitively', () => {
+    const p = parseDeterministic('LEND 100 USDC');
+    expect(p.intent).toBe('LEND');
+  });
+
+  it('parses LEND with decimal amounts', () => {
+    const p = parseDeterministic('lend 0.5 USDC');
+    expect(p.intent).toBe('LEND');
+    expect(p.slots.amount).toBe('0.5');
+  });
+
+  it('does NOT parse "deposit 50" as LEND (missing asset and aave)', () => {
+    const p = parseDeterministic('deposit 50');
+    expect(p.intent).toBe('DEPOSIT');
+  });
+
+  it('does NOT parse "lend" without amount as LEND', () => {
+    const p = parseDeterministic('lend USDC');
+    expect(p.intent).toBe('UNKNOWN');
+  });
 });
 
 describe('core/executor', () => {
@@ -327,6 +388,62 @@ describe('core/executor', () => {
     expect(out.ok).toBe(false);
     if (!out.ok) {
       expect(out.error).toMatch(/differ/i);
+    }
+  });
+
+  // ── LEND executor ───────────────────────────────────────────────────
+
+  it('LEND returns graceful error when Aave not configured (default)', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const p = parseDeterministic('lend 100 USDC');
+    const out = await plan(p, { userAddress: me });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/available/i);
+    }
+  });
+
+  it('LEND rejects unsupported asset', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const p = parseDeterministic('lend 100 ETH');
+    const out = await plan(p, { userAddress: me });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/doesn't support ETH/i);
+    }
+  });
+
+  it('LEND requires userAddress', async () => {
+    const p = parseDeterministic('lend 100 USDC');
+    const out = await plan(p);
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/connected wallet/i);
+    }
+  });
+
+  it('LEND plans with configured Aave adapter', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const fakePool = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as const;
+    const { createAave } = await import('@sherpa/tools');
+    const aaveAdapter = createAave({ poolAddress: fakePool });
+
+    const p = parseDeterministic('lend 100 USDC');
+    const out = await plan(p, {
+      userAddress: me,
+      paymasterUrl: 'https://paymaster.test',
+      aave: aaveAdapter,
+    });
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('LEND');
+      expect(out.card.primary_amount_display).toBe('100 USDC');
+      expect(out.card.steps.length).toBe(2);
+      expect(out.card.steps[0]?.kind).toBe('approve');
+      expect(out.card.steps[1]?.kind).toBe('custom');
+      expect(out.card.batch?.calls.length).toBe(2);
+      expect(out.card.gas_display).toMatch(/sponsored/);
+      expect(out.card.secondary_amount_display).toContain('USDC');
     }
   });
 });
