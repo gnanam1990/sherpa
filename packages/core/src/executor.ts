@@ -23,6 +23,8 @@ import {
   type BuyQuote,
 } from '@sherpa/tools';
 import type { ToolAdapter } from '@sherpa/tools';
+import { resolveToken } from '@sherpa/tools';
+import { buildSwapCall, verifySwap } from '@sherpa/tools';
 import type {
   ConfirmationCardProps,
   ExecutionStep,
@@ -92,6 +94,7 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'BET') return planBet(parsed, deps);
   if (parsed.intent === 'BUY') return planBuy(parsed, deps);
   if (parsed.intent === 'DEPOSIT') return planDeposit(parsed, deps);
+  if (parsed.intent === 'SWAP') return planSwap(parsed, deps);
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,
@@ -360,6 +363,104 @@ async function planSend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
       estimated_completion_ms: 4_000,
     },
   };
+}
+
+async function planSwap(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const fromAmount = typeof slots.fromAmount === 'string' ? slots.fromAmount : '';
+  const fromAsset = typeof slots.fromAsset === 'string' ? slots.fromAsset.toUpperCase() : '';
+  const toAsset = typeof slots.toAsset === 'string' ? slots.toAsset.toUpperCase() : '';
+  const slippagePct = typeof slots.slippagePct === 'number' ? slots.slippagePct : undefined;
+
+  if (!fromAmount || !fromAsset || !toAsset) {
+    return { ok: false, error: 'missing slots: fromAmount/fromAsset/toAsset' };
+  }
+  if (fromAsset === toAsset) {
+    return { ok: false, error: 'fromAsset and toAsset must differ' };
+  }
+
+  const fromToken = resolveToken(fromAsset);
+  const toToken = resolveToken(toAsset);
+  if (!fromToken) {
+    return { ok: false, error: `Sherpa doesn't know about ${fromAsset} yet. Try USDC, ETH, or WETH.` };
+  }
+  if (!toToken) {
+    return { ok: false, error: `Sherpa doesn't know about ${toAsset} yet. Try USDC, ETH, or WETH.` };
+  }
+
+  // Slippage validation
+  let slippageBps = 50; // default 0.5%
+  if (slippagePct !== undefined) {
+    if (slippagePct < 0.1) {
+      return { ok: false, error: 'Slippage must be at least 0.1%.' };
+    }
+    slippageBps = Math.round(slippagePct * 100);
+  }
+
+  if (!deps.userAddress) {
+    return { ok: false, error: 'SWAP requires a connected wallet.' };
+  }
+
+  // Guard: Aerodrome not configured → graceful error (not a crash)
+  try {
+    const result = await buildSwapCall(
+      fromAsset as 'USDC' | 'ETH',
+      toAsset as 'USDC' | 'ETH',
+      fromAmount,
+      deps.userAddress,
+      { pyth: false, slippageBps },
+    );
+
+    const verified = await verifySwap({ to: result.to, data: result.data, value: result.value, sponsorable: result.sponsorable });
+    if (!verified.ok) return { ok: false, error: `tx verify failed: ${verified.reason}` };
+
+    const warnings: string[] = [];
+    if (slippageBps > 500) {
+      warnings.push(`High slippage tolerance (${(slippageBps / 100).toFixed(1)}%). Price may move significantly.`);
+    }
+
+    // Build steps: approve (if ERC-20) + swap
+    const steps: ExecutionStep[] = [];
+    if (fromAsset !== 'ETH') {
+      const approve = buildApproveCall(result.to, result.quote.amountInBaseUnits);
+      steps.push({
+        kind: 'approve',
+        to: approve.to,
+        data: approve.data,
+        value: approve.value,
+        label: `Approve ${fromAmount} ${fromAsset} for Aerodrome`,
+      });
+    }
+    steps.push({
+      kind: 'swap',
+      to: result.to,
+      data: result.data,
+      value: result.value,
+      label: `Swap ${fromAmount} ${fromAsset} → ${toAsset}`,
+    });
+
+    const q = result.quote;
+    return {
+      ok: true,
+      card: {
+        intent: 'SWAP',
+        primary_action_label: 'Swap',
+        primary_amount_display: `${fromAmount} ${fromAsset}`,
+        secondary_amount_display: q.display,
+        steps,
+        batch: envelopeFor(steps, deps),
+        gas_display: gasDisplay(steps, deps),
+        warnings,
+        estimated_completion_ms: 6_000,
+      },
+    };
+  } catch (err) {
+    const msg = (err as Error).message;
+    if (msg.includes('not yet configured') || msg.includes('not configured')) {
+      return { ok: false, error: "SWAP isn't available on this network yet." };
+    }
+    return { ok: false, error: msg };
+  }
 }
 
 async function runRings(

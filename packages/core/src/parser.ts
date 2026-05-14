@@ -44,6 +44,10 @@ const BALANCE_RE =
   /^(?:(?:what(?:[’']s|\s+is)\s+my\s+)|(?:show(?:\s+me)?\s+my\s+))?balance\??\s*$/i;
 const HISTORY_RE =
   /^(?:show\s+)?(?:my\s+)?(?:last\s+(\d+)\s+)?(?:recent\s+)?(?:tx|txs|transactions|history)\s*$/i;
+// SWAP: "swap 100 USDC for ETH", "convert 0.5 ETH to USDC", "trade 50 USDC to ETH"
+// Optional slippage suffix: "with 1% slippage"
+const SWAP_RE =
+  /^(?:swap|convert|trade)\s+([\d.]+)\s+(\w+)\s+(?:for|to|→|->)\s+(\w+)(?:\s+with\s+([\d.]+)%\s+slippage)?\s*$/i;
 
 function make(
   intent: Intent,
@@ -105,6 +109,21 @@ export function parseDeterministic(input: string): ParsedIntent {
 
   if ((m = raw.match(HISTORY_RE))) {
     return make('HISTORY', raw, { limit: m[1] ? Number(m[1]) : 10 }, 0.9);
+  }
+
+  if ((m = raw.match(SWAP_RE))) {
+    const slippage = m[4] ? Number(m[4]) : undefined;
+    return make(
+      'SWAP',
+      raw,
+      {
+        fromAmount: m[1],
+        fromAsset: (m[2] ?? '').toUpperCase(),
+        toAsset: (m[3] ?? '').toUpperCase(),
+        ...(slippage !== undefined ? { slippagePct: slippage } : {}),
+      },
+      0.9,
+    );
   }
 
   return make('UNKNOWN', raw, {}, 0);

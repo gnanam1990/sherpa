@@ -35,3 +35,20 @@ export function formatSimulationError(result: {
   if (result.ok || !result.errorCode) return undefined;
   return simulationErrorMessage(result.errorCode);
 }
+
+// ── SWAP-specific error messages ───────────────────────────────────────
+
+export const SWAP_ERRORS = {
+  TOKEN_NOT_FOUND: (symbol: string) =>
+    `Sherpa doesn't know about ${symbol} yet. Try USDC, ETH, or WETH.`,
+  PRICE_IMPACT_HIGH: (impactPct: string) =>
+    `This swap has high price impact (${impactPct}%). Reduce amount or try a different pair.`,
+  POOL_NOT_FOUND: (from: string, to: string) =>
+    `Aerodrome doesn't have a pool for ${from}/${to} on this network.`,
+  NETWORK_NOT_SUPPORTED: () =>
+    "SWAP isn't available on this network yet.",
+  SLIPPAGE_TOO_LOW: () =>
+    'Slippage must be at least 0.1%.',
+  SLIPPAGE_HIGH: (pct: string) =>
+    `High slippage tolerance (${pct}%). Price may move significantly.`,
+} as const;

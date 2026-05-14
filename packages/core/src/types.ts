@@ -1,4 +1,5 @@
 import type { Address } from '@sherpa/safety';
+import type { TokenInfo } from '@sherpa/tools';
 
 /** Stage-1+ supported intents. Keep in sync with the parser. */
 export type Intent =
@@ -110,3 +111,34 @@ export type SimulationResult =
       errorCode: SimulationErrorCode;
       errorMessage: string;
     };
+
+// ── Swap types (Stage 2 — Aerodrome) ──────────────────────────────────
+
+export type SwapRoute = {
+  provider: 'aerodrome';
+  /** Direct or multi-hop pool path. Single-hop = 1 entry. */
+  pools: Array<{ address: Address; stable: boolean }>;
+  /** true for stable-stable pools (USDC/USDT), false for volatile (USDC/ETH). */
+  stable: boolean;
+};
+
+export type SwapPlan = {
+  type: 'SWAP';
+  fromAsset: TokenInfo;
+  toAsset: TokenInfo;
+  /** Amount of fromAsset in base units (e.g. 100 USDC = 100_000_000n). */
+  fromAmount: bigint;
+  /** Minimum output after slippage (user receives at least this). */
+  minOutAmount: bigint;
+  /** Expected output before slippage. */
+  expectedOutAmount: bigint;
+  route: SwapRoute;
+  /** Slippage tolerance in basis points (50 = 0.5%). */
+  slippageBps: number;
+  /** Price impact in basis points. Warning if > 100 (1%). */
+  priceImpactBps: number;
+  /** Unix-seconds deadline (typically now + 20min). */
+  deadline: number;
+  /** EIP-5792-ready call sequence: [approve?, swap]. */
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};

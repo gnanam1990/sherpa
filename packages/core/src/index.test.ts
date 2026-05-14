@@ -74,6 +74,68 @@ describe('core/parser', () => {
     expect(p.intent).toBe('UNKNOWN');
     expect(p.confidence).toBe(0);
   });
+
+  // ── SWAP parsing ────────────────────────────────────────────────────
+
+  it('parses "swap 100 USDC for ETH"', () => {
+    const p = parseDeterministic('swap 100 USDC for ETH');
+    expect(p.intent).toBe('SWAP');
+    expect(p.slots.fromAmount).toBe('100');
+    expect(p.slots.fromAsset).toBe('USDC');
+    expect(p.slots.toAsset).toBe('ETH');
+    expect(p.confidence).toBe(0.9);
+  });
+
+  it('parses "convert 0.5 ETH to USDC"', () => {
+    const p = parseDeterministic('convert 0.5 ETH to USDC');
+    expect(p.intent).toBe('SWAP');
+    expect(p.slots.fromAmount).toBe('0.5');
+    expect(p.slots.fromAsset).toBe('ETH');
+    expect(p.slots.toAsset).toBe('USDC');
+  });
+
+  it('parses "trade 50 USDC to ETH"', () => {
+    const p = parseDeterministic('trade 50 USDC to ETH');
+    expect(p.intent).toBe('SWAP');
+    expect(p.slots.fromAmount).toBe('50');
+  });
+
+  it('parses SWAP with arrow syntax ("swap 10 USDC → ETH")', () => {
+    const p = parseDeterministic('swap 10 USDC → ETH');
+    expect(p.intent).toBe('SWAP');
+    expect(p.slots.fromAmount).toBe('10');
+    expect(p.slots.toAsset).toBe('ETH');
+  });
+
+  it('parses SWAP with slippage suffix', () => {
+    const p = parseDeterministic('swap 100 USDC for ETH with 1% slippage');
+    expect(p.intent).toBe('SWAP');
+    expect(p.slots.fromAmount).toBe('100');
+    expect(p.slots.slippagePct).toBe(1);
+  });
+
+  it('parses SWAP case-insensitively', () => {
+    const p = parseDeterministic('SWAP 100 USDC FOR ETH');
+    expect(p.intent).toBe('SWAP');
+    expect(p.slots.fromAsset).toBe('USDC');
+  });
+
+  it('parses SWAP with decimal amounts', () => {
+    const p = parseDeterministic('swap 0.001 ETH for USDC');
+    expect(p.intent).toBe('SWAP');
+    expect(p.slots.fromAmount).toBe('0.001');
+    expect(p.slots.fromAsset).toBe('ETH');
+  });
+
+  it('does NOT match incomplete SWAP ("swap USDC for ETH" — missing amount)', () => {
+    const p = parseDeterministic('swap USDC for ETH');
+    expect(p.intent).toBe('UNKNOWN');
+  });
+
+  it('does NOT match SWAP with missing toAsset ("swap 100 USDC")', () => {
+    const p = parseDeterministic('swap 100 USDC');
+    expect(p.intent).toBe('UNKNOWN');
+  });
 });
 
 describe('core/executor', () => {
@@ -205,6 +267,67 @@ describe('core/executor', () => {
     if (!out.ok) return;
     expect(out.card.batch?.capabilities?.paymasterService).toBeUndefined();
     expect(out.card.gas_display).not.toMatch(/sponsored/);
+  });
+
+  // ── SWAP executor ───────────────────────────────────────────────────
+
+  it('SWAP returns graceful error when Aerodrome not configured (default)', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const p = parseDeterministic('swap 100 USDC for ETH');
+    const out = await plan(p, { userAddress: me });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/available/i);
+    }
+  });
+
+  it('SWAP rejects unknown fromAsset', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const p = parseDeterministic('swap 100 DAI for ETH');
+    const out = await plan(p, { userAddress: me });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/doesn't know about DAI/i);
+    }
+  });
+
+  it('SWAP rejects unknown toAsset', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const p = parseDeterministic('swap 100 USDC for SOL');
+    const out = await plan(p, { userAddress: me });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/doesn't know about SOL/i);
+    }
+  });
+
+  it('SWAP requires userAddress', async () => {
+    const p = parseDeterministic('swap 100 USDC for ETH');
+    const out = await plan(p);
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/connected wallet/i);
+    }
+  });
+
+  it('SWAP rejects slippage below 0.1%', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const p = parseDeterministic('swap 100 USDC for ETH with 0.05% slippage');
+    const out = await plan(p, { userAddress: me });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/0\.1%/i);
+    }
+  });
+
+  it('SWAP rejects same from/to asset', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const p = parseDeterministic('swap 100 USDC for USDC');
+    const out = await plan(p, { userAddress: me });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/differ/i);
+    }
   });
 });
 
