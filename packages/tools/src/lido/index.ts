@@ -5,9 +5,9 @@ export { STUB_EXCHANGE_RATE, DEFAULT_DEADLINE_SECONDS, LIDO_STETH_ADDRESS } from
 export { STETH_ABI, SUBMIT_SELECTOR } from './steth.js';
 export type { LidoStakeParams, LidoStakeQuote, LidoDeps } from './types.js';
 
-import { assertAllowlisted, type Address } from '@sherpa/safety';
+import type { Address } from '@sherpa/safety';
 import type { ToolAdapter, BuiltTx } from '../types.js';
-import { LidoNotConfiguredError, quote as doQuote } from './quoter.js';
+import { quote as doQuote } from './quoter.js';
 import { buildStakeCall } from './stake-builder.js';
 import { verifyStake } from './verify.js';
 import type { LidoDeps, LidoStakeParams, LidoStakeQuote } from './types.js';

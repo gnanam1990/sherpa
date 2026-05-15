@@ -170,7 +170,7 @@ async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
   // 1. Search Limitless first
   let provider: 'limitless' | 'polyforge' = 'limitless';
   let marketId: `0x${string}` | undefined;
-  let marketQuestion = predicate;
+  let _marketQuestion = predicate;
 
   if (lim.factoryAddress) {
     try {
@@ -178,7 +178,7 @@ async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
       const best = limitlessMarkets[0];
       if (best) {
         marketId = best.id;
-        marketQuestion = best.title || predicate;
+        _marketQuestion = best.title || predicate;
       }
     } catch {
       // Limitless search failed — fall through to PolyForge
@@ -193,7 +193,7 @@ async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
       if (best) {
         provider = 'polyforge';
         marketId = best.id as `0x${string}`;
-        marketQuestion = best.question || predicate;
+        _marketQuestion = best.question || predicate;
       }
     } catch {
       // PolyForge search failed — fall through to error
@@ -778,7 +778,7 @@ async function planBorrow(parsed: ParsedIntent, deps: ExecutorDeps): Promise<Pla
   }
 }
 
-async function planDca(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+async function planDca(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
   const slots = parsed.slots;
   const dcaAmount = typeof slots.dcaAmount === 'string' ? slots.dcaAmount : '';
   const dcaAsset = typeof slots.dcaAsset === 'string' ? slots.dcaAsset : 'ETH';

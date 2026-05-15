@@ -1,5 +1,4 @@
 import type { Address } from '@sherpa/safety';
-import type { TokenInfo } from '../registry.js';
 
 export type LidoStakeParams = {
   amount: bigint;

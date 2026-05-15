@@ -1,6 +1,4 @@
-export type AavePositionConfig = {
-  /** Future: inject pool address, RPC client, etc. */
-};
+export type AavePositionConfig = Record<string, never>;
 
 export async function getHealthFactor(
   _address: string,

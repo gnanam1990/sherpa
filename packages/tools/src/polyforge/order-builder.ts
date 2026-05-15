@@ -1,6 +1,6 @@
 import type { PolyForgeMarket } from './types.js';
 
-export function buildPolyForgeOrder(params: {
+export function buildPolyForgeOrder(_params: {
   market: PolyForgeMarket;
   side: 'YES' | 'NO';
   amount: bigint;

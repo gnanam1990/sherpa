@@ -82,17 +82,17 @@ export async function resolveFarcasterUser(
 }
 
 export async function resolveFidToAddress(
-  fid: number,
-  deps: { neynarApiKey?: string },
+  _fid: number,
+  _deps: { neynarApiKey?: string },
 ): Promise<`0x${string}` | null> {
   // Stub: get verified ETH address for FID
   return null;
 }
 
 export async function sendFarcasterNotification(
-  fid: number,
-  message: string,
-  deps: { neynarApiKey?: string },
+  _fid: number,
+  _message: string,
+  _deps: { neynarApiKey?: string },
 ): Promise<boolean> {
   // Stub: send notification via Neynar
   return false;

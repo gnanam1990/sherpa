@@ -1,4 +1,3 @@
-import type { Address } from '@sherpa/safety';
 import type { BuiltTx, VerifyResult } from '../types.js';
 import { SUBMIT_SELECTOR } from './steth.js';
 import type { LidoDeps } from './types.js';

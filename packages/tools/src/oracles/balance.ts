@@ -1,6 +1,4 @@
-export type BalanceOracleConfig = {
-  /** Future: inject PublicClient, RPC URL, etc. */
-};
+export type BalanceOracleConfig = Record<string, never>;
 
 export async function getBalance(
   _address: string,
