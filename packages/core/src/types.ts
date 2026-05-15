@@ -18,6 +18,11 @@ export type Intent =
   | 'DCA'
   | 'ALERT'
   | 'AUTO_REPAY'
+  | 'POLL'
+  | 'TIP'
+  | 'COLLECT'
+  | 'TIME_LOCK'
+  | 'AUTO_REBALANCE'
   | 'UNKNOWN';
 
 export type ParsedIntent = {
@@ -290,6 +295,21 @@ export type BetPlan = {
   calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
 };
 
+// ── Tip types (Stage 3 — Farcaster Tipping) ──────────────────────────
+
+export type TipPlan = {
+  type: 'TIP';
+  asset: TokenInfo;
+  amount: bigint;
+  recipient: {
+    farcasterUsername: string;
+    fid?: number;
+    address?: `0x${string}`;
+  };
+  deadline: number;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
 // ── DCA types (Stage 4 — Scheduled Buys) ─────────────────────────────
 
 export type DCASchedule = {
@@ -348,4 +368,57 @@ export type AutoRepayRule = {
   lastEvaluatedAt?: number;
   lastTriggeredAt?: number;
   authorizationTxHash?: string;
+};
+
+// ── Poll types (Stage 3 — Farcaster) ──────────────────────────────────
+
+export type PollPlan = {
+  type: 'POLL';
+  question: string;
+  options: string[];
+  duration?: number; // hours
+  channelId?: string; // Farcaster channel
+  // No on-chain calls — polls are off-chain Farcaster casts
+  calls: []; // always empty
+};
+
+// ── Collect types (Stage 3 — Zora) ────────────────────────────────────
+
+export type CollectPlan = {
+  type: 'COLLECT';
+  target: string; // Zora URL or collection address
+  quantity: number;
+  pricePerUnit: bigint;
+  totalPrice: bigint;
+  collection?: {
+    address: `0x${string}`;
+    name: string;
+    chainId: number;
+  };
+  deadline: number;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Time Lock types (Stage 4 — Scheduled Execution) ────────────────────
+
+export type TimeLockPlan = {
+  type: 'TIME_LOCK';
+  action: string;
+  scheduledTime: number;
+  asset?: TokenInfo;
+  amount?: bigint;
+  recipient?: `0x${string}`;
+  recurring: boolean;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Auto-Rebalance types (Stage 4 — Portfolio Rebalancing) ──────────────
+
+export type AutoRebalancePlan = {
+  type: 'AUTO_REBALANCE';
+  currentAllocation: Array<{ asset: TokenInfo; percent: number; value: bigint }>;
+  targetAllocation: Array<{ asset: TokenInfo; percent: number }>;
+  rebalanceActions: Array<{ from: string; to: string; amount: bigint }>;
+  threshold: number;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
 };

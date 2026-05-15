@@ -328,6 +328,47 @@ describe('core/parser', () => {
     expect(p.slots.amount1).toBe('50');
   });
 
+  // ── TIP parsing ────────────────────────────────────────────────────
+
+  describe('TIP intent', () => {
+    test('parses "tip $5 to @vitalik"', () => {
+      const result = parseDeterministic('tip $5 to @vitalik');
+      expect(result.intent).toBe('TIP');
+      expect(result.slots.tipAmount).toBe('5');
+      expect(result.slots.tipRecipient).toBe('vitalik');
+    });
+
+    test('parses "tip 10 USDC to @alice"', () => {
+      const result = parseDeterministic('tip 10 USDC to @alice');
+      expect(result.intent).toBe('TIP');
+      expect(result.slots.tipAmount).toBe('10');
+      expect(result.slots.tipAsset).toBe('USDC');
+      expect(result.slots.tipRecipient).toBe('alice');
+    });
+
+    test('parses "send $20 to @bob on farcaster"', () => {
+      const result = parseDeterministic('send $20 to @bob on farcaster');
+      expect(result.intent).toBe('TIP');
+      expect(result.slots.tipAmount).toBe('20');
+      expect(result.slots.tipRecipient).toBe('bob');
+    });
+  });
+
+  // ── POLL parsing ───────────────────────────────────────────────────
+
+  describe('POLL intent', () => {
+    test('parses "create poll: What is your favorite L2?"', () => {
+      const result = parseDeterministic('create poll: What is your favorite L2?');
+      expect(result.intent).toBe('POLL');
+      expect(result.slots.pollQuestion).toContain('favorite L2');
+    });
+
+    test('parses "poll: ETH or BTC?"', () => {
+      const result = parseDeterministic('poll: ETH or BTC?');
+      expect(result.intent).toBe('POLL');
+    });
+  });
+
   // ── BET parsing ────────────────────────────────────────────────────
 
   it('parses "bet 10 USDC on YES for Will BTC hit 200k"', () => {
@@ -354,6 +395,45 @@ describe('core/parser', () => {
     const p = parseDeterministic('BET 10 usdc on yes for test market');
     expect(p.intent).toBe('BET');
     expect(p.slots.betAmount).toBe('10');
+  });
+
+  // ── TIME_LOCK parsing ─────────────────────────────────────────────
+
+  describe('TIME_LOCK intent', () => {
+    test('parses "schedule send 0.1 ETH to vitalik in 2 hours"', () => {
+      const result = parseDeterministic('schedule send 0.1 ETH to vitalik in 2 hours');
+      expect(result.intent).toBe('TIME_LOCK');
+      expect(result.slots.scheduledAmount).toBe('0.1');
+      expect(result.slots.scheduledAsset).toBe('ETH');
+      expect(result.slots.scheduledRecipient).toBe('vitalik');
+      expect(result.slots.scheduledTime).toBe('2 hours');
+      expect(result.slots.scheduledAction).toBe('send');
+      expect(result.confidence).toBe(0.9);
+    });
+
+    test('parses "time lock transfer 100 USDC to alice in 1 day"', () => {
+      const result = parseDeterministic('time lock transfer 100 USDC to alice in 1 day');
+      expect(result.intent).toBe('TIME_LOCK');
+      expect(result.slots.scheduledAction).toContain('transfer');
+      expect(result.slots.scheduledTime).toContain('1 day');
+    });
+
+    test('parses "schedule swap 50 USDC for ETH in 30 minutes"', () => {
+      const result = parseDeterministic('schedule swap 50 USDC for ETH in 30 minutes');
+      expect(result.intent).toBe('TIME_LOCK');
+      expect(result.slots.scheduledAction).toContain('swap');
+      expect(result.slots.scheduledTime).toContain('30 minutes');
+    });
+
+    test('parses "timelock send 5 ETH to bob in 3 days"', () => {
+      const result = parseDeterministic('timelock send 5 ETH to bob in 3 days');
+      expect(result.intent).toBe('TIME_LOCK');
+    });
+
+    test('TIME_LOCK is case-insensitive', () => {
+      const result = parseDeterministic('SCHEDULE SEND 1 ETH to alice in 1 hour');
+      expect(result.intent).toBe('TIME_LOCK');
+    });
   });
 
   // ── ALERT parsing ───────────────────────────────────────────────────
@@ -425,6 +505,26 @@ describe('core/parser', () => {
     });
   });
 
+  // ── COLLECT parsing ────────────────────────────────────────────────
+
+  describe('COLLECT intent', () => {
+    test('parses "collect https://zora.co/collect/abc123"', () => {
+      const result = parseDeterministic('collect https://zora.co/collect/abc123');
+      expect(result.intent).toBe('COLLECT');
+      expect(result.slots.collectUrl).toContain('zora');
+    });
+
+    test('parses "mint 1 of the NFT collection"', () => {
+      const result = parseDeterministic('mint 1 of the NFT collection');
+      expect(result.intent).toBe('COLLECT');
+    });
+
+    test('parses "collect post at 0x1234"', () => {
+      const result = parseDeterministic('collect post at 0x1234');
+      expect(result.intent).toBe('COLLECT');
+    });
+  });
+
   // ── DCA parsing ────────────────────────────────────────────────────
 
   describe('DCA intent', () => {
@@ -461,6 +561,36 @@ describe('core/parser', () => {
       expect(result.slots.dcaAmount).toBe('50');
       expect(result.slots.dcaAsset).toBe('ETH');
       expect(result.slots.frequency).toBe('daily');
+    });
+  });
+
+  // ── AUTO_REBALANCE parsing ──────────────────────────────────────────
+
+  describe('AUTO_REBALANCE intent', () => {
+    test('parses "rebalance my portfolio"', () => {
+      const result = parseDeterministic('rebalance my portfolio');
+      expect(result.intent).toBe('AUTO_REBALANCE');
+      expect(result.confidence).toBe(0.85);
+    });
+
+    test('parses "auto rebalance my holdings"', () => {
+      const result = parseDeterministic('auto rebalance my holdings');
+      expect(result.intent).toBe('AUTO_REBALANCE');
+    });
+
+    test('parses "rebalance so that ETH is 60%"', () => {
+      const result = parseDeterministic('rebalance so that ETH is 60%');
+      expect(result.intent).toBe('AUTO_REBALANCE');
+      expect(result.slots.rebalanceTarget).toBe('ETH');
+      expect(result.slots.rebalancePercent).toBe('60');
+      expect(result.confidence).toBe(0.9);
+    });
+
+    test('parses "rebalance to USDC equals 50"', () => {
+      const result = parseDeterministic('rebalance to USDC equals 50');
+      expect(result.intent).toBe('AUTO_REBALANCE');
+      expect(result.slots.rebalanceTarget).toBe('USDC');
+      expect(result.slots.rebalancePercent).toBe('50');
     });
   });
 });

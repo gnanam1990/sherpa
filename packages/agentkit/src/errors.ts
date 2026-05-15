@@ -135,3 +135,45 @@ export const AUTO_REPAY_ERRORS = {
   MAX_REPAY_EXCEEDED: () => 'Max repay per execution exceeds your available balance.',
   AUTO_REPAY_NOT_AVAILABLE: () => "AUTO_REPAY isn't available on this network yet.",
 } as const;
+
+// ── TIP-specific error messages ──────────────────────────────────────
+
+export const TIP_ERRORS = {
+  RECIPIENT_NOT_FOUND: () => 'Could not find that Farcaster user.',
+  RECIPIENT_NO_WALLET: () => "Recipient hasn't linked a wallet yet.",
+  TIP_AMOUNT_TOO_LARGE: () => 'Tip amount exceeds maximum ($1000).',
+} as const;
+
+// ── POLL-specific error messages ─────────────────────────────────────
+
+export const POLL_ERRORS = {
+  NO_QUESTION: () => 'Poll question is required.',
+  TOO_MANY_OPTIONS: () => 'Polls support a maximum of 8 options.',
+} as const;
+
+// ── COLLECT-specific error messages ───────────────────────────────────
+
+export const COLLECT_ERRORS = {
+  COLLECTION_NOT_FOUND: () => 'Could not find that Zora collection.',
+  MINT_NOT_ACTIVE: () => 'This collection is not currently minting.',
+  QUANTITY_EXCEEDED: () => 'Requested quantity exceeds maximum per transaction.',
+  INSUFFICIENT_FUNDS: () => 'Not enough ETH to cover mint price + gas.',
+} as const;
+
+// ── TIME_LOCK-specific error messages ────────────────────────────────
+
+export const TIME_LOCK_ERRORS = {
+  INVALID_TIME: () => 'Scheduled time must be in the future.',
+  MIN_DELAY_NOT_MET: () => 'Minimum delay not met.',
+  ACTION_NOT_SUPPORTED: () => 'This action cannot be scheduled.',
+  MAX_SCHEDULES_REACHED: () => 'Maximum number of scheduled actions reached (100).',
+} as const;
+
+// ── AUTO_REBALANCE-specific error messages ──────────────────────────────
+
+export const AUTO_REBALANCE_ERRORS = {
+  NO_PORTFOLIO: () => 'No portfolio data available for rebalancing.',
+  DRIFT_TOO_LARGE: () => 'Portfolio drift exceeds maximum. Manual review required.',
+  INSUFFICIENT_LIQUIDITY: () => 'Not enough liquidity to rebalance.',
+  REBALANCE_FAILED: () => 'Rebalancing failed. Please try again.',
+} as const;

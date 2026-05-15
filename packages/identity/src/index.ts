@@ -35,6 +35,10 @@ export {
   linkFidToSmartWallet,
   getSmartWalletForFid,
   type FidSmartWalletLink,
+  type FarcasterUser,
+  resolveFarcasterUser,
+  resolveFidToAddress,
+  sendFarcasterNotification,
 } from './farcaster.js';
 
 export type CreateResolverOptions = {

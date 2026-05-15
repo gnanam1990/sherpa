@@ -116,6 +116,11 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'DCA') return planDca(parsed, deps);
   if (parsed.intent === 'ALERT') return planAlert(parsed, deps);
   if (parsed.intent === 'AUTO_REPAY') return planAutoRepay(parsed, deps);
+  if (parsed.intent === 'TIP') return planTip(parsed, deps);
+  if (parsed.intent === 'POLL') return planPoll(parsed, deps);
+  if (parsed.intent === 'COLLECT') return planCollect(parsed, deps);
+  if (parsed.intent === 'TIME_LOCK') return planTimeLock(parsed, deps);
+  if (parsed.intent === 'AUTO_REBALANCE') return planAutoRebalance(parsed, deps);
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,
@@ -854,6 +859,128 @@ async function planAutoRepay(parsed: ParsedIntent, _deps: ExecutorDeps): Promise
         maxRepayPerExecution,
         repaySource,
       },
+    },
+  };
+}
+
+async function planTip(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const amount = typeof slots.tipAmount === 'string' ? slots.tipAmount : typeof slots.amount === 'string' ? slots.amount : '';
+  const recipient = typeof slots.tipRecipient === 'string' ? slots.tipRecipient : '';
+
+  if (!amount || !recipient) {
+    return { ok: false, error: 'Missing tip amount or recipient.' };
+  }
+
+  const recipientAddress = null; // TODO: resolve Farcaster user to address
+
+  return {
+    ok: true,
+    card: {
+      intent: 'TIP',
+      primary_action_label: 'Send Tip',
+      primary_amount_display: `$${amount}`,
+      secondary_amount_display: `to @${recipient}`,
+      steps: [], // Will be filled when address is resolved
+      batch: undefined,
+      gas_display: 'sponsored',
+      warnings: recipientAddress ? [] : ['Recipient address not resolved. They may need to link their wallet.'],
+      estimated_completion_ms: 6000,
+    },
+  };
+}
+
+async function planPoll(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const question = typeof slots.pollQuestion === 'string' ? slots.pollQuestion : '';
+
+  if (!question) {
+    return { ok: false, error: 'Missing poll question.' };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'POLL',
+      primary_action_label: 'Create Poll',
+      primary_amount_display: question,
+      secondary_amount_display: slots.pollOptions ? `${(slots.pollOptions as string[]).length} options` : 'Open poll',
+      steps: [], // No on-chain calls
+      batch: undefined,
+      gas_display: 'free',
+      warnings: [],
+      estimated_completion_ms: 0,
+    },
+  };
+}
+
+async function planCollect(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const target = typeof slots.collectUrl === 'string'
+    ? slots.collectUrl
+    : typeof slots.collectTarget === 'string'
+      ? slots.collectTarget
+      : '';
+  const quantity = slots.collectAmount ? Number(slots.collectAmount) : 1;
+
+  if (!target) {
+    return { ok: false, error: 'Missing collect target (URL or collection name).' };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'COLLECT',
+      primary_action_label: 'Collect',
+      primary_amount_display: `${quantity} NFT`,
+      secondary_amount_display: target,
+      steps: [],
+      batch: undefined,
+      gas_display: 'sponsored',
+      warnings: ['Zora collection not resolved. Verify the URL before confirming.'],
+      estimated_completion_ms: 6000,
+    },
+  };
+}
+
+async function planTimeLock(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const action = typeof slots.scheduledAction === 'string' ? slots.scheduledAction : '';
+  const time = typeof slots.scheduledTime === 'string' ? slots.scheduledTime : '';
+
+  if (!action || !time) {
+    return { ok: false, error: 'Missing scheduled action or time.' };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'TIME_LOCK',
+      primary_action_label: 'Schedule',
+      primary_amount_display: action,
+      secondary_amount_display: `at ${time}`,
+      steps: [],
+      batch: undefined,
+      gas_display: 'sponsored',
+      warnings: [],
+      estimated_completion_ms: 6000,
+    },
+  };
+}
+
+async function planAutoRebalance(_parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  return {
+    ok: true,
+    card: {
+      intent: 'AUTO_REBALANCE',
+      primary_action_label: 'Rebalance Portfolio',
+      primary_amount_display: 'Portfolio',
+      secondary_amount_display: 'Rebalancing',
+      steps: [],
+      batch: undefined,
+      gas_display: 'sponsored',
+      warnings: ['Portfolio rebalancing may incur swap fees.'],
+      estimated_completion_ms: 30000,
     },
   };
 }

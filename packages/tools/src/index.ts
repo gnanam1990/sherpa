@@ -81,3 +81,7 @@ export { searchMarkets as searchPolyForgeMarkets, PolyForgeNotConfiguredError, b
 export type { PolyForgeMarket, PolyForgeSearchParams, PolyForgeDeps } from './polyforge/index.js';
 export { getPrice, getBalance, getHealthFactor } from './oracles/index.js';
 export type { PriceOracleConfig, BalanceOracleConfig, AavePositionConfig } from './oracles/index.js';
+export { buildTipCall, resolveFarcasterAddress, buildPollCast } from './farcaster/index.js';
+export type { TipParams, TipQuote, NeynarDeps, ResolvedFarcasterUser, PollParams } from './farcaster/index.js';
+export { ZoraNotConfiguredError, resolveCollection, searchCollections, buildMintCall } from './zora/index.js';
+export type { ZoraCollection, ZoraMintParams, ZoraMintQuote, ZoraDeps } from './zora/index.js';

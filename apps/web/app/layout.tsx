@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Providers } from './providers';
-import '@rainbow-me/rainbowkit/styles.css';
 import './globals.css';
 
 export const metadata: Metadata = {
