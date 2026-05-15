@@ -252,3 +252,32 @@ export const SECURITY_ERRORS = {
   THRESHOLD_INVALID: () => 'Multi-sig threshold must be between 1 and number of signers.',
   DAILY_LIMIT_EXCEEDED: (limit: string) => `Daily spend limit ($${limit}) exceeded.`,
 } as const;
+
+// ── AI_AGENT-specific error messages ────────────────────────────────────
+
+export const AI_AGENT_ERRORS = {
+  MEMORY_NOT_FOUND: (query: string) => `No memories found matching "${query}".`,
+  PLAN_FAILED: (reason: string) => `Failed to create plan: ${reason}`,
+  INVALID_GOAL: () => 'Goal description is required for planning.',
+  EXPLANATION_NOT_FOUND: (topic: string) => `No explanation available for "${topic}".`,
+  CONTEXT_UNAVAILABLE: () => 'AI context is not available. Connect wallet first.',
+} as const;
+
+// ── COMPOSABLE-specific error messages ─────────────────────────────────
+
+// ── RISK-specific error messages ─────────────────────────────────────
+
+export const RISK_ERRORS = {
+  NO_PORTFOLIO: () => 'No portfolio data available for risk assessment.',
+  HIGH_RISK_BLOCKED: (risk: string) => `Operation blocked due to ${risk} risk.`,
+  HEDGE_FAILED: (reason: string) => `Hedge operation failed: ${reason}`,
+  EXPOSURE_LIMIT_EXCEEDED: (asset: string, limit: string) => `Exposure to ${asset} exceeds limit (${limit}%).`,
+} as const;
+
+export const COMPOSABLE_ERRORS = {
+  FLASH_LOAN_REPAY_FAILED: () => 'Flash loan must be repaid in the same transaction.',
+  LEVERAGE_TOO_HIGH: (max: number) => `Leverage ratio exceeds maximum (${max}x).`,
+  LIQUIDATION_RISK: (hf: string) => `This operation would drop health factor to ${hf}. High liquidation risk.`,
+  INVALID_COMPOSITION: () => 'Invalid strategy composition.',
+  STEP_FAILED: (step: number) => `Strategy step ${step} failed.`,
+} as const;

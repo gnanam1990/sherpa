@@ -169,6 +169,9 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'NOTIFICATION') return planNotification(parsed, deps);
   if (parsed.intent === 'ANALYTICS') return planAnalytics(parsed, deps);
   if (parsed.intent === 'SECURITY') return planSecurity(parsed, deps);
+  if (parsed.intent === 'AI_AGENT') return planAIAgent(parsed, deps);
+  if (parsed.intent === 'COMPOSABLE') return planComposable(parsed, deps);
+  if (parsed.intent === 'RISK') return planRisk(parsed, deps);
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,
@@ -1323,6 +1326,158 @@ async function planSecurity(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<
       gas_display: 'free',
       warnings: [],
       estimated_completion_ms: 0,
+    },
+  };
+}
+
+async function planAIAgent(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const action = typeof slots.aiAction === 'string' ? slots.aiAction : 'context';
+
+  if (action === 'remember') {
+    return {
+      ok: true,
+      card: {
+        intent: 'AI_AGENT',
+        primary_action_label: 'Remember',
+        primary_amount_display: typeof slots.aiMemory === 'string' ? slots.aiMemory : 'Memory',
+        secondary_amount_display: 'AI Agent',
+        steps: [],
+        batch: undefined,
+        gas_display: 'free',
+        warnings: [],
+        estimated_completion_ms: 0,
+      },
+    };
+  }
+
+  if (action === 'plan') {
+    return {
+      ok: true,
+      card: {
+        intent: 'AI_AGENT',
+        primary_action_label: 'Create Plan',
+        primary_amount_display: typeof slots.aiGoal === 'string' ? slots.aiGoal : 'Goal',
+        secondary_amount_display: 'AI Planning',
+        steps: [],
+        batch: undefined,
+        gas_display: 'free',
+        warnings: ['AI-generated plans should be reviewed before execution.'],
+        estimated_completion_ms: 0,
+      },
+    };
+  }
+
+  if (action === 'explain') {
+    return {
+      ok: true,
+      card: {
+        intent: 'AI_AGENT',
+        primary_action_label: 'Explain',
+        primary_amount_display: typeof slots.aiTopic === 'string' ? slots.aiTopic : 'Topic',
+        secondary_amount_display: 'Education',
+        steps: [],
+        batch: undefined,
+        gas_display: 'free',
+        warnings: [],
+        estimated_completion_ms: 0,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'AI_AGENT',
+      primary_action_label: action === 'forget' ? 'Forget' : 'Show Context',
+      primary_amount_display: 'AI Agent',
+      secondary_amount_display: action,
+      steps: [],
+      batch: undefined,
+      gas_display: 'free',
+      warnings: [],
+      estimated_completion_ms: 0,
+    },
+  };
+}
+
+async function planComposable(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const action = (typeof slots.composableAction === 'string' ? slots.composableAction : 'compose') as
+    | 'flash_loan'
+    | 'leverage'
+    | 'deleverage'
+    | 'compose';
+
+  if (action === 'flash_loan') {
+    return {
+      ok: true,
+      card: {
+        intent: 'COMPOSABLE',
+        primary_action_label: 'Flash Loan',
+        primary_amount_display: `${typeof slots.composableAmount === 'string' ? slots.composableAmount : '?'} ${typeof slots.composableAsset === 'string' ? slots.composableAsset : '?'}`,
+        secondary_amount_display: 'Aave',
+        steps: [],
+        batch: undefined,
+        gas_display: 'sponsored',
+        warnings: ['Flash loans must be repaid in the same transaction.'],
+        estimated_completion_ms: 12000,
+      },
+    };
+  }
+
+  if (action === 'leverage') {
+    return {
+      ok: true,
+      card: {
+        intent: 'COMPOSABLE',
+        primary_action_label: 'Leverage',
+        primary_amount_display: `${typeof slots.composableAsset === 'string' ? slots.composableAsset : '?'} ${typeof slots.composableLeverage === 'string' ? slots.composableLeverage : '?'}x`,
+        secondary_amount_display: 'Aave + DEX',
+        steps: [],
+        batch: undefined,
+        gas_display: 'sponsored',
+        warnings: ['Leverage increases both gains and losses. Liquidation risk exists.'],
+        estimated_completion_ms: 30000,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'COMPOSABLE',
+      primary_action_label: action === 'deleverage' ? 'Deleverage' : 'Compose',
+      primary_amount_display: (typeof slots.composableAsset === 'string' ? slots.composableAsset : null) || 'Strategy',
+      secondary_amount_display: 'Multi-step',
+      steps: [],
+      batch: undefined,
+      gas_display: 'sponsored',
+      warnings: ['Complex DeFi operations carry higher risk.'],
+      estimated_completion_ms: 30000,
+    },
+  };
+}
+
+async function planRisk(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const action = (typeof slots.riskAction === 'string' ? slots.riskAction : 'check') as
+    | 'check'
+    | 'hedge'
+    | 'exposure';
+
+  return {
+    ok: true,
+    card: {
+      intent: 'RISK',
+      primary_action_label: action === 'hedge' ? 'Hedge Portfolio' : action === 'exposure' ? 'Show Exposure' : 'Risk Assessment',
+      primary_amount_display: 'Portfolio',
+      secondary_amount_display: action,
+      steps: [],
+      batch: undefined,
+      gas_display: 'free',
+      warnings: action === 'hedge' ? ['Hedging may involve swap fees.'] : [],
+      estimated_completion_ms: action === 'hedge' ? 30000 : 0,
     },
   };
 }

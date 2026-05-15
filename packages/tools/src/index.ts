@@ -196,3 +196,36 @@ export type {
 } from './sdk/types.js';
 export { findBestRoute, estimateCrossChainTime, orchestrate, validateOrchestration } from './cross-chain/index.js';
 export type { CrossChainRoute, CrossChainStep, OrchestratedTx, CrossChainDeps } from './cross-chain/index.js';
+export { MemoryStore, ConversationStore } from './ai-agent/index.js';
+export type { MemoryEntry, ConversationMessage, AgentDeps } from './ai-agent/index.js';
+export {
+  FLASH_LOAN_ABI,
+  buildFlashLoanCall,
+  calculateFlashLoanFee,
+  calculateLeverage,
+  calculateLiquidationPrice,
+  estimateLeverageRisk,
+} from './composable/index.js';
+export type {
+  FlashLoanParams,
+  LeverageParams,
+  ComposedStrategy,
+  StrategyStep,
+  ComposableDeps,
+} from './composable/index.js';
+export {
+  checkCompliance,
+  isOFACSanctioned,
+  validateTransactionAmount,
+  DEFAULT_COMPLIANCE_CONFIG,
+  isSanctioned,
+  SANCTIONED_ADDRESSES,
+} from './compliance/index.js';
+export type {
+  ComplianceCheck,
+  ComplianceFlag,
+  ComplianceConfig,
+  ComplianceDeps,
+} from './compliance/index.js';
+export { assessPortfolioRisk, getExposureBreakdown, calculateRiskScore, suggestHedges } from './risk/index.js';
+export type { PortfolioRisk, RiskFactor, ExposureBreakdown, RiskDeps, HedgeStrategy } from './risk/index.js';

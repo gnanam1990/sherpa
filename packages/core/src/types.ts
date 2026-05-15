@@ -34,6 +34,9 @@ export type Intent =
   | 'SECURITY'
   | 'DEVELOPER'
   | 'CROSS_CHAIN'
+  | 'AI_AGENT'
+  | 'COMPOSABLE'
+  | 'RISK'
   | 'UNKNOWN';
 
 export type ParsedIntent = {
@@ -777,5 +780,101 @@ export type CrossChainIntent = {
   followUpAction?: string;
   estimatedTime: number;
   bridgeFee: bigint;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── AI Agent types (Stage 9 — AI Agent) ─────────────────────────────
+
+export type AIMemory = {
+  id: string;
+  userId: `0x${string}`;
+  content: string;
+  category: 'preference' | 'fact' | 'goal' | 'risk' | 'strategy';
+  importance: number; // 1-10
+  createdAt: number;
+  lastAccessed: number;
+  accessCount: number;
+};
+
+export type AIContext = {
+  userId: `0x${string}`;
+  memories: AIMemory[];
+  recentIntents: Intent[];
+  preferences: Record<string, string>;
+  riskProfile: 'conservative' | 'moderate' | 'aggressive';
+  portfolioSummary?: {
+    totalValue: bigint;
+    chains: string[];
+    topAssets: string[];
+  };
+};
+
+export type AIPlan = {
+  goal: string;
+  steps: AIPlanStep[];
+  estimatedTime: number;
+  riskLevel: 'low' | 'medium' | 'high';
+  prerequisites: string[];
+};
+
+export type AIPlanStep = {
+  description: string;
+  intent: Intent;
+  params: Record<string, string>;
+  dependencies: number[]; // indices of prerequisite steps
+};
+
+export type AIAgentPlan = {
+  type: 'AI_AGENT';
+  action: 'remember' | 'forget' | 'context' | 'plan' | 'explain';
+  memory?: AIMemory;
+  context?: AIContext;
+  aiPlan?: AIPlan;
+  explanation?: string;
+  calls: []; // No on-chain calls
+};
+
+// ── Risk types (Stage 9 — Risk Management) ─────────────────────────
+
+export type RiskAssessment = {
+  overallRisk: 'low' | 'medium' | 'high' | 'extreme';
+  riskScore: number; // 0-100
+  factors: RiskFactor[];
+  recommendations: string[];
+};
+
+export type RiskFactor = {
+  type: 'concentration' | 'leverage' | 'liquidity' | 'smart_contract' | 'market' | 'protocol';
+  severity: 'low' | 'medium' | 'high';
+  description: string;
+  impact: string;
+};
+
+export type RiskPlan = {
+  type: 'RISK';
+  action: 'check' | 'exposure' | 'hedge' | 'alert';
+  assessment?: RiskAssessment;
+  condition?: string;
+  calls: []; // Read-only or hedge calls
+};
+
+// ── Composable types (Stage 9 — DeFi Composability) ─────────────────
+
+export type ComposableStep = {
+  intent: Intent;
+  params: Record<string, string>;
+  protocol: string;
+  estimatedGas: bigint;
+};
+
+export type ComposableIntent = {
+  type: 'COMPOSABLE';
+  action: 'flash_loan' | 'leverage' | 'deleverage' | 'compose';
+  steps: ComposableStep[];
+  flashLoanAmount?: bigint;
+  flashLoanAsset?: TokenInfo;
+  leverageRatio?: number;
+  totalGasEstimate: bigint;
+  riskLevel: 'low' | 'medium' | 'high' | 'extreme';
   calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
 };

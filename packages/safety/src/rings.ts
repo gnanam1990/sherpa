@@ -428,6 +428,31 @@ export function validateSecuritySettings(params: {
   return { ok: errors.length === 0, errors };
 }
 
+export function validateLeverage(params: {
+  ratio: number;
+  maxRatio?: number;
+}): { ok: boolean; error?: string } {
+  const max = params.maxRatio ?? 5;
+  if (params.ratio < 1) {
+    return { ok: false, error: 'Leverage ratio must be at least 1' };
+  }
+  if (params.ratio > max) {
+    return { ok: false, error: `Leverage ratio exceeds maximum (${max}x)` };
+  }
+  return { ok: true };
+}
+
+export function validateFlashLoan(params: {
+  amount: bigint;
+  maxAmount?: bigint;
+}): { ok: boolean; error?: string } {
+  const max = params.maxAmount ?? 1000000000000n; // $1M default
+  if (params.amount > max) {
+    return { ok: false, error: 'Flash loan amount exceeds maximum' };
+  }
+  return { ok: true };
+}
+
 export function isWhitelisted(
   address: `0x${string}`,
   whitelist: Set<string>,

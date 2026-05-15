@@ -892,6 +892,73 @@ describe('core/parser', () => {
     });
   });
 
+  // ── AI_AGENT parsing ──────────────────────────────────────────────
+
+  describe('AI_AGENT intent', () => {
+    test('parses "remember that I prefer ETH over USDC"', () => {
+      const result = parseDeterministic('remember that I prefer ETH over USDC');
+      expect(result.intent).toBe('AI_AGENT');
+      expect(result.slots.aiAction).toBe('remember');
+      expect(result.slots.aiMemory).toContain('ETH');
+    });
+
+    test('parses "forget my old preferences"', () => {
+      const result = parseDeterministic('forget my old preferences');
+      expect(result.intent).toBe('AI_AGENT');
+      expect(result.slots.aiAction).toBe('forget');
+    });
+
+    test('parses "what do you know about me"', () => {
+      const result = parseDeterministic('what do you know about me');
+      expect(result.intent).toBe('AI_AGENT');
+      expect(result.slots.aiAction).toBe('context');
+    });
+
+    test('parses "plan for earning yield on my ETH"', () => {
+      const result = parseDeterministic('plan for earning yield on my ETH');
+      expect(result.intent).toBe('AI_AGENT');
+      expect(result.slots.aiAction).toBe('plan');
+      expect(result.slots.aiGoal).toContain('yield');
+    });
+
+    test('parses "explain staking to me"', () => {
+      const result = parseDeterministic('explain staking to me');
+      expect(result.intent).toBe('AI_AGENT');
+      expect(result.slots.aiAction).toBe('explain');
+      expect(result.slots.aiTopic).toBe('staking');
+    });
+  });
+
+  // ── COMPOSABLE parsing ──────────────────────────────────────────────
+
+  describe('COMPOSABLE intent', () => {
+    test('parses "flash loan 1000 USDC"', () => {
+      const result = parseDeterministic('flash loan 1000 USDC');
+      expect(result.intent).toBe('COMPOSABLE');
+      expect(result.slots.composableAction).toBe('flash_loan');
+      expect(result.slots.composableAmount).toBe('1000');
+    });
+
+    test('parses "leverage my ETH by 2x"', () => {
+      const result = parseDeterministic('leverage my ETH by 2x');
+      expect(result.intent).toBe('COMPOSABLE');
+      expect(result.slots.composableAction).toBe('leverage');
+      expect(result.slots.composableLeverage).toBe('2');
+    });
+
+    test('parses "deleverage my ETH"', () => {
+      const result = parseDeterministic('deleverage my ETH');
+      expect(result.intent).toBe('COMPOSABLE');
+      expect(result.slots.composableAction).toBe('deleverage');
+    });
+
+    test('parses "compose swap and lend"', () => {
+      const result = parseDeterministic('compose swap and lend');
+      expect(result.intent).toBe('COMPOSABLE');
+      expect(result.slots.composableAction).toBe('compose');
+    });
+  });
+
   // ── AUTO_REBALANCE parsing ──────────────────────────────────────────
 
   describe('AUTO_REBALANCE intent', () => {
@@ -919,6 +986,34 @@ describe('core/parser', () => {
       expect(result.intent).toBe('AUTO_REBALANCE');
       expect(result.slots.rebalanceTarget).toBe('USDC');
       expect(result.slots.rebalancePercent).toBe('50');
+    });
+  });
+
+  // ── RISK parsing ────────────────────────────────────────────────────
+
+  describe('RISK intent', () => {
+    test('parses "check my portfolio risk"', () => {
+      const result = parseDeterministic('check my portfolio risk');
+      expect(result.intent).toBe('RISK');
+      expect(result.slots.riskAction).toBe('check');
+    });
+
+    test('parses "show my exposure"', () => {
+      const result = parseDeterministic('show my exposure');
+      expect(result.intent).toBe('RISK');
+      expect(result.slots.riskAction).toBe('exposure');
+    });
+
+    test('parses "hedge my portfolio"', () => {
+      const result = parseDeterministic('hedge my portfolio');
+      expect(result.intent).toBe('RISK');
+      expect(result.slots.riskAction).toBe('hedge');
+    });
+
+    test('parses "set risk alert if health factor < 1.3"', () => {
+      const result = parseDeterministic('set risk alert if health factor < 1.3');
+      expect(result.intent).toBe('RISK');
+      expect(result.slots.riskAction).toBe('alert');
     });
   });
 });

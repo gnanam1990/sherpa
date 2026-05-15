@@ -147,6 +147,12 @@ const API_DOCS_RE = /^(?:show|open|view)\s+(?:api\s+)?docs?\s*$/i;
 const API_STATUS_RE = /^(?:check|show)\s+(?:my\s+)?api\s+(?:status|usage|limits?)\s*$/i;
 const WEBHOOK_RE = /^(?:create|add|setup)\s+(?:a\s+)?webhook\s+(?:for\s+)?(.+?)\s*$/i;
 
+// COMPOSABLE patterns (Stage 9 — DeFi Composability)
+const COMPOSE_RE = /^(?:compose|combine|chain)\s+(.+?)\s+and\s+(.+?)\s*$/i;
+const FLASH_LOAN_RE = /^(?:flash\s*loan|borrow\s+flash)\s+([\d.]+)\s+(\w+)\s*$/i;
+const LEVERAGE_RE = /^(?:leverage|lever\s+up)\s+(?:my\s+)?(\w+)\s+(?:by\s+)?(\d+)x\s*$/i;
+const DELEVERAGE_RE = /^(?:deleverage|lever\s+down|unwind)\s+(?:my\s+)?(\w+)\s*$/i;
+
 // CROSS_CHAIN patterns (Stage 8 — Cross-chain Orchestration)
 const CROSS_CHAIN_RE = /^(?:bridge|send|move)\s+([\d.]+)\s+(\w+)\s+(?:from\s+)?(\w+)\s+to\s+(\w+)\s+and\s+(?:then\s+)?(.+?)\s*$/i;
 const CROSS_CHAIN_SWAP_RE = /^(?:swap|convert)\s+([\d.]+)\s+(\w+)\s+(?:on|at)\s+(\w+)\s+(?:for|to)\s+(\w+)\s*$/i;
@@ -566,7 +572,14 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('SECURITY', raw, { securityAction: 'whitelist', securityTarget: m[1] }, 0.85);
   }
 
-  // CROSS_CHAIN patterns (Stage 8 — Cross-chain Orchestration)
+// AI_AGENT patterns (Stage 9 — AI Agent)
+const AI_REMEMBER_RE = /^(?:remember|save|note)\s+(?:that\s+)?(.+?)\s*$/i;
+const AI_FORGET_RE = /^(?:forget|delete|remove)\s+(?:that\s+)?(.+?)\s*$/i;
+const AI_CONTEXT_RE = /^(?:what\s+do\s+you\s+know|show\s+context|what(?:'s|is)\s+(?:my|the)\s+context)(?:\s+about\s+(?:me|my\s+\w+))?\s*$/i;
+const AI_PLAN_RE = /^(?:plan|create\s+plan|make\s+plan)\s+(?:for\s+)?(.+?)\s*$/i;
+const AI_EXPLAIN_RE = /^(?:explain|describe|tell\s+me\s+about)\s+(.+?)(?:\s+to\s+me)?\s*$/i;
+
+// CROSS_CHAIN patterns (Stage 8 — Cross-chain Orchestration)
   if ((m = raw.match(CROSS_CHAIN_RE))) {
     return make('CROSS_CHAIN', raw, { crossAmount: m[1], crossAsset: (m[2] ?? '').toUpperCase(), crossSource: (m[3] ?? '').toLowerCase(), crossDest: (m[4] ?? '').toLowerCase(), crossAction: (m[5] ?? '').trim() }, 0.9);
   }
@@ -586,6 +599,57 @@ export function parseDeterministic(input: string): ParsedIntent {
   }
   if ((m = raw.match(WEBHOOK_RE))) {
     return make('DEVELOPER', raw, { devAction: 'webhook', devEvent: m[1]!.trim() }, 0.85);
+  }
+
+// RISK patterns (Stage 9 — Risk Management)
+const RISK_CHECK_RE = /^(?:check|assess|analyze)\s+(?:my\s+)?(?:portfolio\s+)?risk\s*$/i;
+const RISK_EXPOSURE_RE = /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:risk\s+)?exposure\s*$/i;
+const RISK_HEDGE_RE = /^(?:hedge|protect|reduce\s+risk)\s+(?:my\s+)?(?:portfolio|position)\s*$/i;
+const RISK_ALERT_RE = /^(?:set|create)\s+(?:a\s+)?risk\s+alert\s+(?:if|when)\s+(.+?)\s*$/i;
+
+// COMPOSABLE patterns (Stage 9 — DeFi Composability)
+  if ((m = raw.match(FLASH_LOAN_RE))) {
+    return make('COMPOSABLE', raw, { composableAction: 'flash_loan', composableAmount: m[1], composableAsset: (m[2] ?? '').toUpperCase() }, 0.9);
+  }
+  if ((m = raw.match(LEVERAGE_RE))) {
+    return make('COMPOSABLE', raw, { composableAction: 'leverage', composableAsset: (m[1] ?? '').toUpperCase(), composableLeverage: m[2] }, 0.9);
+  }
+  if ((m = raw.match(DELEVERAGE_RE))) {
+    return make('COMPOSABLE', raw, { composableAction: 'deleverage', composableAsset: (m[1] ?? '').toUpperCase() }, 0.9);
+  }
+  if ((m = raw.match(COMPOSE_RE))) {
+    return make('COMPOSABLE', raw, { composableAction: 'compose', composableStep1: (m[1] ?? '').trim(), composableStep2: (m[2] ?? '').trim() }, 0.85);
+  }
+
+  // RISK patterns (Stage 9 — Risk Management)
+  if ((m = raw.match(RISK_CHECK_RE))) {
+    return make('RISK', raw, { riskAction: 'check' }, 0.9);
+  }
+  if ((m = raw.match(RISK_EXPOSURE_RE))) {
+    return make('RISK', raw, { riskAction: 'exposure' }, 0.85);
+  }
+  if ((m = raw.match(RISK_HEDGE_RE))) {
+    return make('RISK', raw, { riskAction: 'hedge' }, 0.9);
+  }
+  if ((m = raw.match(RISK_ALERT_RE))) {
+    return make('RISK', raw, { riskAction: 'alert', riskCondition: m[1]!.trim() }, 0.85);
+  }
+
+  // AI_AGENT patterns (Stage 9 — AI Agent)
+  if ((m = raw.match(AI_REMEMBER_RE))) {
+    return make('AI_AGENT', raw, { aiAction: 'remember', aiMemory: m[1]!.trim() }, 0.9);
+  }
+  if ((m = raw.match(AI_FORGET_RE))) {
+    return make('AI_AGENT', raw, { aiAction: 'forget', aiMemory: m[1]!.trim() }, 0.9);
+  }
+  if (AI_CONTEXT_RE.test(raw)) {
+    return make('AI_AGENT', raw, { aiAction: 'context' }, 0.8);
+  }
+  if ((m = raw.match(AI_PLAN_RE))) {
+    return make('AI_AGENT', raw, { aiAction: 'plan', aiGoal: m[1]!.trim() }, 0.85);
+  }
+  if ((m = raw.match(AI_EXPLAIN_RE))) {
+    return make('AI_AGENT', raw, { aiAction: 'explain', aiTopic: m[1]!.trim() }, 0.85);
   }
 
   return make('UNKNOWN', raw, {}, 0);
@@ -630,6 +694,9 @@ const VALID_INTENTS: readonly Intent[] = [
   'SECURITY',
   'DEVELOPER',
   'CROSS_CHAIN',
+  'AI_AGENT',
+  'COMPOSABLE',
+  'RISK',
 ];
 
 const PARSE_SYSTEM = `You translate a user's natural-language Web3 instruction into a strict JSON object.
