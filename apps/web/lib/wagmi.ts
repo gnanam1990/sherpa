@@ -1,7 +1,7 @@
 'use client';
 
-import { createConfig, createStorage, http, noopStorage, useSendCalls } from 'wagmi';
-import type { UseSendCallsParameters } from 'wagmi';
+import { createConfig, createStorage, http, noopStorage, useSendCalls, useWaitForCallsStatus } from 'wagmi';
+import type { UseSendCallsParameters, UseWaitForCallsStatusParameters } from 'wagmi';
 import { coinbaseWallet } from 'wagmi/connectors';
 import { baseSepolia } from 'wagmi/chains';
 
@@ -79,4 +79,10 @@ export function useSherpaSendCalls(parameters?: UseSendCallsParameters<typeof wa
       options?: Parameters<typeof mutation.sendCallsAsync>[1],
     ) => mutation.sendCallsAsync(withPaymasterCapabilities(variables), options),
   };
+}
+
+export function useSherpaCallsStatus(
+  parameters: UseWaitForCallsStatusParameters<typeof wagmiConfig>,
+) {
+  return useWaitForCallsStatus(parameters);
 }

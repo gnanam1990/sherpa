@@ -4,8 +4,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Prompt } from './Prompt';
 
 const sendSponsoredCallsAsync = vi.hoisted(() => vi.fn(async () => ({ id: 'calls-id' })));
+const callsStatusState = vi.hoisted(() => ({
+  current: {
+    data: undefined as
+      | { receipts?: Array<{ transactionHash?: string }>; status?: 'pending' | 'success' | 'failure' }
+      | undefined,
+    error: null as Error | null,
+    isError: false,
+  },
+}));
 
 vi.mock('../../lib/wagmi', () => ({
+  useSherpaCallsStatus: () => callsStatusState.current,
   useSherpaSendCalls: () => ({ sendSponsoredCallsAsync }),
 }));
 
@@ -68,6 +78,7 @@ async function flushAsyncWork() {
 }
 
 beforeEach(() => {
+  callsStatusState.current = { data: undefined, error: null, isError: false };
   sendSponsoredCallsAsync.mockClear();
   sendSponsoredCallsAsync.mockResolvedValue({ id: 'calls-id' });
 });
@@ -240,7 +251,11 @@ describe('Prompt', () => {
   });
 
   it('runs parse -> execute -> wallet -> confirm and updates the thread with success summary', async () => {
-    vi.useFakeTimers();
+    callsStatusState.current = {
+      data: { receipts: [{ transactionHash: TX_HASH }], status: 'success' },
+      error: null,
+      isError: false,
+    };
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
         return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
@@ -254,6 +269,8 @@ describe('Prompt', () => {
         return jsonResponse(executeBody());
       }
       if (url === '/api/execute/7/confirm') {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(init?.body as string)).toMatchObject({ txHash: TX_HASH });
         return jsonResponse({ ok: true, status: 'success', txHash: TX_HASH });
       }
       throw new Error(`unexpected fetch ${url}`);
@@ -268,8 +285,6 @@ describe('Prompt', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Proceed' }));
     await flushAsyncWork();
     expect(sendSponsoredCallsAsync).toHaveBeenCalledTimes(1);
-
-    await act(async () => vi.advanceTimersByTimeAsync(1000));
     await flushAsyncWork();
 
     expect(screen.getByText('Sent 5 USDC')).toBeTruthy();

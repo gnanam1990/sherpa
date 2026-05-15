@@ -9,8 +9,7 @@ import {
   type SerializedConfirmationCardProps,
   type SerializedSendCallsEnvelope,
 } from '@sherpa/ui';
-import { useSherpaSendCalls } from '../../lib/wagmi';
-import { useExecuteConfirm } from './useExecuteConfirm';
+import { useSherpaCallsStatus, useSherpaSendCalls } from '../../lib/wagmi';
 import { useChatHistory } from '../../hooks/useChatHistory';
 
 type ParseResponse = {
@@ -54,7 +53,16 @@ type PendingConfirmation = {
   sourceInput: string;
 };
 
-type ConfirmingAction = PendingConfirmation & { messageId: string };
+type ConfirmingAction = PendingConfirmation & { auditLogId: number; messageId: string };
+
+type CallsStatusReceipt = {
+  transactionHash?: string;
+};
+
+type CallsStatusResult = {
+  receipts?: CallsStatusReceipt[];
+  status?: 'pending' | 'success' | 'failure';
+};
 
 type PromptProps = {
   connectionEpoch?: number;
@@ -99,6 +107,29 @@ function actionDescription(card: SerializedConfirmationCardProps | undefined): s
 function errorDetailFrom(err: unknown): string {
   if (err instanceof Error) return err.message;
   return String(err);
+}
+
+function txHashFromCallsStatus(status: CallsStatusResult | undefined): `0x${string}` | undefined {
+  const txHash = status?.receipts?.find((receipt) => receipt.transactionHash)?.transactionHash;
+  if (typeof txHash === 'string' && /^0x[a-fA-F0-9]{64}$/.test(txHash)) {
+    return txHash as `0x${string}`;
+  }
+  return undefined;
+}
+
+async function reportExecutionResult(
+  auditLogId: number,
+  result: { error?: string; txHash?: `0x${string}` },
+) {
+  try {
+    await fetch(`/api/execute/${auditLogId}/confirm`, {
+      body: JSON.stringify(result),
+      headers: { 'content-type': 'application/json' },
+      method: 'POST',
+    });
+  } catch {
+    // Audit persistence should not make a wallet-confirmed action look failed.
+  }
 }
 
 const successVerb: Record<string, string> = {
@@ -194,9 +225,16 @@ export function Prompt({
   const [parseBusy, setParseBusy] = useState(false);
   const [phase, setPhase] = useState<FlowPhase>('idle');
   const [confirmingAction, setConfirmingAction] = useState<ConfirmingAction | null>(null);
+  const [callsStatusId, setCallsStatusId] = useState<string | undefined>();
   const pendingConfirmations = useRef<Record<string, PendingConfirmation>>({});
   const { sendSponsoredCallsAsync } = useSherpaSendCalls();
-  const executeConfirm = useExecuteConfirm();
+  const callsStatus = useSherpaCallsStatus({
+    id: callsStatusId,
+    pollingInterval: 1000,
+    query: { enabled: Boolean(callsStatusId && confirmingAction) },
+    throwOnFailure: false,
+    timeout: 60_000,
+  });
   const chat = useChatHistory(userAddress);
   const walletState = useRef({ connectionEpoch, isConnected, userAddress });
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -225,7 +263,6 @@ export function Prompt({
     chat.addMessage(thinkingMessage);
     setInput('');
     setParseBusy(true);
-    executeConfirm.reset();
     setPhase('parsing');
     try {
       const res = await fetch('/api/parse', {
@@ -285,7 +322,7 @@ export function Prompt({
     const { card, sourceInput } = pending;
     const requestUserAddress = userAddress;
     const requestConnectionEpoch = connectionEpoch;
-    executeConfirm.reset();
+    setCallsStatusId(undefined);
     setPhase('executing');
     chat.updateMessage(messageId, {
       content: { kind: 'action', summary: summaryFor(card, 'pending'), card },
@@ -330,7 +367,12 @@ export function Prompt({
         return;
       }
       if (body.ok && body.card.batch) {
-        await sendSponsoredCallsAsync(toSendCallsVariables(body.card.batch));
+        const sendResult = await sendSponsoredCallsAsync(toSendCallsVariables(body.card.batch));
+        if (!sendResult.id) throw new Error('Wallet did not return a call id');
+        setConfirmingAction({ auditLogId: body.auditLogId, card, messageId, sourceInput });
+        setCallsStatusId(sendResult.id);
+        setPhase('confirming');
+        return;
       }
       if (!body.card.batch) {
         chat.updateMessage(messageId, {
@@ -339,9 +381,6 @@ export function Prompt({
         setPhase('idle');
         return;
       }
-      setConfirmingAction({ card, messageId, sourceInput });
-      setPhase('confirming');
-      executeConfirm.start(body.auditLogId);
     } catch (err) {
       chat.updateMessage(messageId, {
         content: {
@@ -356,41 +395,59 @@ export function Prompt({
 
   useEffect(() => {
     if (phase !== 'confirming' || !confirmingAction) return;
-    if (executeConfirm.status === 'success') {
+    if (callsStatus.isError) {
+      const errorDetail = errorDetailFrom(callsStatus.error);
+      void reportExecutionResult(confirmingAction.auditLogId, { error: errorDetail });
       chat.updateMessage(confirmingAction.messageId, {
         content: {
           kind: 'action',
-          summary: summaryFor(confirmingAction.card, 'success', executeConfirm.txHash),
+          summary: summaryFor(confirmingAction.card, 'failed', undefined, errorDetail),
           card: confirmingAction.card,
         },
       });
+      setCallsStatusId(undefined);
       setConfirmingAction(null);
       setPhase('idle');
+      return;
     }
-    if (executeConfirm.status === 'failure' || executeConfirm.status === 'timeout') {
+
+    const status = callsStatus.data as CallsStatusResult | undefined;
+    if (status?.status === 'success') {
+      const txHash = txHashFromCallsStatus(status);
+      void reportExecutionResult(confirmingAction.auditLogId, txHash ? { txHash } : {});
+      chat.updateMessage(confirmingAction.messageId, {
+        content: {
+          kind: 'action',
+          summary: summaryFor(confirmingAction.card, 'success', txHash),
+          card: confirmingAction.card,
+        },
+      });
+      setCallsStatusId(undefined);
+      setConfirmingAction(null);
+      setPhase('idle');
+      return;
+    }
+
+    if (status?.status === 'failure') {
+      const errorDetail = 'Wallet reported transaction failure';
+      void reportExecutionResult(confirmingAction.auditLogId, { error: errorDetail });
       chat.updateMessage(confirmingAction.messageId, {
         content: {
           kind: 'action',
           summary: summaryFor(
             confirmingAction.card,
             'failed',
-            executeConfirm.txHash,
-            executeConfirm.errorDetail ?? 'Confirmation failed',
+            txHashFromCallsStatus(status),
+            errorDetail,
           ),
           card: confirmingAction.card,
         },
       });
+      setCallsStatusId(undefined);
       setConfirmingAction(null);
       setPhase('idle');
     }
-  }, [
-    chat,
-    confirmingAction,
-    executeConfirm.errorDetail,
-    executeConfirm.status,
-    executeConfirm.txHash,
-    phase,
-  ]);
+  }, [callsStatus.data, callsStatus.error, callsStatus.isError, chat, confirmingAction, phase]);
 
   const cancel = (messageId: string) => {
     const pending = pendingConfirmations.current[messageId];
@@ -400,7 +457,7 @@ export function Prompt({
       });
       delete pendingConfirmations.current[messageId];
     }
-    executeConfirm.reset();
+    setCallsStatusId(undefined);
     setPhase('idle');
   };
 
