@@ -17,7 +17,7 @@ export function ConnectButton({ variant = 'compact', className = '' }: SherpaCon
   const { address, isConnected, chain } = useAccount();
 
   const coinbaseConnector = connectors.find(
-    (c) => c.id === 'coinbaseWalletSDK' || c.id === 'coinbaseWallet' || c.name?.toLowerCase().includes('coinbase'),
+    (c: { id: string; name?: string }) => c.id === 'coinbaseWalletSDK' || c.id === 'coinbaseWallet' || c.name?.toLowerCase().includes('coinbase'),
   );
 
   const baseClasses =

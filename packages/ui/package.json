@@ -25,7 +25,8 @@
   },
   "peerDependencies": {
     "@rainbow-me/rainbowkit": "^2.2.11",
-    "react": "^19.0.0"
+    "react": "^19.0.0",
+    "wagmi": "^2.0.0"
   },
   "devDependencies": {
     "@rainbow-me/rainbowkit": "^2.2.11",
@@ -36,6 +37,7 @@
     "jsdom": "^29.1.1",
     "react": "^19.0.0",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "wagmi": "^2.0.0"
   }
 }
