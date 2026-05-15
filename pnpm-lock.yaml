@@ -457,6 +457,9 @@ importers:
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.17)(jsdom@29.1.1(@noble/hashes@1.8.0))
+      wagmi:
+        specifier: ^2.0.0
+        version: 2.19.5(@tanstack/query-core@5.100.10)(@tanstack/react-query@5.100.10(react@19.2.5))(@types/react@19.2.14)(@upstash/redis@1.38.0)(@vercel/kv@3.0.0)(bufferutil@4.1.0)(react@19.2.5)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.48.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(zod@3.25.76)
 
 packages:
 
