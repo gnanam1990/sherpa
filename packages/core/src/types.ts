@@ -27,6 +27,10 @@ export type Intent =
   | 'STRATEGY'
   | 'PORTFOLIO'
   | 'NOTIFICATION'
+  | 'GOVERNANCE'
+  | 'ANALYTICS'
+  | 'SOCIAL'
+  | 'AUTOMATION'
   | 'UNKNOWN';
 
 export type ParsedIntent = {
@@ -576,4 +580,132 @@ export type NotificationPlan = {
   condition?: string;
   notification?: Notification;
   calls: []; // No on-chain calls
+};
+
+// ── Governance types (Stage 7 — Governance) ──────────────────────────
+
+export type Proposal = {
+  id: string;
+  title: string;
+  description: string;
+  proposer: `0x${string}`;
+  status: 'pending' | 'active' | 'passed' | 'rejected' | 'executed';
+  votesFor: bigint;
+  votesAgainst: bigint;
+  votesAbstain: bigint;
+  quorum: bigint;
+  startTime: number;
+  endTime: number;
+  executionTime?: number;
+  actions: ProposalAction[];
+};
+
+export type ProposalAction = {
+  target: `0x${string}`;
+  value: bigint;
+  signature: string;
+  calldata: `0x${string}`;
+};
+
+export type Vote = {
+  proposalId: string;
+  voter: `0x${string}`;
+  support: 'yes' | 'no' | 'abstain';
+  weight: bigint;
+  reason?: string;
+  timestamp: number;
+};
+
+export type GovernancePlan = {
+  type: 'GOVERNANCE';
+  action: 'vote' | 'propose' | 'delegate' | 'list';
+  proposal?: Proposal;
+  vote?: Vote;
+  delegatee?: `0x${string}`;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Analytics types (Stage 7 — Analytics Dashboard) ────────────────────
+
+export type AnalyticsData = {
+  userId: `0x${string}`;
+  period: 'day' | 'week' | 'month' | 'all';
+  totalVolume: bigint;
+  totalFees: bigint;
+  totalTransactions: number;
+  intentsBreakdown: Record<string, { count: number; volume: bigint }>;
+  chainBreakdown: Record<number, { count: number; volume: bigint }>;
+  topAssets: Array<{ symbol: string; volume: bigint; count: number }>;
+  successRate: number;
+};
+
+export type AnalyticsPlan = {
+  type: 'ANALYTICS';
+  action: 'volume' | 'fees' | 'stats' | 'usage';
+  period?: string;
+  data?: AnalyticsData;
+  calls: []; // Read-only, no on-chain calls
+};
+
+// ── Social types (Stage 7 — Social Features) ────────────────────────────
+
+export type SocialProfile = {
+  address: `0x${string}`;
+  farcasterUsername?: string;
+  fid?: number;
+  followers: number;
+  following: number;
+  totalVolume: bigint;
+  successRate: number;
+  rank?: number;
+};
+
+export type CopyTradeConfig = {
+  traderAddress: `0x${string}`;
+  maxAmountPerTrade: bigint;
+  maxDailyAmount: bigint;
+  enabledIntents: Intent[];
+  status: 'active' | 'paused';
+};
+
+export type SocialPlan = {
+  type: 'SOCIAL';
+  action: 'follow' | 'copy_trade' | 'leaderboard' | 'profile';
+  target?: `0x${string}`;
+  profile?: SocialProfile;
+  calls: []; // No on-chain calls
+};
+
+// ── Automation types (Stage 7 — Advanced Automation) ───────────────────
+
+export type Automation = {
+  id: string;
+  name: string;
+  condition: AutomationCondition;
+  action: AutomationAction;
+  userId: `0x${string}`;
+  status: 'active' | 'paused' | 'triggered' | 'failed';
+  maxExecutions?: number;
+  executionCount: number;
+  lastTriggered?: number;
+  createdAt: number;
+};
+
+export type AutomationCondition = {
+  type: 'price' | 'balance' | 'health_factor' | 'time' | 'block';
+  operator: '>' | '<' | '>=' | '<=' | '==' | 'crosses';
+  value: string;
+  asset?: string;
+};
+
+export type AutomationAction = {
+  type: Intent;
+  params: Record<string, string>;
+};
+
+export type AutomationPlan = {
+  type: 'AUTOMATION';
+  action: 'create' | 'list' | 'cancel';
+  automation?: Automation;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
 };

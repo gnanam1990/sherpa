@@ -141,3 +141,27 @@ export type {
 } from './notifications/index.js';
 export { calculateFee, buildFeeTransfer, FEE_TAKER_ABI, FEE_TAKER_ADDRESSES } from './fee-taker/index.js';
 export type { FeeConfig, FeeCalculation, FeeTransfer, FeeDeps } from './fee-taker/index.js';
+export {
+  GOVERNOR_ABI,
+  listProposals,
+  buildVoteCall,
+  buildDelegateCall,
+} from './governance/index.js';
+export type {
+  ProposalMetadata,
+  VoteParams,
+  DelegateParams,
+  GovernanceDeps,
+} from './governance/index.js';
+export { getVolumeMetrics, getFeeMetrics, getUsageMetrics } from './analytics/index.js';
+export type {
+  AnalyticsQuery,
+  VolumeMetrics,
+  FeeMetrics,
+  UsageMetrics,
+  AnalyticsDeps,
+} from './analytics/index.js';
+export { evaluateCondition, executeAction, validateAutomation } from './automation/index.js';
+export type { AutomationRule, Condition, Action, AutomationDeps } from './automation/index.js';
+export { getProfile, getLeaderboard, startCopyTrade, stopCopyTrade, getCopyTradeStatus } from './social/index.js';
+export type { SocialUser, CopyTradeSettings, SocialDeps } from './social/index.js';

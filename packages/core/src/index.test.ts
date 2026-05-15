@@ -692,6 +692,132 @@ describe('core/parser', () => {
     });
   });
 
+  // ── GOVERNANCE parsing ──────────────────────────────────────────────
+
+  describe('GOVERNANCE intent', () => {
+    test('parses "vote yes on proposal 1"', () => {
+      const result = parseDeterministic('vote yes on proposal 1');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govAction).toBe('vote');
+      expect(result.slots.govVote).toBe('yes');
+      expect(result.slots.govProposalId).toBe('1');
+    });
+
+    test('parses "cast my vote for proposal 5"', () => {
+      const result = parseDeterministic('cast my vote for proposal 5');
+      expect(result.intent).toBe('GOVERNANCE');
+    });
+
+    test('parses "vote against proposal 3"', () => {
+      const result = parseDeterministic('vote against proposal 3');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govVote).toBe('no');
+    });
+
+    test('parses "create proposal Increase fee to 0.2%"', () => {
+      const result = parseDeterministic('create proposal Increase fee to 0.2%');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govAction).toBe('propose');
+    });
+
+    test('parses "delegate my votes to 0x1234"', () => {
+      const result = parseDeterministic('delegate my votes to 0x1234');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govAction).toBe('delegate');
+    });
+
+    test('parses "list active proposals"', () => {
+      const result = parseDeterministic('list active proposals');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govAction).toBe('list');
+    });
+  });
+
+  // ── ANALYTICS parsing ──────────────────────────────────────────────
+
+  describe('ANALYTICS intent', () => {
+    test('parses "show my total volume"', () => {
+      const result = parseDeterministic('show my total volume');
+      expect(result.intent).toBe('ANALYTICS');
+      expect(result.slots.analyticsAction).toBe('volume');
+    });
+
+    test('parses "what are my fees paid"', () => {
+      const result = parseDeterministic("what's my fees paid");
+      expect(result.intent).toBe('ANALYTICS');
+      expect(result.slots.analyticsAction).toBe('fees');
+    });
+
+    test('parses "show my stats"', () => {
+      const result = parseDeterministic('show my stats');
+      expect(result.intent).toBe('ANALYTICS');
+      expect(result.slots.analyticsAction).toBe('stats');
+    });
+
+    test('parses "display my usage"', () => {
+      const result = parseDeterministic('display my usage');
+      expect(result.intent).toBe('ANALYTICS');
+      expect(result.slots.analyticsAction).toBe('usage');
+    });
+  });
+
+  // ── SOCIAL parsing ──────────────────────────────────────────────────
+
+  describe('SOCIAL intent', () => {
+    test('parses "follow @alice"', () => {
+      const result = parseDeterministic('follow @alice');
+      expect(result.intent).toBe('SOCIAL');
+      expect(result.slots.socialAction).toBe('follow');
+      expect(result.slots.socialTarget).toBe('@alice');
+    });
+
+    test('parses "copy trade @bob"', () => {
+      const result = parseDeterministic('copy trade @bob');
+      expect(result.intent).toBe('SOCIAL');
+      expect(result.slots.socialAction).toBe('copy_trade');
+    });
+
+    test('parses "show leaderboard"', () => {
+      const result = parseDeterministic('show leaderboard');
+      expect(result.intent).toBe('SOCIAL');
+      expect(result.slots.socialAction).toBe('leaderboard');
+    });
+
+    test('parses "view my profile"', () => {
+      const result = parseDeterministic('view my profile');
+      expect(result.intent).toBe('SOCIAL');
+      expect(result.slots.socialAction).toBe('profile');
+    });
+  });
+
+  // ── AUTOMATION parsing ──────────────────────────────────────────────
+
+  describe('AUTOMATION intent', () => {
+    test('parses "if ETH > 5000 then swap 100 USDC for ETH"', () => {
+      const result = parseDeterministic('if ETH > 5000 then swap 100 USDC for ETH');
+      expect(result.intent).toBe('AUTOMATION');
+      expect(result.slots.automationAction).toBe('create');
+    });
+
+    test('parses "create automation buy ETH weekly"', () => {
+      const result = parseDeterministic('create automation buy ETH weekly');
+      expect(result.intent).toBe('AUTOMATION');
+      expect(result.slots.automationAction).toBe('create');
+    });
+
+    test('parses "list my automations"', () => {
+      const result = parseDeterministic('list my automations');
+      expect(result.intent).toBe('AUTOMATION');
+      expect(result.slots.automationAction).toBe('list');
+    });
+
+    test('parses "cancel automation buy-eth-weekly"', () => {
+      const result = parseDeterministic('cancel automation buy-eth-weekly');
+      expect(result.intent).toBe('AUTOMATION');
+      expect(result.slots.automationAction).toBe('cancel');
+    });
+  });
+
   // ── AUTO_REBALANCE parsing ──────────────────────────────────────────
 
   describe('AUTO_REBALANCE intent', () => {

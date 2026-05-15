@@ -220,6 +220,18 @@ export const NOTIFICATION_ERRORS = {
   SUBSCRIPTION_EXISTS: () => 'You are already subscribed to this notification.',
 } as const;
 
+// ── GOVERNANCE-specific error messages ────────────────────────────────
+
+export const GOVERNANCE_ERRORS = {
+  NO_VOTING_POWER: () => 'You do not have voting power. Delegate or acquire governance tokens first.',
+  PROPOSAL_NOT_FOUND: (id: string) => `Proposal #${id} not found.`,
+  PROPOSAL_NOT_ACTIVE: () => 'This proposal is not currently accepting votes.',
+  ALREADY_VOTED: () => 'You have already voted on this proposal.',
+  QUORUM_NOT_MET: () => 'Proposal did not meet quorum requirements.',
+  INSUFFICIENT_TOKENS: () => 'Insufficient governance tokens to create a proposal.',
+  INVALID_DELEGATEE: () => 'Invalid delegatee address.',
+} as const;
+
 export const CHAIN_ERRORS = {
   UNSUPPORTED_CHAIN: (chain: string) => `Chain ${chain} is not supported yet.`,
   CHAIN_MISMATCH: (expected: string, actual: string) =>

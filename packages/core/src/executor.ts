@@ -165,7 +165,9 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'SESSION_KEY') return planSessionKey(parsed, deps);
   if (parsed.intent === 'STRATEGY') return planStrategy(parsed, deps);
   if (parsed.intent === 'PORTFOLIO') return planPortfolio(parsed, deps);
+  if (parsed.intent === 'GOVERNANCE') return planGovernance(parsed, deps);
   if (parsed.intent === 'NOTIFICATION') return planNotification(parsed, deps);
+  if (parsed.intent === 'ANALYTICS') return planAnalytics(parsed, deps);
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,
@@ -1191,6 +1193,81 @@ async function planStrategy(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<
       gas_display: 'sponsored',
       warnings: ['Strategy execution involves automated transactions.'],
       estimated_completion_ms: 30000,
+    },
+  };
+}
+
+async function planGovernance(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const action = typeof slots.govAction === 'string' ? slots.govAction : 'list';
+
+  if (action === 'vote') {
+    return {
+      ok: true,
+      card: {
+        intent: 'GOVERNANCE',
+        primary_action_label: `Vote ${typeof slots.govVote === 'string' ? slots.govVote : 'yes'}`,
+        primary_amount_display: `Proposal #${typeof slots.govProposalId === 'string' ? slots.govProposalId : '?'}`,
+        secondary_amount_display: 'Governance',
+        steps: [],
+        batch: undefined,
+        gas_display: 'sponsored',
+        warnings: [],
+        estimated_completion_ms: 6000,
+      },
+    };
+  }
+
+  if (action === 'delegate') {
+    return {
+      ok: true,
+      card: {
+        intent: 'GOVERNANCE',
+        primary_action_label: 'Delegate Votes',
+        primary_amount_display: typeof slots.govDelegatee === 'string' ? slots.govDelegatee : 'Delegate',
+        secondary_amount_display: 'Governance',
+        steps: [],
+        batch: undefined,
+        gas_display: 'sponsored',
+        warnings: ['You can only delegate to one address at a time.'],
+        estimated_completion_ms: 6000,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'GOVERNANCE',
+      primary_action_label: action === 'propose' ? 'Create Proposal' : 'List Proposals',
+      primary_amount_display: 'Governance',
+      secondary_amount_display: action,
+      steps: [],
+      batch: undefined,
+      gas_display: action === 'list' ? 'free' : 'sponsored',
+      warnings: action === 'propose' ? ['Creating a proposal requires holding governance tokens.'] : [],
+      estimated_completion_ms: action === 'list' ? 0 : 12000,
+    },
+  };
+}
+
+async function planAnalytics(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const action = typeof slots.analyticsAction === 'string' ? slots.analyticsAction : 'stats';
+
+  return {
+    ok: true,
+    card: {
+      intent: 'ANALYTICS',
+      primary_action_label:
+        action === 'volume' ? 'Show Volume' : action === 'fees' ? 'Show Fees' : action === 'usage' ? 'Show Usage' : 'Show Stats',
+      primary_amount_display: 'Analytics',
+      secondary_amount_display: action,
+      steps: [],
+      batch: undefined,
+      gas_display: 'free',
+      warnings: [],
+      estimated_completion_ms: 0,
     },
   };
 }

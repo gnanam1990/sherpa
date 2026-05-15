@@ -111,6 +111,30 @@ const NOTIFY_RE = /^(?:notify|alert|send)\s+me\s+(?:when|if)\s+(.+?)\s*(?:via|th
 const NOTIFY_CHANNEL_RE = /^(?:set|change|update)\s+(?:my\s+)?notification\s+(?:channel|method)\s+(?:to\s+)?(push|email|farcaster|telegram)\s*$/i;
 const NOTIFY_STATUS_RE = /^(?:show|check|list)\s+(?:my\s+)?notifications?\s*$/i;
 
+// GOVERNANCE patterns (Stage 7 — Governance)
+const VOTE_RE = /^(?:vote|cast)\s+(?:my\s+)?(?:vote\s+)?(yes|no|abstain|for|against)\s+(?:on\s+)?(?:proposal\s+)?#?(\d+)?\s*$/i;
+const PROPOSAL_CREATE_RE = /^(?:create|submit|propose)\s+(?:a\s+)?proposal\s+(.+?)\s*$/i;
+const PROPOSAL_LIST_RE = /^(?:list|show|browse)\s+(?:active\s+)?proposals?\s*$/i;
+const DELEGATE_RE = /^(?:delegate|assign)\s+(?:my\s+)?(?:voting\s+)?(?:power|votes?)\s+(?:to\s+)?(\S+)\s*$/i;
+
+// ANALYTICS patterns (Stage 7 — Analytics Dashboard)
+const ANALYTICS_VOLUME_RE = /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:total\s+)?(?:volume|trading\s+volume)\s*$/i;
+const ANALYTICS_FEES_RE = /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:total\s+)?fees?\s+(?:paid|spent)\s*$/i;
+const ANALYTICS_STATS_RE = /^(?:show|display)\s+(?:my\s+)?(?:stats|statistics|analytics)\s*$/i;
+const ANALYTICS_USAGE_RE = /^(?:show|display)\s+(?:my\s+)?(?:usage|activity)\s*$/i;
+
+// SOCIAL patterns (Stage 7 — Social Features)
+const FOLLOW_RE = /^(?:follow|subscribe\s+to)\s+(?:user\s+)?(\S+)\s*$/i;
+const COPY_TRADE_RE = /^(?:copy|mirror)\s+(?:trade\s+)?(\S+)\s*$/i;
+const LEADERBOARD_RE = /^(?:show|display|view)\s+(?:the\s+)?leaderboard\s*$/i;
+const SOCIAL_PROFILE_RE = /^(?:show|view|display)\s+(?:my\s+)?(?:profile|social)\s*$/i;
+
+// AUTOMATION patterns (Stage 7 — Advanced Automation)
+const AUTOMATION_RE = /^(?:create|set\s+up)\s+(?:an?\s+)?(?:automation|rule|trigger)\s+(.+?)\s*$/i;
+const AUTOMATION_IF_RE = /^if\s+(.+?)\s+then\s+(.+?)\s*$/i;
+const AUTOMATION_LIST_RE = /^(?:list|show)\s+(?:my\s+)?automations?\s*$/i;
+const AUTOMATION_CANCEL_RE = /^(?:cancel|stop|disable)\s+(?:automation|rule)\s+(.+?)\s*$/i;
+
 function make(
   intent: Intent,
   raw: string,
@@ -454,6 +478,64 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('NOTIFICATION', raw, { notificationAction: 'list' }, 0.8);
   }
 
+  // GOVERNANCE patterns (Stage 7 — Governance)
+  if ((m = raw.match(VOTE_RE))) {
+    const vote = (m[1] ?? '').toLowerCase();
+    const voteChoice = vote === 'for' ? 'yes' : vote === 'against' ? 'no' : vote;
+    return make('GOVERNANCE', raw, { govAction: 'vote', govVote: voteChoice, govProposalId: m[2] }, 0.9);
+  }
+  if ((m = raw.match(PROPOSAL_CREATE_RE))) {
+    return make('GOVERNANCE', raw, { govAction: 'propose', govProposalText: (m[1] ?? '').trim() }, 0.85);
+  }
+  if ((m = raw.match(PROPOSAL_LIST_RE))) {
+    return make('GOVERNANCE', raw, { govAction: 'list' }, 0.8);
+  }
+  if ((m = raw.match(DELEGATE_RE))) {
+    return make('GOVERNANCE', raw, { govAction: 'delegate', govDelegatee: m[1] }, 0.85);
+  }
+
+  // ANALYTICS patterns (Stage 7 — Analytics Dashboard)
+  if ((m = raw.match(ANALYTICS_VOLUME_RE))) {
+    return make('ANALYTICS', raw, { analyticsAction: 'volume' }, 0.9);
+  }
+  if ((m = raw.match(ANALYTICS_FEES_RE))) {
+    return make('ANALYTICS', raw, { analyticsAction: 'fees' }, 0.9);
+  }
+  if ((m = raw.match(ANALYTICS_STATS_RE))) {
+    return make('ANALYTICS', raw, { analyticsAction: 'stats' }, 0.85);
+  }
+  if ((m = raw.match(ANALYTICS_USAGE_RE))) {
+    return make('ANALYTICS', raw, { analyticsAction: 'usage' }, 0.8);
+  }
+
+  // SOCIAL patterns (Stage 7 — Social Features)
+  if ((m = raw.match(FOLLOW_RE))) {
+    return make('SOCIAL', raw, { socialAction: 'follow', socialTarget: m[1] }, 0.85);
+  }
+  if ((m = raw.match(COPY_TRADE_RE))) {
+    return make('SOCIAL', raw, { socialAction: 'copy_trade', socialTarget: m[1] }, 0.9);
+  }
+  if ((m = raw.match(LEADERBOARD_RE))) {
+    return make('SOCIAL', raw, { socialAction: 'leaderboard' }, 0.8);
+  }
+  if ((m = raw.match(SOCIAL_PROFILE_RE))) {
+    return make('SOCIAL', raw, { socialAction: 'profile' }, 0.8);
+  }
+
+  // AUTOMATION patterns (Stage 7 — Advanced Automation)
+  if ((m = raw.match(AUTOMATION_IF_RE))) {
+    return make('AUTOMATION', raw, { automationAction: 'create', automationCondition: m[1]!.trim(), automationAction2: m[2]!.trim() }, 0.9);
+  }
+  if ((m = raw.match(AUTOMATION_RE))) {
+    return make('AUTOMATION', raw, { automationAction: 'create', automationDescription: m[1]!.trim() }, 0.85);
+  }
+  if ((m = raw.match(AUTOMATION_LIST_RE))) {
+    return make('AUTOMATION', raw, { automationAction: 'list' }, 0.8);
+  }
+  if ((m = raw.match(AUTOMATION_CANCEL_RE))) {
+    return make('AUTOMATION', raw, { automationAction: 'cancel', automationName: m[1]!.trim() }, 0.85);
+  }
+
   return make('UNKNOWN', raw, {}, 0);
 }
 
@@ -489,6 +571,10 @@ const VALID_INTENTS: readonly Intent[] = [
   'STRATEGY',
   'PORTFOLIO',
   'NOTIFICATION',
+  'GOVERNANCE',
+  'ANALYTICS',
+  'SOCIAL',
+  'AUTOMATION',
 ];
 
 const PARSE_SYSTEM = `You translate a user's natural-language Web3 instruction into a strict JSON object.
