@@ -18,6 +18,8 @@ const SEPOLIA_CHAIN_ID = 84532;
 const MAINNET_CHAIN_ID = 8453;
 const ARBITRUM_CHAIN_ID = 42161;
 const OPTIMISM_CHAIN_ID = 10;
+const POLYGON_CHAIN_ID = 137;
+const AVALANCHE_CHAIN_ID = 43114;
 
 const SEPOLIA_TOKENS: readonly TokenInfo[] = [
   {
@@ -145,11 +147,79 @@ const OPTIMISM_TOKENS: readonly TokenInfo[] = [
   },
 ];
 
+const POLYGON_TOKENS: readonly TokenInfo[] = [
+  {
+    symbol: 'USDC',
+    address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
+    decimals: 6,
+    chainId: POLYGON_CHAIN_ID,
+  },
+  {
+    symbol: 'WMATIC',
+    address: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
+    decimals: 18,
+    chainId: POLYGON_CHAIN_ID,
+  },
+  {
+    symbol: 'WETH',
+    address: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
+    decimals: 18,
+    chainId: POLYGON_CHAIN_ID,
+  },
+  {
+    symbol: 'USDT',
+    address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
+    decimals: 6,
+    chainId: POLYGON_CHAIN_ID,
+  },
+  {
+    symbol: 'MATIC',
+    address: 'native',
+    decimals: 18,
+    chainId: POLYGON_CHAIN_ID,
+  },
+];
+
+const AVALANCHE_TOKENS: readonly TokenInfo[] = [
+  {
+    symbol: 'USDC',
+    address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
+    decimals: 6,
+    chainId: AVALANCHE_CHAIN_ID,
+  },
+  {
+    symbol: 'WAVAX',
+    address: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
+    decimals: 18,
+    chainId: AVALANCHE_CHAIN_ID,
+  },
+  {
+    symbol: 'WETH',
+    address: '0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB',
+    decimals: 18,
+    chainId: AVALANCHE_CHAIN_ID,
+  },
+  {
+    symbol: 'USDT',
+    address: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7',
+    decimals: 6,
+    chainId: AVALANCHE_CHAIN_ID,
+  },
+  {
+    symbol: 'AVAX',
+    address: 'native',
+    decimals: 18,
+    chainId: AVALANCHE_CHAIN_ID,
+  },
+];
+
 /** Returns the token list for a given chain. */
 export function getTokensForChain(chainId: number): readonly TokenInfo[] {
   if (chainId === MAINNET_CHAIN_ID) return MAINNET_TOKENS;
   if (chainId === ARBITRUM_CHAIN_ID) return ARBITRUM_TOKENS;
   if (chainId === OPTIMISM_CHAIN_ID) return OPTIMISM_TOKENS;
+  if (chainId === POLYGON_CHAIN_ID) return POLYGON_TOKENS;
+  if (chainId === AVALANCHE_CHAIN_ID) return AVALANCHE_TOKENS;
   return SEPOLIA_TOKENS;
 }
 
@@ -166,6 +236,8 @@ const SEPOLIA_BY_SYMBOL = buildSymbolMap(SEPOLIA_TOKENS);
 const MAINNET_BY_SYMBOL = buildSymbolMap(MAINNET_TOKENS);
 const ARBITRUM_BY_SYMBOL = buildSymbolMap(ARBITRUM_TOKENS);
 const OPTIMISM_BY_SYMBOL = buildSymbolMap(OPTIMISM_TOKENS);
+const POLYGON_BY_SYMBOL = buildSymbolMap(POLYGON_TOKENS);
+const AVALANCHE_BY_SYMBOL = buildSymbolMap(AVALANCHE_TOKENS);
 
 /**
  * Look up a token by symbol (case-insensitive) and optional chainId.
@@ -177,6 +249,8 @@ export function resolveToken(symbol: string, chainId: number = SEPOLIA_CHAIN_ID)
   if (chainId === MAINNET_CHAIN_ID) map = MAINNET_BY_SYMBOL;
   else if (chainId === ARBITRUM_CHAIN_ID) map = ARBITRUM_BY_SYMBOL;
   else if (chainId === OPTIMISM_CHAIN_ID) map = OPTIMISM_BY_SYMBOL;
+  else if (chainId === POLYGON_CHAIN_ID) map = POLYGON_BY_SYMBOL;
+  else if (chainId === AVALANCHE_CHAIN_ID) map = AVALANCHE_BY_SYMBOL;
   else map = SEPOLIA_BY_SYMBOL;
   return map.get(symbol.toUpperCase());
 }

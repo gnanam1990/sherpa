@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 
-export type ChainName = 'base-sepolia' | 'base-mainnet' | 'arbitrum' | 'optimism';
+export type ChainName = 'base-sepolia' | 'base-mainnet' | 'arbitrum' | 'optimism' | 'polygon' | 'avalanche';
 
 export type ChainConfig = {
   name: ChainName;
@@ -46,6 +46,20 @@ export const CHAINS: Readonly<Record<ChainName, ChainConfig>> = Object.freeze({
     basescanUrl: 'https://api-optimistic.etherscan.io/api',
     explorerTxPrefix: 'https://optimistic.etherscan.io/tx/',
   },
+  polygon: {
+    name: 'polygon',
+    chainId: 137,
+    rpcUrl: 'https://polygon-rpc.com',
+    basescanUrl: 'https://api.polygonscan.com/api',
+    explorerTxPrefix: 'https://polygonscan.com/tx/',
+  },
+  avalanche: {
+    name: 'avalanche',
+    chainId: 43114,
+    rpcUrl: 'https://api.avax.network/ext/bc/C/rpc',
+    basescanUrl: 'https://api.snowtrace.io/api',
+    explorerTxPrefix: 'https://snowtrace.io/tx/',
+  },
 });
 
 export const SUPPORTED_CHAINS: Record<string, { chainId: number; name: string; rpcUrl?: string }> = {
@@ -53,6 +67,8 @@ export const SUPPORTED_CHAINS: Record<string, { chainId: number; name: string; r
   'base-mainnet': { chainId: 8453, name: 'Base' },
   arbitrum: { chainId: 42161, name: 'Arbitrum One' },
   optimism: { chainId: 10, name: 'Optimism' },
+  polygon: { chainId: 137, name: 'Polygon' },
+  avalanche: { chainId: 43114, name: 'Avalanche' },
 };
 
 export function getChainId(chain: string): number {
@@ -60,7 +76,7 @@ export function getChainId(chain: string): number {
 }
 
 export function isL2(chain: string): boolean {
-  return ['base-mainnet', 'arbitrum', 'optimism'].includes(chain);
+  return ['base-mainnet', 'arbitrum', 'optimism', 'polygon'].includes(chain);
 }
 
 export type SherpaConfig = {
@@ -228,7 +244,7 @@ const PaymasterEnvSchema = z.object({
 });
 
 const ChainEnvSchema = z.object({
-  SHERPA_CHAIN: z.preprocess(emptyToUndefined, z.enum(['base-sepolia', 'base-mainnet', 'arbitrum', 'optimism']).default('base-sepolia')),
+  SHERPA_CHAIN: z.preprocess(emptyToUndefined, z.enum(['base-sepolia', 'base-mainnet', 'arbitrum', 'optimism', 'polygon', 'avalanche']).default('base-sepolia')),
 });
 
 const TenderlyEnvSchema = z.object({

@@ -201,6 +201,25 @@ export const STRATEGY_ERRORS = {
   STRATEGY_PRIVATE: () => 'This strategy is private.',
 } as const;
 
+// ── PORTFOLIO-specific error messages ─────────────────────────────────
+
+export const PORTFOLIO_ERRORS = {
+  ADDRESS_REQUIRED: () => 'Wallet address required to fetch portfolio.',
+  CHAIN_NOT_SUPPORTED: (chain: string) => `Portfolio data not available for ${chain}.`,
+  RPC_ERROR: (chain: string) => `Failed to fetch portfolio data for ${chain}.`,
+  NO_POSITIONS: () => 'No positions found.',
+} as const;
+
+// ── NOTIFICATION-specific error messages ─────────────────────────────
+
+export const NOTIFICATION_ERRORS = {
+  CHANNEL_NOT_CONFIGURED: (channel: string) => `${channel} notifications are not configured.`,
+  INVALID_CHANNEL: (channel: string) => `Unsupported notification channel: ${channel}.`,
+  RATE_LIMITED: () => 'Too many notifications. Please wait before sending more.',
+  DELIVERY_FAILED: (channel: string) => `Failed to deliver notification via ${channel}.`,
+  SUBSCRIPTION_EXISTS: () => 'You are already subscribed to this notification.',
+} as const;
+
 export const CHAIN_ERRORS = {
   UNSUPPORTED_CHAIN: (chain: string) => `Chain ${chain} is not supported yet.`,
   CHAIN_MISMATCH: (expected: string, actual: string) =>

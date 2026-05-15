@@ -119,3 +119,25 @@ export type {
   StrategyStepResult,
   StrategyDeps,
 } from './strategies/index.js';
+export { fetchPortfolio, fetchMultiChainPortfolio, aggregatePortfolio, calculatePnl } from './portfolio/index.js';
+export type {
+  PortfolioToken,
+  PortfolioPosition,
+  PortfolioSnapshot,
+  PortfolioDeps,
+} from './portfolio/index.js';
+export {
+  dispatchNotification,
+  sendPushNotification,
+  sendEmailNotification,
+  sendFarcasterNotification,
+  sendTelegramNotification,
+} from './notifications/index.js';
+export type {
+  NotificationPayload,
+  NotificationResult,
+  ChannelConfig,
+  NotificationDeps,
+} from './notifications/index.js';
+export { calculateFee, buildFeeTransfer, FEE_TAKER_ABI, FEE_TAKER_ADDRESSES } from './fee-taker/index.js';
+export type { FeeConfig, FeeCalculation, FeeTransfer, FeeDeps } from './fee-taker/index.js';

@@ -32,6 +32,7 @@ const AAVE_POOL: Record<number, Address | undefined> = {
   8453: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5', // Base mainnet
   42161: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Arbitrum
   10: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Optimism
+  43114: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Avalanche
 };
 
 const AAVE_DATA_PROVIDERS: Record<number, Address | undefined> = {
@@ -39,6 +40,7 @@ const AAVE_DATA_PROVIDERS: Record<number, Address | undefined> = {
   8453: '0x2d8A3C5677189723C4cB8CF77Fc1281663307167', // Base mainnet
   42161: '0x69FA688f1Dc4704B157E6E1cB65E3aD2f67A822C', // Arbitrum
   10: '0x69FA688f1Dc4704B157E6E1cB65E3aD2f67A822C', // Optimism
+  43114: '0x69FA688f1Dc4704B157E6E1cB65E3aD2f67A822C', // Avalanche
 };
 
 export type AaveConfig = {

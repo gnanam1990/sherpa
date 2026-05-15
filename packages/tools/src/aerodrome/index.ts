@@ -38,12 +38,20 @@ const CAMELOT_ROUTERS: Record<number, Address | undefined> = {
   42161: '0xc873fEcbd354f5A56E00E710B90EF4201db2448d', // Arbitrum
 };
 
+const TRADER_JOE_ROUTERS: Record<number, Address | undefined> = {
+  43114: '0x60aE616a2155Ee3d9A6889781b4f8D7e8b4B0b2e', // Avalanche
+};
+
+const QUICKSWAP_ROUTERS: Record<number, Address | undefined> = {
+  137: '0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff', // QuickSwap
+};
+
 export type AerodromeAdapter = ToolAdapter<SwapParams, SwapQuote, SwapParams> & {
   routerAddress: Address | undefined;
 };
 
 export function getSwapRouter(chainId: number): Address | undefined {
-  return AERODROME_ROUTER[chainId] ?? VELODROME_ROUTERS[chainId] ?? CAMELOT_ROUTERS[chainId];
+  return AERODROME_ROUTER[chainId] ?? VELODROME_ROUTERS[chainId] ?? CAMELOT_ROUTERS[chainId] ?? TRADER_JOE_ROUTERS[chainId];
 }
 
 export function createAerodrome(deps: AerodromeDeps & { chainId?: number } = {}): AerodromeAdapter {

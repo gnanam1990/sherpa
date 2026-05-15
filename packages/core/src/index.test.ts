@@ -568,6 +568,35 @@ describe('core/parser', () => {
     });
   });
 
+  // ── NOTIFICATION parsing ─────────────────────────────────────────────
+
+  describe('NOTIFICATION intent', () => {
+    test('parses "notify me when ETH > 5000 via push"', () => {
+      const result = parseDeterministic('notify me when ETH > 5000 via push');
+      expect(result.intent).toBe('NOTIFICATION');
+      expect(result.slots.notificationChannel).toBe('push');
+    });
+
+    test('parses "set my notification channel to email"', () => {
+      const result = parseDeterministic('set my notification channel to email');
+      expect(result.intent).toBe('NOTIFICATION');
+      expect(result.slots.notificationAction).toBe('set_channel');
+      expect(result.slots.notificationChannel).toBe('email');
+    });
+
+    test('parses "show my notifications"', () => {
+      const result = parseDeterministic('show my notifications');
+      expect(result.intent).toBe('NOTIFICATION');
+      expect(result.slots.notificationAction).toBe('list');
+    });
+
+    test('parses "alert me when health factor < 1.3 via telegram"', () => {
+      const result = parseDeterministic('alert me when health factor < 1.3 via telegram');
+      expect(result.intent).toBe('NOTIFICATION');
+      expect(result.slots.notificationChannel).toBe('telegram');
+    });
+  });
+
   // ── DCA parsing ────────────────────────────────────────────────────
 
   describe('DCA intent', () => {
@@ -632,6 +661,34 @@ describe('core/parser', () => {
     test('parses "enable session key"', () => {
       const result = parseDeterministic('enable session key');
       expect(result.intent).toBe('SESSION_KEY');
+    });
+  });
+
+  // ── PORTFOLIO parsing ──────────────────────────────────────────────
+
+  describe('PORTFOLIO intent', () => {
+    test('parses "show my portfolio"', () => {
+      const result = parseDeterministic('show my portfolio');
+      expect(result.intent).toBe('PORTFOLIO');
+      expect(result.slots.portfolioAction).toBe('show');
+    });
+
+    test('parses "check portfolio on base"', () => {
+      const result = parseDeterministic('check portfolio on base');
+      expect(result.intent).toBe('PORTFOLIO');
+      expect(result.slots.portfolioChain).toBe('base');
+    });
+
+    test('parses "what is my pnl"', () => {
+      const result = parseDeterministic("what's my pnl");
+      expect(result.intent).toBe('PORTFOLIO');
+      expect(result.slots.portfolioAction).toBe('pnl');
+    });
+
+    test('parses "show my portfolio history"', () => {
+      const result = parseDeterministic('show my portfolio history');
+      expect(result.intent).toBe('PORTFOLIO');
+      expect(result.slots.portfolioAction).toBe('history');
     });
   });
 

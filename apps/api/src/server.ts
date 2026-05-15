@@ -34,6 +34,8 @@ import { HOURLY_TASKS, type HourlyTask } from '@sherpa/scheduler';
 import { alertRoutes } from './routes/alerts.js';
 import { autoRepayRoutes } from './routes/auto-repay.js';
 import { dcaRoutes } from './routes/dca.js';
+import { notificationRoutes } from './routes/notifications.js';
+import { portfolioRoutes } from './routes/portfolio.js';
 import { sessionKeyRoutes } from './routes/session-keys.js';
 import { strategyRoutes } from './routes/strategies.js';
 import { registerCronRoutes } from './routes/cron.js';
@@ -512,6 +514,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   sessionKeyRoutes(app);
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   strategyRoutes(app);
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  notificationRoutes(app);
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  portfolioRoutes(app);
 
   return app;
 }

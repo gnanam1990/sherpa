@@ -171,3 +171,87 @@ describe('multi-chain token resolution', () => {
     expect(tokens.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+describe('polygon token resolution', () => {
+  test('resolves USDC on polygon', () => {
+    const token = resolveToken('USDC', 137);
+    expect(token?.address).toBe('0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359');
+    expect(token?.decimals).toBe(6);
+    expect(token?.chainId).toBe(137);
+  });
+
+  test('resolves USDT on polygon', () => {
+    const token = resolveToken('USDT', 137);
+    expect(token?.address).toBe('0xc2132D05D31c914a87C6611C10748AEb04B58e8F');
+    expect(token?.decimals).toBe(6);
+    expect(token?.chainId).toBe(137);
+  });
+
+  test('resolves WMATIC on polygon', () => {
+    const token = resolveToken('WMATIC', 137);
+    expect(token?.address).toBe('0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270');
+    expect(token?.decimals).toBe(18);
+  });
+
+  test('resolves MATIC as native on polygon', () => {
+    const token = resolveToken('MATIC', 137);
+    expect(token?.address).toBe('native');
+    expect(token?.decimals).toBe(18);
+  });
+
+  test('getTokensForChain returns polygon tokens', () => {
+    const tokens = getTokensForChain(137);
+    expect(tokens.length).toBe(5);
+    expect(tokens.some((t) => t.symbol === 'USDC')).toBe(true);
+    expect(tokens.some((t) => t.symbol === 'MATIC')).toBe(true);
+  });
+});
+
+describe('avalanche token resolution', () => {
+  test('resolves USDC on avalanche', () => {
+    const token = resolveToken('USDC', 43114);
+    expect(token?.address).toBe('0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E');
+    expect(token?.decimals).toBe(6);
+    expect(token?.chainId).toBe(43114);
+  });
+
+  test('resolves USDT on avalanche', () => {
+    const token = resolveToken('USDT', 43114);
+    expect(token?.address).toBe('0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7');
+    expect(token?.decimals).toBe(6);
+    expect(token?.chainId).toBe(43114);
+  });
+
+  test('resolves WETH on avalanche', () => {
+    const token = resolveToken('WETH', 43114);
+    expect(token?.address).toBe('0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB');
+    expect(token?.decimals).toBe(18);
+    expect(token?.chainId).toBe(43114);
+  });
+
+  test('resolves WAVAX on avalanche', () => {
+    const token = resolveToken('WAVAX', 43114);
+    expect(token?.address).toBe('0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7');
+    expect(token?.decimals).toBe(18);
+    expect(token?.chainId).toBe(43114);
+  });
+
+  test('resolves AVAX as native on avalanche', () => {
+    const token = resolveToken('AVAX', 43114);
+    expect(token?.address).toBe('native');
+    expect(token?.decimals).toBe(18);
+    expect(token?.chainId).toBe(43114);
+  });
+
+  test('getTokensForChain returns avalanche tokens', () => {
+    const tokens = getTokensForChain(43114);
+    expect(tokens.length).toBe(5);
+    expect(tokens.some((t) => t.symbol === 'USDC')).toBe(true);
+    expect(tokens.some((t) => t.symbol === 'AVAX')).toBe(true);
+    expect(tokens.some((t) => t.symbol === 'WAVAX')).toBe(true);
+  });
+
+  test('returns undefined for avalanche-only token on mainnet', () => {
+    expect(resolveToken('WAVAX', 8453)).toBeUndefined();
+  });
+});

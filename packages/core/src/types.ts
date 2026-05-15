@@ -25,6 +25,8 @@ export type Intent =
   | 'AUTO_REBALANCE'
   | 'SESSION_KEY'
   | 'STRATEGY'
+  | 'PORTFOLIO'
+  | 'NOTIFICATION'
   | 'UNKNOWN';
 
 export type ParsedIntent = {
@@ -504,4 +506,74 @@ export type StrategyPlan = {
   strategy?: Strategy;
   parameters?: Record<string, string>;
   calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Portfolio types (Stage 6 — Portfolio Dashboard) ──────────────────
+
+export type Portfolio = {
+  address: `0x${string}`;
+  chains: ChainPortfolio[];
+  totalValueUsd: bigint;
+  totalPnlUsd: bigint;
+  totalPnlPercent: number;
+  lastUpdated: number;
+};
+
+export type ChainPortfolio = {
+  chainId: number;
+  chainName: string;
+  tokens: TokenBalance[];
+  totalValueUsd: bigint;
+};
+
+export type TokenBalance = {
+  token: TokenInfo;
+  balance: bigint;
+  balanceUsd: bigint;
+  priceUsd: number;
+  pnlUsd: bigint;
+  pnlPercent: number;
+};
+
+export type PortfolioPlan = {
+  type: 'PORTFOLIO';
+  action: 'show' | 'pnl' | 'history';
+  chain?: string;
+  portfolio?: Portfolio;
+  calls: []; // No on-chain calls — read-only
+};
+
+// ── Notification types (Stage 6 — Notification System) ──────────────
+
+export type NotificationChannel = 'push' | 'email' | 'farcaster' | 'telegram';
+
+export type Notification = {
+  id: string;
+  userId: `0x${string}`;
+  channel: NotificationChannel;
+  title: string;
+  body: string;
+  data?: Record<string, string>;
+  status: 'pending' | 'sent' | 'delivered' | 'failed';
+  sentAt?: number;
+  createdAt: number;
+};
+
+export type NotificationSubscription = {
+  id: string;
+  userId: `0x${string}`;
+  channel: NotificationChannel;
+  condition: string;
+  enabled: boolean;
+  lastTriggered?: number;
+  triggerCount: number;
+};
+
+export type NotificationPlan = {
+  type: 'NOTIFICATION';
+  action: 'subscribe' | 'set_channel' | 'list' | 'send';
+  channel?: NotificationChannel;
+  condition?: string;
+  notification?: Notification;
+  calls: []; // No on-chain calls
 };

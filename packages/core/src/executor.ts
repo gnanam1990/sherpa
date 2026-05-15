@@ -119,6 +119,33 @@ function gasDisplay(steps: ExecutionStep[], deps: ExecutorDeps): string {
   return isBatchSponsorable(steps.map(stepToCall)) ? GAS_SPONSORED_DISPLAY : GAS_USER_PAYS;
 }
 
+export function applyFee(
+  calls: Array<{ to: `0x${string}`; data: `0x${string}`; value: bigint }>,
+  outputAmount: bigint,
+  feeBps: number,
+  treasury: `0x${string}`,
+  outputToken: `0x${string}`,
+): Array<{ to: `0x${string}`; data: `0x${string}`; value: bigint }> {
+  if (feeBps <= 0 || !treasury) return calls;
+
+  const feeAmount = (outputAmount * BigInt(feeBps)) / 10_000n;
+  if (feeAmount <= 0n) return calls;
+
+  const feeTransferData = encodeFunctionData({
+    abi: erc20Abi,
+    functionName: 'transfer',
+    args: [treasury, feeAmount],
+  });
+
+  const feeCall = {
+    to: outputToken,
+    data: feeTransferData,
+    value: 0n,
+  };
+
+  return [...calls, feeCall];
+}
+
 export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promise<PlanResult> {
   if (parsed.intent === 'SEND') return planSend(parsed, deps);
   if (parsed.intent === 'BET') return planBet(parsed, deps);
@@ -137,6 +164,8 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'AUTO_REBALANCE') return planAutoRebalance(parsed, deps);
   if (parsed.intent === 'SESSION_KEY') return planSessionKey(parsed, deps);
   if (parsed.intent === 'STRATEGY') return planStrategy(parsed, deps);
+  if (parsed.intent === 'PORTFOLIO') return planPortfolio(parsed, deps);
+  if (parsed.intent === 'NOTIFICATION') return planNotification(parsed, deps);
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,
@@ -1041,6 +1070,80 @@ async function planSessionKey(parsed: ParsedIntent, _deps: ExecutorDeps): Promis
         'Set a spend limit to protect your funds.',
       ],
       estimated_completion_ms: 12000,
+    },
+  };
+}
+
+async function planPortfolio(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const action = typeof slots.portfolioAction === 'string' ? slots.portfolioAction : 'show';
+
+  if (action === 'pnl') {
+    return {
+      ok: true,
+      card: {
+        intent: 'PORTFOLIO',
+        primary_action_label: 'Show P&L',
+        primary_amount_display: 'Portfolio',
+        secondary_amount_display: 'Profit & Loss',
+        steps: [],
+        batch: undefined,
+        gas_display: 'free',
+        warnings: [],
+        estimated_completion_ms: 0,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'PORTFOLIO',
+      primary_action_label: 'Show Portfolio',
+      primary_amount_display: typeof slots.portfolioChain === 'string' ? `on ${slots.portfolioChain}` : 'All chains',
+      secondary_amount_display: 'Read-only',
+      steps: [],
+      batch: undefined,
+      gas_display: 'free',
+      warnings: [],
+      estimated_completion_ms: 0,
+    },
+  };
+}
+
+async function planNotification(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const action = typeof slots.notificationAction === 'string' ? slots.notificationAction : 'list';
+
+  if (action === 'set_channel') {
+    return {
+      ok: true,
+      card: {
+        intent: 'NOTIFICATION',
+        primary_action_label: 'Set Notification Channel',
+        primary_amount_display: typeof slots.notificationChannel === 'string' ? slots.notificationChannel : 'push',
+        secondary_amount_display: 'Preference',
+        steps: [],
+        batch: undefined,
+        gas_display: 'free',
+        warnings: [],
+        estimated_completion_ms: 0,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'NOTIFICATION',
+      primary_action_label: action === 'subscribe' ? 'Subscribe' : 'Notifications',
+      primary_amount_display: typeof slots.notificationCondition === 'string' ? slots.notificationCondition : 'All',
+      secondary_amount_display: typeof slots.notificationChannel === 'string' ? slots.notificationChannel : 'push',
+      steps: [],
+      batch: undefined,
+      gas_display: 'free',
+      warnings: [],
+      estimated_completion_ms: 0,
     },
   };
 }

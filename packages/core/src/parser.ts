@@ -100,6 +100,17 @@ const STRATEGY_FOLLOW_RE = /^(?:follow|subscribe|copy)\s+strategy\s+(.+?)\s*$/i;
 const STRATEGY_LIST_RE = /^(?:list|show|browse)\s+strateg(?:y|ies)\s*$/i;
 const STRATEGY_RUN_RE = /^(?:run|execute|apply)\s+strategy\s+(.+?)\s*$/i;
 
+// PORTFOLIO patterns (Stage 6 — Portfolio Dashboard)
+const PORTFOLIO_RE = /^(?:show|display|view|check)\s+(?:my\s+)?portfolio\s*$/i;
+const PORTFOLIO_DETAIL_RE = /^(?:show|display|view|check)\s+(?:my\s+)?(?:portfolio|holdings)\s+(?:on|for|at)\s+(\w+)\s*$/i;
+const PORTFOLIO_PNL_RE = /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:pnl|profit|loss|gains)\s*$/i;
+const PORTFOLIO_HISTORY_RE = /^(?:show|display)\s+(?:my\s+)?(?:portfolio|value)\s+(?:history|over\s+time)\s*$/i;
+
+// NOTIFICATION patterns (Stage 6 — Notification System)
+const NOTIFY_RE = /^(?:notify|alert|send)\s+me\s+(?:when|if)\s+(.+?)\s*(?:via|through|on)\s+(push|email|farcaster|telegram)\s*$/i;
+const NOTIFY_CHANNEL_RE = /^(?:set|change|update)\s+(?:my\s+)?notification\s+(?:channel|method)\s+(?:to\s+)?(push|email|farcaster|telegram)\s*$/i;
+const NOTIFY_STATUS_RE = /^(?:show|check|list)\s+(?:my\s+)?notifications?\s*$/i;
+
 function make(
   intent: Intent,
   raw: string,
@@ -418,6 +429,31 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('STRATEGY', raw, { strategyAction: 'run', strategyName: (m[1] ?? '').trim() }, 0.9);
   }
 
+  // PORTFOLIO patterns (Stage 6 — Portfolio Dashboard)
+  if ((m = raw.match(PORTFOLIO_PNL_RE))) {
+    return make('PORTFOLIO', raw, { portfolioAction: 'pnl' }, 0.9);
+  }
+  if ((m = raw.match(PORTFOLIO_HISTORY_RE))) {
+    return make('PORTFOLIO', raw, { portfolioAction: 'history' }, 0.85);
+  }
+  if ((m = raw.match(PORTFOLIO_DETAIL_RE))) {
+    return make('PORTFOLIO', raw, { portfolioAction: 'show', portfolioChain: (m[1] ?? '').toLowerCase() }, 0.9);
+  }
+  if ((m = raw.match(PORTFOLIO_RE))) {
+    return make('PORTFOLIO', raw, { portfolioAction: 'show' }, 0.85);
+  }
+
+  // NOTIFICATION patterns
+  if ((m = raw.match(NOTIFY_RE))) {
+    return make('NOTIFICATION', raw, { notificationAction: 'subscribe', notificationCondition: m[1]!.trim(), notificationChannel: m[2]!.toLowerCase() }, 0.9);
+  }
+  if ((m = raw.match(NOTIFY_CHANNEL_RE))) {
+    return make('NOTIFICATION', raw, { notificationAction: 'set_channel', notificationChannel: m[1]!.toLowerCase() }, 0.85);
+  }
+  if ((m = raw.match(NOTIFY_STATUS_RE))) {
+    return make('NOTIFICATION', raw, { notificationAction: 'list' }, 0.8);
+  }
+
   return make('UNKNOWN', raw, {}, 0);
 }
 
@@ -451,6 +487,8 @@ const VALID_INTENTS: readonly Intent[] = [
   'AUTO_REBALANCE',
   'SESSION_KEY',
   'STRATEGY',
+  'PORTFOLIO',
+  'NOTIFICATION',
 ];
 
 const PARSE_SYSTEM = `You translate a user's natural-language Web3 instruction into a strict JSON object.

@@ -386,6 +386,18 @@ export function validateStrategy(params: {
   return { ok: errors.length === 0, errors };
 }
 
+export function validateFeeAmount(
+  feeAmount: bigint,
+  maxFeeBps: number,
+  outputAmount: bigint,
+): { ok: boolean; error?: string } {
+  const maxFee = (outputAmount * BigInt(maxFeeBps)) / 10000n;
+  if (feeAmount > maxFee) {
+    return { ok: false, error: `Fee exceeds maximum (${maxFeeBps} bps)` };
+  }
+  return { ok: true };
+}
+
 export function validateRebalance(params: {
   driftPercent: number;
   maxDrift?: number;
