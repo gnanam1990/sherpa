@@ -38,3 +38,4 @@ worktrees/
 .env.local
 apps/*/.env.local
 packages/*/.env.local
+.vercel
