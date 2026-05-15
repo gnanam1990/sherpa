@@ -25,13 +25,37 @@ function stubData(sender: string = SENDER): {
   jsonrpc: '2.0';
   id: number;
   method: 'pm_getPaymasterStubData';
-  params: [{ sender: string; callData: string }];
+  params: [{
+    sender: string;
+    callData: string;
+    nonce: string;
+    initCode: string;
+    callGasLimit: string;
+    verificationGasLimit: string;
+    preVerificationGas: string;
+    maxFeePerGas: string;
+    maxPriorityFeePerGas: string;
+    paymasterAndData: string;
+    signature: string;
+  }];
 } {
   return {
     jsonrpc: '2.0',
     id: 1,
     method: 'pm_getPaymasterStubData',
-    params: [{ sender, callData: '0xdeadbeef' }],
+    params: [{
+      sender,
+      callData: '0xdeadbeef',
+      nonce: '0x0',
+      initCode: '0x',
+      callGasLimit: '0x0',
+      verificationGasLimit: '0x0',
+      preVerificationGas: '0x0',
+      maxFeePerGas: '0x3b9aca00',
+      maxPriorityFeePerGas: '0x3b9aca00',
+      paymasterAndData: '0x',
+      signature: '0x' + 'ab'.repeat(65),
+    }],
   };
 }
 
@@ -82,7 +106,24 @@ describe('POST /api/paymaster', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/paymaster',
-      payload: { jsonrpc: '2.0', id: 1, method: 'pm_unknown', params: [{ sender: SENDER }] },
+      payload: {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'pm_unknown',
+        params: [{
+          sender: SENDER,
+          callData: '0xdeadbeef',
+          nonce: '0x0',
+          initCode: '0x',
+          callGasLimit: '0x0',
+          verificationGasLimit: '0x0',
+          preVerificationGas: '0x0',
+          maxFeePerGas: '0x3b9aca00',
+          maxPriorityFeePerGas: '0x3b9aca00',
+          paymasterAndData: '0x',
+          signature: '0x' + 'ab'.repeat(65),
+        }],
+      },
     });
     expect(res.statusCode).toBe(400);
     expect(res.json()).toEqual({ error: 'invalid_request' });
@@ -99,7 +140,23 @@ describe('POST /api/paymaster', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/paymaster',
-      payload: { jsonrpc: '2.0', id: 1, params: [{ sender: SENDER }] },
+      payload: {
+        jsonrpc: '2.0',
+        id: 1,
+        params: [{
+          sender: SENDER,
+          callData: '0xdeadbeef',
+          nonce: '0x0',
+          initCode: '0x',
+          callGasLimit: '0x0',
+          verificationGasLimit: '0x0',
+          preVerificationGas: '0x0',
+          maxFeePerGas: '0x3b9aca00',
+          maxPriorityFeePerGas: '0x3b9aca00',
+          paymasterAndData: '0x',
+          signature: '0x' + 'ab'.repeat(65),
+        }],
+      },
     });
     expect(res.statusCode).toBe(400);
     expect(res.json()).toEqual({ error: 'invalid_request' });
@@ -120,7 +177,19 @@ describe('POST /api/paymaster', () => {
         jsonrpc: '2.0',
         id: 1,
         method: 'pm_getPaymasterStubData',
-        params: [{ sender: 'not-an-address', callData: '0xdead' }],
+        params: [{
+          sender: 'not-an-address',
+          callData: '0xdeadbeef',
+          nonce: '0x0',
+          initCode: '0x',
+          callGasLimit: '0x0',
+          verificationGasLimit: '0x0',
+          preVerificationGas: '0x0',
+          maxFeePerGas: '0x3b9aca00',
+          maxPriorityFeePerGas: '0x3b9aca00',
+          paymasterAndData: '0x',
+          signature: '0x' + 'ab'.repeat(65),
+        }],
       },
     });
     expect(res.statusCode).toBe(400);
@@ -142,7 +211,18 @@ describe('POST /api/paymaster', () => {
         jsonrpc: '2.0',
         id: 1,
         method: 'pm_getPaymasterStubData',
-        params: [{ callData: '0xdeadbeef' }],
+        params: [{
+          callData: '0xdeadbeef',
+          nonce: '0x0',
+          initCode: '0x',
+          callGasLimit: '0x0',
+          verificationGasLimit: '0x0',
+          preVerificationGas: '0x0',
+          maxFeePerGas: '0x3b9aca00',
+          maxPriorityFeePerGas: '0x3b9aca00',
+          paymasterAndData: '0x',
+          signature: '0x' + 'ab'.repeat(65),
+        }],
       },
     });
     expect(res.statusCode).toBe(401);
@@ -260,7 +340,19 @@ describe('POST /api/paymaster', () => {
         jsonrpc: '2.0',
         id: 1,
         method: 'pm_getPaymasterData',
-        params: [{ sender: mixedCaseSender, callData: longCallData }],
+        params: [{
+          sender: mixedCaseSender,
+          callData: longCallData,
+          nonce: '0x0',
+          initCode: '0x',
+          callGasLimit: '0x0',
+          verificationGasLimit: '0x0',
+          preVerificationGas: '0x0',
+          maxFeePerGas: '0x3b9aca00',
+          maxPriorityFeePerGas: '0x3b9aca00',
+          paymasterAndData: '0x',
+          signature: '0x' + 'ab'.repeat(65),
+        }],
       },
     });
     expect(res.statusCode).toBe(200);

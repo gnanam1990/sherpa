@@ -16,9 +16,9 @@ describe('Telegram API routes', () => {
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.url).toBeDefined();
-    expect(body.url).toContain('/sign');
-    expect(body.expiresAt).toBeDefined();
+    expect(body.signingUrl).toBeDefined();
+    expect(body.signingUrl).toContain('/sign');
+    expect(body.expiresIn).toBeDefined();
     await app.close();
   });
 
