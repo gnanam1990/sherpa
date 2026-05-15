@@ -1,38 +1,43 @@
 # Sherpa
 
-**Type what you want. Sherpa does the onchain.**
+> The natural-language Base agent.
+
+[![Live](https://img.shields.io/badge/live-Base_Sepolia-blue)](https://sherpa-web.vercel.app)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+Type plain English. Sherpa does it onchain.
 
 Sherpa is a natural-language operating system for the Base L2 blockchain. Users type intent in English; Sherpa parses, validates, simulates, and executes onchain transactions via Coinbase Smart Wallet with sponsored gas.
 
 ## Status
 
-| Stage | Description | Status |
-|-------|-------------|--------|
-| **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP on Base Sepolia | Local verified; public deploy pending |
-| **Stage 2** | DeFi (SWAP, LEND, BORROW, STAKE, BRIDGE, LP) | Code complete |
-| **Stage 3** | Multi-surface (Farcaster, Telegram, BET) | Code complete |
-| **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY) | Code complete |
-| **Stage 5+** | Multi-chain, Session Keys, Strategy, etc. | Code complete |
+| Stage        | Description                                             | Status            |
+| ------------ | ------------------------------------------------------- | ----------------- |
+| **Stage 1**  | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP on Base Sepolia | Live public smoke |
+| **Stage 2**  | DeFi (SWAP, LEND, BORROW, STAKE, BRIDGE, LP)            | Code complete     |
+| **Stage 3**  | Multi-surface (Farcaster, Telegram, BET)                | Code complete     |
+| **Stage 4**  | Automation (DCA, ALERT, AUTO_REPAY)                     | Code complete     |
+| **Stage 5+** | Multi-chain, Session Keys, Strategy, etc.               | Code complete     |
 
-**Stage 1 is verified locally on Base Sepolia.** Public launch is pending API/web deployment, production env vars, and a live smoke test. Future stages are coded and gated behind production config for safety.
+**Stage 1 is live on Base Sepolia.** Future stages are coded and gated behind production config for safety.
 
-## Stage 1 — Ready For Public Smoke
+## Stage 1
 
-| Intent | Example |
-|--------|---------|
-| SEND | `send 5 usdc to vitalik.base.eth` |
-| BALANCE | `what's my balance` |
-| HISTORY | `show my recent transactions` |
-| IDENTITY_LOOKUP | `who is vitalik.base.eth` |
+| Intent          | Example                           |
+| --------------- | --------------------------------- |
+| SEND            | `send 5 usdc to vitalik.base.eth` |
+| BALANCE         | `what's my balance`               |
+| HISTORY         | `show my recent transactions`     |
+| IDENTITY_LOOKUP | `who is vitalik.base.eth`         |
 
 ## Launch Links
 
-| Item | Status |
-|------|--------|
-| Web URL | Pending Vercel production deploy |
-| API URL | Pending public API deploy |
-| First public smoke tx | Pending live URL smoke test |
-| Demo video | Pending live URL smoke test |
+| Item                  | Status                                      |
+| --------------------- | ------------------------------------------- |
+| Web URL               | https://sherpa-web.vercel.app               |
+| API URL               | Railway deployment behind the web app proxy |
+| First public smoke tx | Verified on Base Sepolia                    |
+| Demo video            | Pending live URL smoke test                 |
 
 ## Quick Start
 
@@ -87,4 +92,5 @@ sherpa/
 ```
 
 ## License
-MIT
+
+MIT. See `LICENSE`.

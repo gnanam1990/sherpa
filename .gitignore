@@ -17,6 +17,12 @@ coverage/
 .env
 .env.*
 !.env.example
+!.env.mainnet.example
+apps/*/.env.local
+packages/*/.env.local
+*.pem
+*.key
+secrets/
 
 # Editor / OS
 .DS_Store
@@ -35,7 +41,4 @@ yarn-error.log*
 *.local
 *.zip
 worktrees/
-.env.local
-apps/*/.env.local
-packages/*/.env.local
 .vercel
