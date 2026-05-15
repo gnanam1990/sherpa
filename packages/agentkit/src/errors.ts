@@ -241,3 +241,14 @@ export const CHAIN_ERRORS = {
   WRONG_CHAIN_FOR_INTENT: (intent: string, chain: string) =>
     `${intent} is not available on ${chain}.`,
 } as const;
+
+export const SECURITY_ERRORS = {
+  MULTISIG_NOT_SETUP: () => 'Multi-sig wallet not set up. Run "setup multisig" first.',
+  INSUFFICIENT_CONFIRMATIONS: (current: number, required: number) =>
+    `Need ${required} confirmations, have ${current}.`,
+  HARDWARE_WALLET_NOT_CONNECTED: () =>
+    'Hardware wallet not connected. Please connect and unlock your device.',
+  ADDRESS_NOT_WHITELISTED: (addr: string) => `${addr} is not in your whitelist.`,
+  THRESHOLD_INVALID: () => 'Multi-sig threshold must be between 1 and number of signers.',
+  DAILY_LIMIT_EXCEEDED: (limit: string) => `Daily spend limit ($${limit}) exceeded.`,
+} as const;

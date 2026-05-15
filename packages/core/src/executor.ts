@@ -168,6 +168,7 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'GOVERNANCE') return planGovernance(parsed, deps);
   if (parsed.intent === 'NOTIFICATION') return planNotification(parsed, deps);
   if (parsed.intent === 'ANALYTICS') return planAnalytics(parsed, deps);
+  if (parsed.intent === 'SECURITY') return planSecurity(parsed, deps);
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,
@@ -1263,6 +1264,60 @@ async function planAnalytics(parsed: ParsedIntent, _deps: ExecutorDeps): Promise
         action === 'volume' ? 'Show Volume' : action === 'fees' ? 'Show Fees' : action === 'usage' ? 'Show Usage' : 'Show Stats',
       primary_amount_display: 'Analytics',
       secondary_amount_display: action,
+      steps: [],
+      batch: undefined,
+      gas_display: 'free',
+      warnings: [],
+      estimated_completion_ms: 0,
+    },
+  };
+}
+
+async function planSecurity(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const action = slots.securityAction || 'status';
+
+  if (action === 'multisig') {
+    return {
+      ok: true,
+      card: {
+        intent: 'SECURITY',
+        primary_action_label: 'Setup Multi-sig',
+        primary_amount_display: 'Wallet',
+        secondary_amount_display: 'Security',
+        steps: [],
+        batch: undefined,
+        gas_display: 'sponsored',
+        warnings: ['Multi-sig requires multiple signers for transactions.'],
+        estimated_completion_ms: 30000,
+      },
+    };
+  }
+
+  if (action === 'hardware') {
+    return {
+      ok: true,
+      card: {
+        intent: 'SECURITY',
+        primary_action_label: 'Connect Hardware Wallet',
+        primary_amount_display: 'Ledger/Trezor',
+        secondary_amount_display: 'Security',
+        steps: [],
+        batch: undefined,
+        gas_display: 'free',
+        warnings: ['Ensure your hardware wallet is connected and unlocked.'],
+        estimated_completion_ms: 0,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'SECURITY',
+      primary_action_label: action === 'whitelist' ? 'Add to Whitelist' : 'Security Status',
+      primary_amount_display: (typeof slots.securityTarget === 'string' ? slots.securityTarget : null) || 'Settings',
+      secondary_amount_display: 'Security',
       steps: [],
       batch: undefined,
       gas_display: 'free',

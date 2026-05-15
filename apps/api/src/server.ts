@@ -35,6 +35,8 @@ import { alertRoutes } from './routes/alerts.js';
 import { autoRepayRoutes } from './routes/auto-repay.js';
 import { dcaRoutes } from './routes/dca.js';
 import { analyticsRoutes } from './routes/analytics.js';
+import { securityRoutes } from './routes/security.js';
+import { developerRoutes } from './routes/developer.js';
 import { governanceRoutes } from './routes/governance.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { portfolioRoutes } from './routes/portfolio.js';
@@ -524,6 +526,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   governanceRoutes(app);
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   analyticsRoutes(app);
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  securityRoutes(app);
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  developerRoutes(app);
 
   return app;
 }

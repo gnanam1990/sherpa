@@ -408,3 +408,29 @@ export function validateRebalance(params: {
   }
   return { ok: true };
 }
+
+export function validateSecuritySettings(params: {
+  threshold: number;
+  signers: string[];
+}): { ok: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (params.threshold < 1) {
+    errors.push('Multi-sig threshold must be at least 1');
+  }
+  if (params.threshold > params.signers.length) {
+    errors.push('Threshold cannot exceed number of signers');
+  }
+  if (params.signers.length > 10) {
+    errors.push('Maximum 10 signers allowed');
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+export function isWhitelisted(
+  address: `0x${string}`,
+  whitelist: Set<string>,
+): boolean {
+  return whitelist.has(address.toLowerCase());
+}

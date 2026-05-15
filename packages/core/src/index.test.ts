@@ -818,6 +818,80 @@ describe('core/parser', () => {
     });
   });
 
+  // ── SECURITY parsing ────────────────────────────────────────────────
+
+  describe('SECURITY intent', () => {
+    test('parses "setup multisig wallet"', () => {
+      const result = parseDeterministic('setup multisig wallet');
+      expect(result.intent).toBe('SECURITY');
+      expect(result.slots.securityAction).toBe('multisig');
+    });
+
+    test('parses "connect ledger wallet"', () => {
+      const result = parseDeterministic('connect ledger wallet');
+      expect(result.intent).toBe('SECURITY');
+      expect(result.slots.securityAction).toBe('hardware');
+    });
+
+    test('parses "check my security status"', () => {
+      const result = parseDeterministic('check my security status');
+      expect(result.intent).toBe('SECURITY');
+      expect(result.slots.securityAction).toBe('status');
+    });
+
+    test('parses "add 0x1234 to my whitelist"', () => {
+      const result = parseDeterministic('add 0x1234 to my whitelist');
+      expect(result.intent).toBe('SECURITY');
+      expect(result.slots.securityAction).toBe('whitelist');
+    });
+  });
+
+  // ── DEVELOPER parsing ──────────────────────────────────────────────
+
+  describe('DEVELOPER intent', () => {
+    test('parses "create api key"', () => {
+      const result = parseDeterministic('create api key');
+      expect(result.intent).toBe('DEVELOPER');
+      expect(result.slots.devAction).toBe('create_key');
+    });
+
+    test('parses "show api docs"', () => {
+      const result = parseDeterministic('show api docs');
+      expect(result.intent).toBe('DEVELOPER');
+      expect(result.slots.devAction).toBe('docs');
+    });
+
+    test('parses "check my api status"', () => {
+      const result = parseDeterministic('check my api status');
+      expect(result.intent).toBe('DEVELOPER');
+      expect(result.slots.devAction).toBe('status');
+    });
+
+    test('parses "create webhook for transactions"', () => {
+      const result = parseDeterministic('create webhook for transactions');
+      expect(result.intent).toBe('DEVELOPER');
+      expect(result.slots.devAction).toBe('webhook');
+    });
+  });
+
+  // ── CROSS_CHAIN parsing ─────────────────────────────────────────────
+
+  describe('CROSS_CHAIN intent', () => {
+    test('parses "bridge 100 USDC from base to arbitrum and swap for ETH"', () => {
+      const result = parseDeterministic('bridge 100 USDC from base to arbitrum and swap for ETH');
+      expect(result.intent).toBe('CROSS_CHAIN');
+      expect(result.slots.crossAmount).toBe('100');
+      expect(result.slots.crossSource).toBe('base');
+      expect(result.slots.crossDest).toBe('arbitrum');
+    });
+
+    test('parses "swap 50 USDC at optimism for ETH"', () => {
+      const result = parseDeterministic('swap 50 USDC at optimism for ETH');
+      expect(result.intent).toBe('CROSS_CHAIN');
+      expect(result.slots.crossChain).toBe('optimism');
+    });
+  });
+
   // ── AUTO_REBALANCE parsing ──────────────────────────────────────────
 
   describe('AUTO_REBALANCE intent', () => {

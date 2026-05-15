@@ -135,6 +135,22 @@ const AUTOMATION_IF_RE = /^if\s+(.+?)\s+then\s+(.+?)\s*$/i;
 const AUTOMATION_LIST_RE = /^(?:list|show)\s+(?:my\s+)?automations?\s*$/i;
 const AUTOMATION_CANCEL_RE = /^(?:cancel|stop|disable)\s+(?:automation|rule)\s+(.+?)\s*$/i;
 
+// SECURITY patterns (Stage 8 — Security Hardening)
+const MULTISIG_RE = /^(?:create|setup|enable)\s+multi\s*sig\s*(?:wallet)?\s*$/i;
+const HARDWARE_RE = /^(?:connect|link|pair)\s+(?:hardware|ledger|trezor)\s+(?:wallet|device)\s*$/i;
+const SECURITY_RE = /^(?:show|check|view)\s+(?:my\s+)?security\s+(?:settings|status)\s*$/i;
+const WHITELIST_RE = /^(?:add|whitelist)\s+(\S+)\s+(?:to\s+)?(?:my\s+)?(?:whitelist|trusted)\s*$/i;
+
+// DEVELOPER patterns (Stage 8 — Developer API)
+const API_KEY_RE = /^(?:create|generate|get)\s+(?:an?\s+)?api\s+key\s*$/i;
+const API_DOCS_RE = /^(?:show|open|view)\s+(?:api\s+)?docs?\s*$/i;
+const API_STATUS_RE = /^(?:check|show)\s+(?:my\s+)?api\s+(?:status|usage|limits?)\s*$/i;
+const WEBHOOK_RE = /^(?:create|add|setup)\s+(?:a\s+)?webhook\s+(?:for\s+)?(.+?)\s*$/i;
+
+// CROSS_CHAIN patterns (Stage 8 — Cross-chain Orchestration)
+const CROSS_CHAIN_RE = /^(?:bridge|send|move)\s+([\d.]+)\s+(\w+)\s+(?:from\s+)?(\w+)\s+to\s+(\w+)\s+and\s+(?:then\s+)?(.+?)\s*$/i;
+const CROSS_CHAIN_SWAP_RE = /^(?:swap|convert)\s+([\d.]+)\s+(\w+)\s+(?:on|at)\s+(\w+)\s+(?:for|to)\s+(\w+)\s*$/i;
+
 function make(
   intent: Intent,
   raw: string,
@@ -536,6 +552,42 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('AUTOMATION', raw, { automationAction: 'cancel', automationName: m[1]!.trim() }, 0.85);
   }
 
+  // SECURITY patterns (Stage 8 — Security Hardening)
+  if ((m = raw.match(MULTISIG_RE))) {
+    return make('SECURITY', raw, { securityAction: 'multisig' }, 0.9);
+  }
+  if ((m = raw.match(HARDWARE_RE))) {
+    return make('SECURITY', raw, { securityAction: 'hardware' }, 0.9);
+  }
+  if ((m = raw.match(SECURITY_RE))) {
+    return make('SECURITY', raw, { securityAction: 'status' }, 0.8);
+  }
+  if ((m = raw.match(WHITELIST_RE))) {
+    return make('SECURITY', raw, { securityAction: 'whitelist', securityTarget: m[1] }, 0.85);
+  }
+
+  // CROSS_CHAIN patterns (Stage 8 — Cross-chain Orchestration)
+  if ((m = raw.match(CROSS_CHAIN_RE))) {
+    return make('CROSS_CHAIN', raw, { crossAmount: m[1], crossAsset: (m[2] ?? '').toUpperCase(), crossSource: (m[3] ?? '').toLowerCase(), crossDest: (m[4] ?? '').toLowerCase(), crossAction: (m[5] ?? '').trim() }, 0.9);
+  }
+  if ((m = raw.match(CROSS_CHAIN_SWAP_RE))) {
+    return make('CROSS_CHAIN', raw, { crossAmount: m[1], crossAsset: (m[2] ?? '').toUpperCase(), crossChain: (m[3] ?? '').toLowerCase(), crossTarget: (m[4] ?? '').toUpperCase() }, 0.88);
+  }
+
+  // DEVELOPER patterns (Stage 8 — Developer API)
+  if ((m = raw.match(API_KEY_RE))) {
+    return make('DEVELOPER', raw, { devAction: 'create_key' }, 0.9);
+  }
+  if ((m = raw.match(API_DOCS_RE))) {
+    return make('DEVELOPER', raw, { devAction: 'docs' }, 0.8);
+  }
+  if ((m = raw.match(API_STATUS_RE))) {
+    return make('DEVELOPER', raw, { devAction: 'status' }, 0.85);
+  }
+  if ((m = raw.match(WEBHOOK_RE))) {
+    return make('DEVELOPER', raw, { devAction: 'webhook', devEvent: m[1]!.trim() }, 0.85);
+  }
+
   return make('UNKNOWN', raw, {}, 0);
 }
 
@@ -575,6 +627,9 @@ const VALID_INTENTS: readonly Intent[] = [
   'ANALYTICS',
   'SOCIAL',
   'AUTOMATION',
+  'SECURITY',
+  'DEVELOPER',
+  'CROSS_CHAIN',
 ];
 
 const PARSE_SYSTEM = `You translate a user's natural-language Web3 instruction into a strict JSON object.

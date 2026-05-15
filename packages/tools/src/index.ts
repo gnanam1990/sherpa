@@ -165,3 +165,34 @@ export { evaluateCondition, executeAction, validateAutomation } from './automati
 export type { AutomationRule, Condition, Action, AutomationDeps } from './automation/index.js';
 export { getProfile, getLeaderboard, startCopyTrade, stopCopyTrade, getCopyTradeStatus } from './social/index.js';
 export type { SocialUser, CopyTradeSettings, SocialDeps } from './social/index.js';
+export {
+  createMultisig,
+  getMultisigTransactions,
+  buildSubmitCall,
+  MULTISIG_ABI,
+  detectHardwareWallets,
+  connectLedger,
+  connectTrezor,
+} from './security/index.js';
+export type {
+  MultisigConfig,
+  MultisigTransaction,
+  HardwareWalletInfo,
+  SecurityDeps,
+} from './security/index.js';
+export { SherpaClient, createSherpaClient } from './sdk/client.js';
+export { generateApiKey, validateApiKey, hashApiKey, createApiKey } from './sdk/api-keys.js';
+export { generateWebhookSecret, createWebhook, verifyWebhookSignature } from './sdk/webhooks.js';
+export type {
+  SherpaClientConfig,
+  ParseRequest,
+  ParseResponse,
+  PlanRequest,
+  PlanResponse,
+  SdkDeps,
+  ApiKey,
+  WebhookConfig,
+  Webhook,
+} from './sdk/types.js';
+export { findBestRoute, estimateCrossChainTime, orchestrate, validateOrchestration } from './cross-chain/index.js';
+export type { CrossChainRoute, CrossChainStep, OrchestratedTx, CrossChainDeps } from './cross-chain/index.js';

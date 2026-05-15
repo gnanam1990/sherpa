@@ -31,6 +31,9 @@ export type Intent =
   | 'ANALYTICS'
   | 'SOCIAL'
   | 'AUTOMATION'
+  | 'SECURITY'
+  | 'DEVELOPER'
+  | 'CROSS_CHAIN'
   | 'UNKNOWN';
 
 export type ParsedIntent = {
@@ -707,5 +710,72 @@ export type AutomationPlan = {
   type: 'AUTOMATION';
   action: 'create' | 'list' | 'cancel';
   automation?: Automation;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Security types (Stage 8 — Security Hardening) ──────────────────────
+
+export type SecuritySettings = {
+  multisigEnabled: boolean;
+  multisigThreshold: number;
+  multisigSigners: `0x${string}`[];
+  hardwareWalletConnected: boolean;
+  hardwareWalletType?: 'ledger' | 'trezor';
+  whitelistedAddresses: `0x${string}`[];
+  dailySpendLimit: bigint;
+  perTxSpendLimit: bigint;
+  requireConfirmationAbove: bigint;
+};
+
+export type SecurityPlan = {
+  type: 'SECURITY';
+  action: 'multisig' | 'hardware' | 'status' | 'whitelist';
+  settings?: SecuritySettings;
+  target?: `0x${string}`;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Developer types (Stage 8 — Developer API) ─────────────────────────
+
+export type ApiKey = {
+  id: string;
+  key: string;
+  name: string;
+  permissions: string[];
+  rateLimit: number;
+  usageCount: number;
+  createdAt: number;
+  expiresAt?: number;
+};
+
+export type Webhook = {
+  id: string;
+  url: string;
+  events: string[];
+  secret: string;
+  status: 'active' | 'paused' | 'failed';
+  lastTriggered?: number;
+  failureCount: number;
+};
+
+export type DeveloperPlan = {
+  type: 'DEVELOPER';
+  action: 'create_key' | 'docs' | 'status' | 'webhook';
+  apiKey?: ApiKey;
+  webhook?: Webhook;
+  calls: []; // No on-chain calls
+};
+
+// ── Cross-chain types (Stage 8 — Cross-chain Orchestration) ────────────
+
+export type CrossChainIntent = {
+  type: 'CROSS_CHAIN';
+  sourceChain: string;
+  destinationChain: string;
+  bridgeAsset: string;
+  bridgeAmount: bigint;
+  followUpAction?: string;
+  estimatedTime: number;
+  bridgeFee: bigint;
   calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
 };
