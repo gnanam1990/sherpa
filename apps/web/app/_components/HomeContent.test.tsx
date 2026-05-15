@@ -46,7 +46,11 @@ vi.mock('next/link', () => ({
 }));
 
 vi.mock('../../lib/wagmi', () => ({
-  useSherpaSendCalls: () => ({ sendSponsoredCalls: vi.fn() }),
+  useSherpaCallsStatus: () => ({ data: undefined, error: null, isError: false }),
+  useSherpaSendCalls: () => ({
+    sendSponsoredCalls: vi.fn(),
+    sendSponsoredCallsAsync: vi.fn(),
+  }),
 }));
 
 vi.mock('@sherpa/ui', async () => {
