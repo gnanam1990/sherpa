@@ -210,8 +210,10 @@ describe('Prompt', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
-    expect(await screen.findByText(/Recent transactions on base-sepolia/)).toBeTruthy();
-    expect(screen.getByText(/OUT 5.00 USDC/)).toBeTruthy();
+    const history = await screen.findByText(/Recent transactions on base-sepolia/);
+    expect(history.textContent).toContain(`OUT 5.00 USDC to ${USER_ADDRESS}`);
+    expect(history.textContent).toContain(`Tx: ${TX_HASH.slice(0, 10)}...${TX_HASH.slice(-8)}`);
+    expect(history.textContent).toContain('Intent: SEND');
     expect(screen.queryByRole('button', { name: 'Proceed' })).toBeNull();
   });
 

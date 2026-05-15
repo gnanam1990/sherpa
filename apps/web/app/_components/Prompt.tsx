@@ -178,13 +178,24 @@ function balanceSummary(data: BalanceResponse): string {
   ].join('\n');
 }
 
+function shortTxHash(txHash: string): string {
+  if (txHash.length <= 20) return txHash;
+  return `${txHash.slice(0, 10)}...${txHash.slice(-8)}`;
+}
+
 function historySummary(data: HistoryResponse): string {
   if (data.items.length === 0) return `No recent transactions on ${data.chain}.`;
   const rows = data.items.slice(0, 5).map((item) => {
-    const intent = item.sherpaIntent ? ` · ${item.sherpaIntent}` : '';
-    return `${item.direction.toUpperCase()} ${item.amountDisplay} · ${item.txHash.slice(0, 10)}…${intent}`;
+    const relation = item.direction === 'in' ? 'from' : item.direction === 'self' ? 'with' : 'to';
+    return [
+      `${item.direction.toUpperCase()} ${item.amountDisplay} ${relation} ${item.counterparty}`,
+      `Tx: ${shortTxHash(item.txHash)}`,
+      item.sherpaIntent ? `Intent: ${item.sherpaIntent}` : undefined,
+    ]
+      .filter(Boolean)
+      .join('\n');
   });
-  return [`Recent transactions on ${data.chain}`, ...rows].join('\n');
+  return [`Recent transactions on ${data.chain}`, ...rows].join('\n\n');
 }
 
 function identitySummary(card: SerializedConfirmationCardProps): string {
