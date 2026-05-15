@@ -19,9 +19,7 @@ export type SignatureVerificationResult = {
   reason?: string;
 };
 
-const USEROP_HASH_PREFIX = '0x194f64e2732d5c28794459646857855000000000000000000000000000000000';
-
-export function getUserOpHash(userOp: UserOp, entryPoint: Address, chainId: number): `0x${string}` {
+export function getUserOpHash(userOp: UserOp, _entryPoint: Address, _chainId: number): `0x${string}` {
   const packed = [
     userOp.sender,
     userOp.nonce.toString(),
