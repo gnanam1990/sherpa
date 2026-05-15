@@ -2,7 +2,7 @@ import type { PortfolioRisk, ExposureBreakdown, RiskDeps } from './types.js';
 
 export async function assessPortfolioRisk(
   address: `0x${string}`,
-  deps: RiskDeps,
+  _deps: RiskDeps,
 ): Promise<PortfolioRisk> {
   return {
     address,
@@ -32,8 +32,8 @@ export async function assessPortfolioRisk(
 }
 
 export async function getExposureBreakdown(
-  address: `0x${string}`,
-  deps: RiskDeps,
+  _address: `0x${string}`,
+  _deps: RiskDeps,
 ): Promise<ExposureBreakdown> {
   return {
     byChain: {

@@ -47,6 +47,46 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  it('POST /api/parse resolves IDENTITY_LOOKUP through the configured resolver', async () => {
+    const routeErrors: unknown[] = [];
+    const logger: Logger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn((_msg, ctx) => routeErrors.push((ctx as { err?: unknown }).err)),
+      child: vi.fn(() => logger),
+    };
+    const app = buildServer({
+      config: offlineConfig,
+      logger,
+      resolver: async () => ({
+        address: USDC_RECIPIENT,
+        source: 'basename',
+        display: 'jesse.base.eth',
+        metadata: { basename: 'jesse.base.eth' },
+      }),
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse',
+      payload: { input: 'who is jesse.base.eth', userKey: USDC_RECIPIENT },
+    });
+    if (res.statusCode !== 200) throw routeErrors[0];
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      parsed?: { intent: string };
+      card?: { intent: string; recipient_display?: string; recipient_metadata?: Record<string, unknown> };
+    };
+    expect(body.parsed?.intent).toBe('IDENTITY_LOOKUP');
+    expect(body.card?.intent).toBe('IDENTITY_LOOKUP');
+    expect(body.card?.recipient_display).toBe(USDC_RECIPIENT);
+    expect(body.card?.recipient_metadata).toMatchObject({
+      source: 'basename',
+      query: 'jesse.base.eth',
+    });
+    await app.close();
+  });
+
   it('POST /api/execute writes an audit log and returns the plan', async () => {
     const app = buildServer();
     const res = await app.inject({

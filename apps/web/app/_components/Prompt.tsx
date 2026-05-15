@@ -14,9 +14,28 @@ import { useExecuteConfirm } from './useExecuteConfirm';
 import { useChatHistory } from '../../hooks/useChatHistory';
 
 type ParseResponse = {
-  parsed?: { intent: string; confidence: number };
+  parsed?: { intent: string; confidence: number; slots?: Record<string, unknown> };
   card?: SerializedConfirmationCardProps;
   error?: string;
+};
+
+type BalanceResponse = {
+  address: string;
+  chain: string;
+  balances: { ETH: string; USDC: string };
+};
+
+type HistoryResponse = {
+  address: string;
+  chain: string;
+  items: Array<{
+    txHash: string;
+    direction: 'in' | 'out' | 'self';
+    asset: string;
+    amountDisplay: string;
+    counterparty: string;
+    sherpaIntent?: string;
+  }>;
 };
 
 type ExecuteResponse =
@@ -64,6 +83,7 @@ const actionVerb: Record<string, string> = {
   BET: 'Bet',
   BALANCE: 'Show balance',
   HISTORY: 'Show history',
+  IDENTITY_LOOKUP: 'Lookup identity',
 };
 
 function actionDescription(card: SerializedConfirmationCardProps | undefined): string {
@@ -87,6 +107,7 @@ const successVerb: Record<string, string> = {
   BET: 'Placed bet',
   BALANCE: 'Checked balance',
   HISTORY: 'Loaded history',
+  IDENTITY_LOOKUP: 'Resolved identity',
 };
 
 const pendingVerb: Record<string, string> = {
@@ -95,7 +116,45 @@ const pendingVerb: Record<string, string> = {
   BET: 'Placing bet',
   BALANCE: 'Checking balance',
   HISTORY: 'Loading history',
+  IDENTITY_LOOKUP: 'Resolving identity',
 };
+
+async function readJson<T>(res: Response): Promise<T> {
+  const body = (await res.json()) as T & { error?: string; message?: string };
+  if (!res.ok) {
+    throw new Error(body.error ?? body.message ?? `Request failed with ${res.status}`);
+  }
+  return body;
+}
+
+function balanceSummary(data: BalanceResponse): string {
+  return [
+    `Balance on ${data.chain}`,
+    `ETH: ${data.balances.ETH}`,
+    `USDC: ${data.balances.USDC}`,
+  ].join('\n');
+}
+
+function historySummary(data: HistoryResponse): string {
+  if (data.items.length === 0) return `No recent transactions on ${data.chain}.`;
+  const rows = data.items.slice(0, 5).map((item) => {
+    const intent = item.sherpaIntent ? ` · ${item.sherpaIntent}` : '';
+    return `${item.direction.toUpperCase()} ${item.amountDisplay} · ${item.txHash.slice(0, 10)}…${intent}`;
+  });
+  return [`Recent transactions on ${data.chain}`, ...rows].join('\n');
+}
+
+function identitySummary(card: SerializedConfirmationCardProps): string {
+  const source = card.recipient_metadata?.source;
+  const query = card.recipient_metadata?.query;
+  return [
+    `Resolved ${typeof query === 'string' ? query : card.primary_amount_display}`,
+    `Address: ${card.recipient_display ?? card.secondary_amount_display ?? 'unknown'}`,
+    typeof source === 'string' ? `Source: ${source}` : undefined,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
 
 function summaryFor(
   card: SerializedConfirmationCardProps,
@@ -175,6 +234,30 @@ export function Prompt({
         body: JSON.stringify({ input: prompt, userKey: userAddress }),
       });
       const body = (await res.json()) as ParseResponse;
+      if (body.parsed?.intent === 'BALANCE') {
+        const balance = await readJson<BalanceResponse>(await fetch(`/api/balance/${userAddress}`));
+        chat.updateMessage(thinkingMessage.id, {
+          content: { kind: 'text', text: balanceSummary(balance) },
+        });
+        return;
+      }
+      if (body.parsed?.intent === 'HISTORY') {
+        const rawLimit = body.parsed.slots?.limit;
+        const limit = typeof rawLimit === 'number' ? rawLimit : 10;
+        const history = await readJson<HistoryResponse>(
+          await fetch(`/api/history/${userAddress}?limit=${Math.min(50, Math.max(1, limit))}`),
+        );
+        chat.updateMessage(thinkingMessage.id, {
+          content: { kind: 'text', text: historySummary(history) },
+        });
+        return;
+      }
+      if (body.parsed?.intent === 'IDENTITY_LOOKUP' && body.card) {
+        chat.updateMessage(thinkingMessage.id, {
+          content: { kind: 'text', text: identitySummary(body.card) },
+        });
+        return;
+      }
       if (body.card) {
         pendingConfirmations.current[thinkingMessage.id] = { card: body.card, sourceInput: prompt };
         chat.updateMessage(thinkingMessage.id, {

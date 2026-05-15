@@ -1,4 +1,4 @@
-import type { MultisigConfig, MultisigTransaction, SecurityDeps } from './types.js';
+import type { MultisigConfig, MultisigTransaction } from './types.js';
 
 export const MULTISIG_ABI = [
   {
@@ -29,7 +29,7 @@ export const MULTISIG_ABI = [
 ] as const;
 
 export async function createMultisig(
-  config: MultisigConfig,
+  _config: MultisigConfig,
 ): Promise<{ address: `0x${string}`; txHash: string }> {
   return {
     address: '0x' + '00'.repeat(20) as `0x${string}`,
@@ -38,7 +38,7 @@ export async function createMultisig(
 }
 
 export async function getMultisigTransactions(
-  multisigAddress: `0x${string}`,
+  _multisigAddress: `0x${string}`,
 ): Promise<MultisigTransaction[]> {
   return [];
 }

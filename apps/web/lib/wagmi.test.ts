@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPaymasterCapabilities, walletEnv, withPaymasterCapabilities } from './wagmi';
 
+const PUBLIC_ORIGIN = 'https://sherpa.example';
+const PUBLIC_LOCATION = { origin: PUBLIC_ORIGIN, hostname: 'sherpa.example' } as Location;
+const LOCAL_LOCATION = { origin: 'http://localhost:3000', hostname: 'localhost' } as Location;
+
 afterEach(() => {
   vi.unstubAllEnvs();
 });
@@ -16,10 +20,14 @@ describe('wagmi wallet config', () => {
     expect(walletEnv).not.toHaveProperty('paymasterRpc');
   });
 
-  it('builds relative paymaster capabilities for wallet_sendCalls', () => {
-    expect(getPaymasterCapabilities()).toEqual({
-      paymasterService: { url: '/api/paymaster' },
+  it('builds absolute paymaster capabilities for wallet_sendCalls', () => {
+    expect(getPaymasterCapabilities('/api/paymaster', PUBLIC_LOCATION)).toEqual({
+      paymasterService: { url: `${PUBLIC_ORIGIN}/api/paymaster` },
     });
+  });
+
+  it('omits paymaster capabilities on localhost because Coinbase cannot reach it', () => {
+    expect(getPaymasterCapabilities('/api/paymaster', LOCAL_LOCATION)).toBeUndefined();
   });
 
   it('omits paymaster capabilities when paymaster is disabled', () => {
@@ -40,7 +48,9 @@ describe('wagmi wallet config', () => {
     });
 
     expect(freshWalletEnv).not.toHaveProperty('paymasterRpc');
-    expect(getFreshCapabilities()).toEqual({ paymasterService: { url: '/api/paymaster' } });
+    expect(getFreshCapabilities('/api/paymaster', PUBLIC_LOCATION)).toEqual({
+      paymasterService: { url: `${PUBLIC_ORIGIN}/api/paymaster` },
+    });
     expect(serializedConfig).not.toContain(providerHost);
     expect(serializedConfig).not.toMatch(/https?:\/\/[^"]*paymaster/i);
   });
@@ -49,7 +59,9 @@ describe('wagmi wallet config', () => {
     expect(
       withPaymasterCapabilities({
         capabilities: { paymasterService: { url: 'https://server-paymaster.example' } },
-      }),
-    ).toEqual({ capabilities: { paymasterService: { url: '/api/paymaster' } } });
+      }, '/api/paymaster', PUBLIC_LOCATION),
+    ).toEqual({
+      capabilities: { paymasterService: { url: `${PUBLIC_ORIGIN}/api/paymaster` } },
+    });
   });
 });

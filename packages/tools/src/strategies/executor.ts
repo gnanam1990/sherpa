@@ -1,4 +1,4 @@
-import type { StrategyExecution, StrategyStepResult } from './types.js';
+import type { StrategyExecution } from './types.js';
 
 export async function executeStrategy(
   strategyId: string,

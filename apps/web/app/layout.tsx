@@ -8,7 +8,6 @@ export const metadata: Metadata = {
   title: 'Sherpa',
   description: 'The natural-language Base agent.',
   manifest: '/manifest.json',
-  themeColor: '#0052FF',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -21,6 +20,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: '#0052FF',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

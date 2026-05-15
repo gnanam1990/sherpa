@@ -16,8 +16,8 @@ export function calculateFee(
 
 export function buildFeeTransfer(
   token: `0x${string}`,
-  feeAmount: bigint,
-  treasury: `0x${string}`,
+  _feeAmount: bigint,
+  _treasury: `0x${string}`,
 ): { to: `0x${string}`; data: `0x${string}`; value: bigint } {
   return {
     to: token,

@@ -1,4 +1,9 @@
-import { resolve, isResolved, type ResolverBackends } from '@sherpa/identity';
+import {
+  resolve,
+  isResolved,
+  type IdentityResolver,
+  type ResolverBackends,
+} from '@sherpa/identity';
 import { createInMemoryRateLimiter, type RateLimiter } from '@sherpa/memory';
 import {
   ALLOWED_CONTRACTS,
@@ -42,6 +47,7 @@ import type {
 
 export type ExecutorDeps = {
   backends?: ResolverBackends;
+  resolver?: IdentityResolver;
   rateLimiter?: RateLimiter;
   userKey?: string;
   userAddress?: Address;
@@ -80,20 +86,7 @@ export type PlanResult = { ok: true; card: ConfirmationCardProps } | { ok: false
 const GAS_SPONSORED_DISPLAY = '$0.00 (sponsored ✓)';
 const GAS_USER_PAYS = 'user pays';
 const DEFAULT_CHAIN_ID = 84532;
-
-function getChainId(deps: ExecutorDeps): number {
-  return deps.chainId ?? DEFAULT_CHAIN_ID;
-}
-
-function getSwapRouter(chainId: number): Address | undefined {
-  const routers: Record<number, Address> = {
-    84532: '0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4', // Base Sepolia: Uniswap V3 SwapRouter02
-    8453: '0x2626664c2603336E57B271c5C0b26F421741e481',  // Base mainnet: Uniswap V3 SwapRouter02
-    42161: '0xE592427A0AEce92De3Edee1F18E0157C05861564', // Arbitrum: Uniswap V3 SwapRouter
-    10: '0xE592427A0AEce92De3Edee1F18E0157C05861564',    // Optimism: Uniswap V3 SwapRouter
-  };
-  return routers[chainId];
-}
+const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
 function stepToCall(step: ExecutionStep): Call {
   return { to: step.to, data: step.data, value: step.value };
@@ -117,6 +110,11 @@ function envelopeFor(steps: ExecutionStep[], deps: ExecutorDeps): SendCallsEnvel
 function gasDisplay(steps: ExecutionStep[], deps: ExecutorDeps): string {
   if (!deps.paymasterUrl) return GAS_USER_PAYS;
   return isBatchSponsorable(steps.map(stepToCall)) ? GAS_SPONSORED_DISPLAY : GAS_USER_PAYS;
+}
+
+function resolveIdentity(input: string, deps: ExecutorDeps) {
+  if (deps.resolver && !ADDRESS_RE.test(input.trim())) return deps.resolver(input);
+  return resolve(input, deps.backends);
 }
 
 export function applyFee(
@@ -200,7 +198,34 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
       },
     };
   }
+  if (parsed.intent === 'IDENTITY_LOOKUP') return planIdentityLookup(parsed, deps);
   return { ok: false, error: `intent ${parsed.intent} not supported in Stage 1` };
+}
+
+async function planIdentityLookup(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+  const query = typeof parsed.slots.query === 'string' ? parsed.slots.query : '';
+  if (!query) return { ok: false, error: 'missing slots: query' };
+
+  const resolved = await resolveIdentity(query, deps);
+  if (!isResolved(resolved)) {
+    return { ok: false, error: `could not resolve identity "${query}" (${resolved.type})` };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'IDENTITY_LOOKUP',
+      primary_action_label: 'Lookup identity',
+      primary_amount_display: resolved.display,
+      secondary_amount_display: resolved.address,
+      recipient_display: resolved.address,
+      recipient_metadata: { source: resolved.source, query, ...(resolved.metadata ?? {}) },
+      steps: [],
+      gas_display: '$0.00 (read-only)',
+      warnings: [],
+      estimated_completion_ms: 500,
+    },
+  };
 }
 
 async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
@@ -478,7 +503,7 @@ async function planSend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
     return { ok: false, error: `SEND asset ${asset} not supported in Stage 1 (USDC only)` };
   }
 
-  const resolved = await resolve(toInput, deps.backends);
+  const resolved = await resolveIdentity(toInput, deps);
   if (!isResolved(resolved)) {
     return { ok: false, error: `could not resolve recipient "${toInput}" (${resolved.type})` };
   }

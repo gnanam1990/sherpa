@@ -265,6 +265,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       chainId: config.chain.chainId,
       paymasterUrl: config.paymasterUrl,
       rateLimiter,
+      resolver,
     });
     if (!planResult.ok) {
       return reply.send({ parsed: parsedIntent, error: planResult.error });
@@ -284,6 +285,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       chainId: config.chain.chainId,
       paymasterUrl: config.paymasterUrl,
       rateLimiter,
+      resolver,
     });
     if (!planResult.ok) {
       return reply.code(400).send({ ok: false, error: planResult.error });
@@ -509,29 +511,17 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   registerFarcasterRoutes(app);
   registerTelegramRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   dcaRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   autoRepayRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   alertRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   sessionKeyRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   strategyRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   notificationRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   portfolioRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   governanceRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   analyticsRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   securityRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   developerRoutes(app);
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
   composableRoutes(app);
 
   return app;

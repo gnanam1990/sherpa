@@ -15,7 +15,7 @@ export type AIPlan = {
 
 export async function createPlan(
   goal: string,
-  context: { memories: any[]; recentIntents: string[] },
+  _context: { memories: any[]; recentIntents: string[] },
 ): Promise<AIPlan> {
   return {
     goal,

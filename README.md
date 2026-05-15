@@ -8,22 +8,31 @@ Sherpa is a natural-language operating system for the Base L2 blockchain. Users 
 
 | Stage | Description | Status |
 |-------|-------------|--------|
-| **Stage 1** | SEND, BALANCE, HISTORY on Base Sepolia | ✅ Live |
+| **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP on Base Sepolia | Local verified; public deploy pending |
 | **Stage 2** | DeFi (SWAP, LEND, BORROW, STAKE, BRIDGE, LP) | Code complete |
 | **Stage 3** | Multi-surface (Farcaster, Telegram, BET) | Code complete |
 | **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY) | Code complete |
 | **Stage 5+** | Multi-chain, Session Keys, Strategy, etc. | Code complete |
 
-**Stage 1 is live on Base Sepolia.** Future stages are coded and gated behind production config for safety.
+**Stage 1 is verified locally on Base Sepolia.** Public launch is pending API/web deployment, production env vars, and a live smoke test. Future stages are coded and gated behind production config for safety.
 
-## Stage 1 — Live
+## Stage 1 — Ready For Public Smoke
 
 | Intent | Example |
 |--------|---------|
-| SEND | `send 0.1 ETH to vitalik.base.eth` |
+| SEND | `send 5 usdc to vitalik.base.eth` |
 | BALANCE | `what's my balance` |
 | HISTORY | `show my recent transactions` |
 | IDENTITY_LOOKUP | `who is vitalik.base.eth` |
+
+## Launch Links
+
+| Item | Status |
+|------|--------|
+| Web URL | Pending Vercel production deploy |
+| API URL | Pending public API deploy |
+| First public smoke tx | Pending live URL smoke test |
+| Demo video | Pending live URL smoke test |
 
 ## Quick Start
 
@@ -34,10 +43,8 @@ pnpm install
 # Typecheck
 pnpm typecheck
 
-# Test (713 tests)
-pnpm --filter @sherpa/core test
-pnpm --filter @sherpa/tools test
-pnpm --filter @sherpa/safety test
+# Test
+pnpm test
 
 # Dev
 pnpm --filter @sherpa/api dev
@@ -73,7 +80,7 @@ sherpa/
 │   ├── config/       Env schema
 │   ├── memory/       Audit log + stores
 │   ├── scheduler/    Cron jobs
-│   ├── identity/     Farcaster + ENS
+│   ├── identity/     Farcaster + ENS + Basenames
 │   ├── logger/       Structured logging
 │   └── ui/           Shared components
 └── scripts/db/       14 migrations

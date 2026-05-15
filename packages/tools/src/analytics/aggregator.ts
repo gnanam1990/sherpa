@@ -1,7 +1,7 @@
 import type { AnalyticsQuery, VolumeMetrics, FeeMetrics, UsageMetrics } from './types.js';
 
 export async function getVolumeMetrics(
-  query: AnalyticsQuery,
+  _query: AnalyticsQuery,
 ): Promise<VolumeMetrics> {
   return {
     totalVolume: '150000000000',
@@ -12,7 +12,7 @@ export async function getVolumeMetrics(
 }
 
 export async function getFeeMetrics(
-  query: AnalyticsQuery,
+  _query: AnalyticsQuery,
 ): Promise<FeeMetrics> {
   return {
     totalFeesPaid: '150000000',
@@ -23,7 +23,7 @@ export async function getFeeMetrics(
 }
 
 export async function getUsageMetrics(
-  query: AnalyticsQuery,
+  _query: AnalyticsQuery,
 ): Promise<UsageMetrics> {
   return {
     totalTransactions: 1000,

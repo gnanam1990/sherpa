@@ -1,16 +1,16 @@
 import type { AutomationRule, AutomationDeps } from './types.js';
 
 export async function evaluateCondition(
-  rule: AutomationRule,
-  deps: AutomationDeps,
+  _rule: AutomationRule,
+  _deps: AutomationDeps,
 ): Promise<boolean> {
   // Stub: evaluate condition against current state
   return false;
 }
 
 export async function executeAction(
-  rule: AutomationRule,
-  deps: AutomationDeps,
+  _rule: AutomationRule,
+  _deps: AutomationDeps,
 ): Promise<{ success: boolean; txHash?: string; error?: string }> {
   // Stub: execute the action
   return { success: true, txHash: '0xstub' };

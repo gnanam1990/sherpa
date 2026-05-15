@@ -14,7 +14,7 @@ Copy `.env.example` to `.env.local` and fill in the values:
 | `NEXT_PUBLIC_CDP_PROJECT_ID` | [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com) — Coinbase Developer Platform | Public |
 | `SHERPA_PAYMASTER_RPC` (apps/api) | Coinbase CDP paymaster URL | **Secret — never inline in apps/web** |
 
-Browser-side Sentry (`NEXT_PUBLIC_SENTRY_DSN`) is wired in a follow-up PR via `@sentry/nextjs`. The current error boundary still renders + logs to console; server-side errors on `apps/api` already report to Sentry.
+Browser-side Sentry is wired through `@sentry/nextjs` in `instrumentation-client.ts`, `app/error.tsx`, and `app/global-error.tsx`. It is active when `NEXT_PUBLIC_SENTRY_DSN` is set; server-side errors on `apps/api` report when `SENTRY_DSN` is set.
 
 The paymaster URL lives on `apps/api` because the browser must never see it (anyone with the URL can drain the gas budget). `apps/web` always calls `/api/paymaster` instead.
 
@@ -31,7 +31,7 @@ The first build is required so workspace packages emit their `dist/` outputs —
 To run with the paymaster proxy too:
 
 ```bash
-pnpm --filter @sherpa/api dev   # http://localhost:3000
+pnpm --filter @sherpa/api dev   # http://localhost:3001
 pnpm --filter @sherpa/web dev   # http://localhost:3100
 ```
 
@@ -55,7 +55,8 @@ See [docs/sherpa/setup/STAGE_1_LAUNCH_CHECKLIST.md](../../docs/sherpa/setup/STAG
 | `/` | `app/page.tsx` → `_components/HomeContent.tsx` | Home (connect + prompt) |
 | `/about` | `app/about/page.tsx` | Marketing page |
 | `/not-found` | `app/not-found.tsx` | 404 handler |
-| `/error` | `app/error.tsx` | Error boundary — logs to console, offers refresh |
+| `/error` | `app/error.tsx` | Segment error boundary — reports to Sentry when configured |
+| `/global-error` | `app/global-error.tsx` | Root error boundary — reports to Sentry when configured |
 | `/loading` | `app/loading.tsx` | Skeleton shown during route transitions |
 
 ## Accessibility

@@ -1,4 +1,4 @@
-import type { MemoryEntry, AgentDeps } from './types.js';
+import type { MemoryEntry } from './types.js';
 
 export class MemoryStore {
   private memories: Map<string, MemoryEntry[]> = new Map();

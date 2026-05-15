@@ -1,4 +1,4 @@
-import type { FlashLoanParams, ComposableDeps } from './types.js';
+import type { FlashLoanParams } from './types.js';
 
 export const FLASH_LOAN_ABI = [
   {
@@ -19,8 +19,8 @@ export const FLASH_LOAN_ABI = [
 ] as const;
 
 export function buildFlashLoanCall(
-  params: FlashLoanParams,
-  receiver: `0x${string}`,
+  _params: FlashLoanParams,
+  _receiver: `0x${string}`,
 ): { to: `0x${string}`; data: `0x${string}`; value: bigint } {
   return {
     to: '0x0000000000000000000000000000000000000000' as `0x${string}`,

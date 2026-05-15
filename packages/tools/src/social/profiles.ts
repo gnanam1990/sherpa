@@ -2,7 +2,7 @@ import type { SocialUser, SocialDeps } from './types.js';
 
 export async function getProfile(
   address: `0x${string}`,
-  deps: SocialDeps = {},
+  _deps: SocialDeps = {},
 ): Promise<SocialUser> {
   return {
     address,
@@ -15,7 +15,7 @@ export async function getProfile(
 }
 
 export async function getLeaderboard(
-  deps: SocialDeps = {},
+  _deps: SocialDeps = {},
 ): Promise<SocialUser[]> {
   return [
     { address: '0x1111', followers: 1000, following: 200, totalVolume: '5000000', successRate: 99, rank: 1 },

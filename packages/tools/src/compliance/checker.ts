@@ -9,8 +9,8 @@ export const DEFAULT_COMPLIANCE_CONFIG: ComplianceConfig = {
 
 export async function checkCompliance(
   address: `0x${string}`,
-  config: ComplianceConfig = DEFAULT_COMPLIANCE_CONFIG,
-  deps: ComplianceDeps,
+  _config: ComplianceConfig = DEFAULT_COMPLIANCE_CONFIG,
+  _deps: ComplianceDeps,
 ): Promise<ComplianceCheck> {
   return {
     address,

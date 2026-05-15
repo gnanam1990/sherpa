@@ -51,7 +51,7 @@ export type AerodromeAdapter = ToolAdapter<SwapParams, SwapQuote, SwapParams> & 
 };
 
 export function getSwapRouter(chainId: number): Address | undefined {
-  return AERODROME_ROUTER[chainId] ?? VELODROME_ROUTERS[chainId] ?? CAMELOT_ROUTERS[chainId] ?? TRADER_JOE_ROUTERS[chainId];
+  return AERODROME_ROUTER[chainId] ?? VELODROME_ROUTERS[chainId] ?? CAMELOT_ROUTERS[chainId] ?? TRADER_JOE_ROUTERS[chainId] ?? QUICKSWAP_ROUTERS[chainId];
 }
 
 export function createAerodrome(deps: AerodromeDeps & { chainId?: number } = {}): AerodromeAdapter {

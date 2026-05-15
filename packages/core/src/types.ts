@@ -15,6 +15,7 @@ export type Intent =
   | 'DEPOSIT'
   | 'BALANCE'
   | 'HISTORY'
+  | 'IDENTITY_LOOKUP'
   | 'DCA'
   | 'ALERT'
   | 'AUTO_REPAY'

@@ -1,5 +1,5 @@
 import type { BridgeParams, BridgeQuote } from './types.js';
-import { CHAIN_IDS, SUPPORTED_CHAINS, isBridgePairSupported } from './types.js';
+import { CHAIN_IDS, isBridgePairSupported } from './types.js';
 
 const SPOKE_POOLS: Record<number, `0x${string}`> = {
   8453: '0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64',

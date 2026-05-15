@@ -1,10 +1,8 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { z } from 'zod';
 
 export async function portfolioRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/portfolio/:address', async (req: FastifyRequest, reply: FastifyReply) => {
     const { address } = req.params as { address: string };
-    const { chain } = req.query as { chain?: string };
 
     return reply.send({
       address,

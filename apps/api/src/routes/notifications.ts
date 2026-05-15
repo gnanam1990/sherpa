@@ -27,7 +27,6 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post('/api/notifications/send', async (req: FastifyRequest, reply: FastifyReply) => {
-    const body = req.body as any;
     return reply.send({ success: true, messageId: 'stub-msg-id' });
   });
 

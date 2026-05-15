@@ -23,6 +23,7 @@ import type { ParsedIntent, Intent } from './types.js';
  *   BALANCE  "balance" / "what's my balance" / "what is my balance" /
  *            "show my balance" / "show me my balance"
  *   HISTORY  "history" / "last N txs" / "my recent txs"
+ *   IDENTITY_LOOKUP "who is vitalik.eth" / "resolve jesse.base.eth"
  *
  * Deliberately UNKNOWN (handed to the LLM):
  *   - "send 5 USDC to vitalik dot eth"  (multi-word recipient)
@@ -49,6 +50,7 @@ const BALANCE_RE =
   /^(?:(?:what(?:[’']s|\s+is)\s+my\s+)|(?:show(?:\s+me)?\s+my\s+))?balance\??\s*$/i;
 const HISTORY_RE =
   /^(?:show\s+)?(?:my\s+)?(?:last\s+(\d+)\s+)?(?:recent\s+)?(?:tx|txs|transactions|history)\s*$/i;
+const IDENTITY_LOOKUP_RE = /^(?:who\s+is|resolve|lookup|look\s+up)\s+([^?\s]+)\??\s*$/i;
 // SWAP: "swap 100 USDC for ETH", "convert 0.5 ETH to USDC", "trade 50 USDC to ETH"
 // Optional slippage suffix: "with 1% slippage"
 // LEND: "lend 100 USDC", "supply 200 USDC"
@@ -301,6 +303,10 @@ export function parseDeterministic(input: string): ParsedIntent {
 
   if ((m = raw.match(HISTORY_RE))) {
     return make('HISTORY', raw, { limit: m[1] ? Number(m[1]) : 10 }, 0.9);
+  }
+
+  if ((m = raw.match(IDENTITY_LOOKUP_RE))) {
+    return make('IDENTITY_LOOKUP', raw, { query: m[1] }, 0.9);
   }
 
   if ((m = raw.match(LP_RE))) {

@@ -25,6 +25,12 @@ describe('core/parser', () => {
     expect(p.slots.limit).toBe(5);
   });
 
+  it('parses IDENTITY_LOOKUP', () => {
+    const p = parseDeterministic('who is jesse.base.eth');
+    expect(p.intent).toBe('IDENTITY_LOOKUP');
+    expect(p.slots.query).toBe('jesse.base.eth');
+  });
+
   it('returns UNKNOWN for unsupported inputs', () => {
     expect(parseDeterministic('marry me').intent).toBe('UNKNOWN');
   });
@@ -1475,6 +1481,30 @@ describe('core/executor', () => {
     if (out.ok) {
       expect(out.card.intent).toBe('HISTORY');
       expect(out.card.primary_amount_display).toBe('last 5');
+      expect(out.card.steps.length).toBe(0);
+    }
+  });
+
+  // ── IDENTITY_LOOKUP executor ───────────────────────────────────────
+
+  it('IDENTITY_LOOKUP returns a resolved read-only card', async () => {
+    const p = parseDeterministic('who is jesse.base.eth');
+    const out = await plan(p, {
+      resolver: async () => ({
+        address: USDC_RECIPIENT,
+        source: 'basename',
+        display: 'jesse.base.eth',
+        metadata: { basename: 'jesse.base.eth' },
+      }),
+    });
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('IDENTITY_LOOKUP');
+      expect(out.card.recipient_display).toBe(USDC_RECIPIENT);
+      expect(out.card.recipient_metadata).toMatchObject({
+        source: 'basename',
+        query: 'jesse.base.eth',
+      });
       expect(out.card.steps.length).toBe(0);
     }
   });

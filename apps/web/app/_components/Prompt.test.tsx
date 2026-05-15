@@ -128,6 +128,117 @@ describe('Prompt', () => {
     expect(screen.queryByLabelText('Sherpa is thinking')).toBeNull();
   });
 
+  it('renders BALANCE results directly in the thread', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({ parsed: { intent: 'BALANCE', confidence: 0.95 } });
+      }
+      if (url === `/api/balance/${USER_ADDRESS}`) {
+        return jsonResponse({
+          address: USER_ADDRESS,
+          chain: 'base-sepolia',
+          balances: { ETH: '0.25', USDC: '5.00' },
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<Prompt isConnected userAddress={USER_ADDRESS} />);
+    fireEvent.change(screen.getByLabelText('Sherpa prompt'), {
+      target: { value: "what's my balance" },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    expect(await screen.findByText(/Balance on base-sepolia/)).toBeTruthy();
+    expect(screen.getByText(/ETH: 0.25/)).toBeTruthy();
+    expect(screen.getByText(/USDC: 5.00/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Proceed' })).toBeNull();
+  });
+
+  it('renders HISTORY results directly in the thread', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({
+          parsed: { intent: 'HISTORY', confidence: 0.9, slots: { limit: 5 } },
+        });
+      }
+      if (url === `/api/history/${USER_ADDRESS}?limit=5`) {
+        return jsonResponse({
+          address: USER_ADDRESS,
+          chain: 'base-sepolia',
+          items: [
+            {
+              txHash: TX_HASH,
+              timestamp: 1,
+              direction: 'out',
+              counterparty: USER_ADDRESS,
+              asset: 'USDC',
+              amountDisplay: '5.00 USDC',
+              sherpaIntent: 'SEND',
+            },
+          ],
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<Prompt isConnected userAddress={USER_ADDRESS} />);
+    fireEvent.change(screen.getByLabelText('Sherpa prompt'), {
+      target: { value: 'show my last 5 txs' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    expect(await screen.findByText(/Recent transactions on base-sepolia/)).toBeTruthy();
+    expect(screen.getByText(/OUT 5.00 USDC/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Proceed' })).toBeNull();
+  });
+
+  it('renders IDENTITY_LOOKUP results directly in the thread', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({
+          parsed: { intent: 'IDENTITY_LOOKUP', confidence: 0.9, slots: { query: 'jesse.base.eth' } },
+          card: {
+            intent: 'IDENTITY_LOOKUP',
+            primary_action_label: 'Lookup identity',
+            primary_amount_display: 'jesse.base.eth',
+            secondary_amount_display: USER_ADDRESS,
+            recipient_display: USER_ADDRESS,
+            recipient_metadata: { source: 'basename', query: 'jesse.base.eth' },
+            steps: [],
+            gas_display: '$0.00 (read-only)',
+            warnings: [],
+            estimated_completion_ms: 500,
+          },
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<Prompt isConnected userAddress={USER_ADDRESS} />);
+    fireEvent.change(screen.getByLabelText('Sherpa prompt'), {
+      target: { value: 'who is jesse.base.eth' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    expect(await screen.findByText(/Resolved jesse.base.eth/)).toBeTruthy();
+    expect(screen.getByText(new RegExp(USER_ADDRESS))).toBeTruthy();
+    expect(screen.getByText(/Source: basename/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Proceed' })).toBeNull();
+  });
+
   it('runs parse -> execute -> wallet -> confirm and updates the thread with success summary', async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {

@@ -1,8 +1,8 @@
 /**
  * POST /api/paymaster — JSON-RPC proxy in front of Coinbase's paymaster.
  *
- * apps/web's wagmi config (apps/web/lib/wagmi.ts) sets
- * `capabilities.paymasterService.url = '/api/paymaster'`. wagmi's
+ * apps/web's wagmi config (apps/web/lib/wagmi.ts) sets an absolute
+ * same-origin `capabilities.paymasterService.url`. wagmi's
  * sendCalls flow then POSTs `pm_getPaymasterStubData` and
  * `pm_getPaymasterData` to that URL during UserOp construction. This
  * route validates the JSON-RPC envelope, gates by per-sender rate

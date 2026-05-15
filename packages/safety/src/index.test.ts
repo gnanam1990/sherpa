@@ -35,10 +35,8 @@ import {
   resetDailyUsage,
   isValidSignatureFormat,
   verifyUserOpSignature,
-  isOFACSanctioned,
   disableRegistration,
   enableRegistration,
-  getAllowlistLog,
   type Call,
   type PendingTx,
 } from './index.js';

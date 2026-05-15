@@ -1,10 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-
 export function MobileNav() {
-  const [isOpen, setIsOpen] = useState(false);
-  
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-sherpa-surface border-t border-sherpa-surface2 z-50 md:hidden">
       <div className="flex justify-around py-2">

@@ -1,7 +1,7 @@
 import type { StrategyMetadata, StrategyDeps } from './types.js';
 
 export async function listStrategies(
-  deps: StrategyDeps = {},
+  _deps: StrategyDeps = {},
 ): Promise<StrategyMetadata[]> {
   return [
     {

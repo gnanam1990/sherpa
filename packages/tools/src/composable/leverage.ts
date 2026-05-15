@@ -1,5 +1,3 @@
-import type { LeverageParams, ComposableDeps } from './types.js';
-
 export function calculateLeverage(
   collateral: bigint,
   ratio: number,

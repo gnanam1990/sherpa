@@ -30,17 +30,32 @@ export const wagmiConfig = createConfig({
   },
 });
 
-export function getPaymasterCapabilities(url = PAYMASTER_PROXY_URL) {
+type PaymasterLocation = Pick<Location, 'origin' | 'hostname'>;
+
+export function getPaymasterCapabilities(
+  url = PAYMASTER_PROXY_URL,
+  location: PaymasterLocation | undefined = typeof window === 'undefined' ? undefined : window.location,
+) {
   if (!url) return undefined;
+  if (!location) return undefined;
+
+  const { origin, hostname } = location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return undefined;
+
+  const absoluteUrl = url.startsWith('http') ? url : `${origin}${url}`;
   return {
-    paymasterService: { url },
+    paymasterService: { url: absoluteUrl },
   };
 }
 
 export function withPaymasterCapabilities<
   Variables extends { capabilities?: Record<string, unknown> },
->(variables: Variables, paymasterUrl = PAYMASTER_PROXY_URL): Variables {
-  const paymasterCapabilities = getPaymasterCapabilities(paymasterUrl);
+>(
+  variables: Variables,
+  paymasterUrl = PAYMASTER_PROXY_URL,
+  location?: PaymasterLocation,
+): Variables {
+  const paymasterCapabilities = getPaymasterCapabilities(paymasterUrl, location);
   return {
     ...variables,
     capabilities: {

@@ -65,6 +65,7 @@ const intentVerb: Record<string, string> = {
   BET: 'Bet',
   BALANCE: 'Show balance',
   HISTORY: 'Show history',
+  IDENTITY_LOOKUP: 'Lookup identity',
 };
 
 function cx(...classes: Array<string | false | undefined>) {
