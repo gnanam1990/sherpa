@@ -31,6 +31,11 @@ export { createAddressBackend } from './address.js';
 export { createBasenamesBackend } from './basenames.js';
 export { createEnsBackend } from './ens.js';
 export { createFarcasterBackend } from './farcaster.js';
+export {
+  linkFidToSmartWallet,
+  getSmartWalletForFid,
+  type FidSmartWalletLink,
+} from './farcaster.js';
 
 export type CreateResolverOptions = {
   config: SherpaConfig;

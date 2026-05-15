@@ -36,6 +36,11 @@ const SEND_NO_VERB_RE = /^([\d.]+)\s*(usdc|eth)?\s+to\s+(\S+)\s*$/i;
 const BUY_RE = /^buy\s+\$?([\d.]+)\s+(?:of\s+)?(\w+)\s*$/i;
 // Asset-first: "buy <asset> for $<amount>".
 const BUY_FOR_RE = /^buy\s+(\w+)\s+for\s+\$?([\d.]+)\s*$/i;
+// BET — specific patterns (checked before generic BET_RE)
+const BET_ON_RE = /^bet\s+\$?([\d.]+)\s+(\w+)\s+on\s+(YES|NO)\s+(?:for\s+)?['"]?(.+?)['"]?\s*$/i;
+const BET_AGAINST_RE = /^bet\s+\$?([\d.]+)\s+(\w+)\s+against\s+['"]?(.+?)['"]?\s*$/i;
+const BUY_BET_RE = /^buy\s+\$?([\d.]+)\s+(\w+)\s+of\s+(YES|NO)\s+on\s+(.+)\s*$/i;
+// Generic fallback — captures amount + raw predicate blob.
 const BET_RE = /^bet\s+\$?([\d.]+)\s+(.+?)\s*$/i;
 const DEPOSIT_RE = /^(?:deposit|fund|add|top\s*up)\s+\$?([\d.]+)\s*(?:usdc|usd|dollars?)?\s*$/i;
 // Accepts: "balance", "what's my balance", "what is my balance",
@@ -50,8 +55,28 @@ const HISTORY_RE =
 const LEND_RE = /^(?:lend|supply)\s+([\d.]+)\s+(\w+)\s*$/i;
 // LEND with explicit Aave target: "deposit 50 USDC to aave", "deposit 100 USDC into aave"
 const LEND_DEPOSIT_RE = /^deposit\s+([\d.]+)\s+(\w+)\s+(?:to|on|into|in)\s+aave\s*$/i;
+const BORROW_RE = /^borrow\s+([\d.]+)\s+(\w+)\s*$/i;
+const BORROW_AGAINST_RE = /^borrow\s+([\d.]+)\s+(\w+)\s+against\s+(\w+)\s*$/i;
+const BORROW_LOAN_RE = /^take\s+out\s+([\d.]+)\s+(\w+)\s+loan\s*$/i;
+const BORROW_RATE_RE = /^borrow\s+([\d.]+)\s+(\w+)\s+(?:at\s+)?(variable|stable)\s+rate\s*$/i;
+const BORROW_HF_RE = /^borrow\s+([\d.]+)\s+(\w+)\s+(?:health\s+factor|hf)\s+([\d.]+)\s*$/i;
+const STAKE_RE = /^stake\s+([\d.]+)\s+(?:eth|steth)\s*$/i;
+const STAKE_FOR_RE = /^stake\s+([\d.]+)\s+eth\s+for\s+steth\s*$/i;
 const SWAP_RE =
   /^(?:swap|convert|trade)\s+([\d.]+)\s+(\w+)\s+(?:for|to|→|->)\s+(\w+)(?:\s+with\s+([\d.]+)%\s+slippage)?\s*$/i;
+const LP_RE = /^(?:provide|add)\s+([\d.]+)\s+(\w+)\s+and\s+([\d.]+)\s+(\w+)\s+(?:liquidity|lp)\s*$/i;
+const LP_POOL_RE = /^(?:provide|add)\s+([\d.]+)\s+(\w+)\s+(?:to|in)\s+(\w+)\/(\w+)\s+(?:pool|liquidity)\s*$/i;
+const BRIDGE_RE = /^bridge\s+([\d.]+)\s+(\w+)\s+to\s+(\w+)\s*$/i;
+const BRIDGE_FROM_RE = /^send\s+([\d.]+)\s+(\w+)\s+to\s+(\w+)\s+from\s+(\w+)\s*$/i;
+const DCA_RE = /^dca\s+\$?([\d.]+)\s+(?:into|of)\s+(\w+)\s+(daily|weekly|monthly)(?:\s+for\s+(\d+)\s+(\w+))?(?:\s+until\s+\$?([\d.]+))?\s*$/i;
+const DCA_BUY_RE = /^buy\s+\$?([\d.]+)\s+(?:of|in)\s+(\w+)\s+(\w+)\s+(daily|weekly|monthly)\s*$/i;
+const ALERT_PRICE_RE = /^alert\s+me\s+when\s+(\w+)\s*(>|<|>=|<=|==)\s*\$?([\d.]+)\s*$/i;
+const ALERT_BALANCE_RE = /^notify\s+me\s+if\s+my\s+(\w+)\s+balance\s*(>|<|>=|<=|==)\s*([\d.]+)\s*$/i;
+const ALERT_HF_RE = /^warn\s+me\s+if\s+my\s+(?:aave\s+)?health\s+factor\s*(>|<|>=|<=|==)\s*([\d.]+)\s*$/i;
+const ALERT_CROSS_RE = /^tell\s+me\s+when\s+(\w+)\s+crosses?\s+\$?([\d.]+)\s*$/i;
+const AUTO_REPAY_HF_RE = /^auto-repay\s+(?:if\s+my\s+health\s+factor|when\s+hf)\s*(<|<=)\s*([\d.]+)\s*$/i;
+const AUTO_REPAY_AMOUNT_RE = /^auto-repay\s+\$?([\d.]+)\s+(?:of\s+my\s+)?(\w+)?\s*(?:borrow\s+)?(?:if|when)\s+.*?([\d.]+)\s*$/i;
+const AUTO_REPAY_SETUP_RE = /^set\s+up\s+auto-repay\s+at\s+hf\s+([\d.]+)\s*$/i;
 
 function make(
   intent: Intent,
@@ -99,6 +124,46 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('BUY', raw, { usd: m[2], asset: (m[1] ?? '').toUpperCase() }, 0.85);
   }
 
+  // BET — specific patterns first, then generic fallback.
+  if ((m = raw.match(BET_ON_RE))) {
+    return make(
+      'BET',
+      raw,
+      {
+        betAmount: m[1],
+        betAsset: (m[2] ?? '').toUpperCase(),
+        betSide: (m[3] ?? '').toUpperCase() as 'YES' | 'NO',
+        marketQuery: m[4],
+      },
+      0.9,
+    );
+  }
+  if ((m = raw.match(BET_AGAINST_RE))) {
+    return make(
+      'BET',
+      raw,
+      {
+        betAmount: m[1],
+        betAsset: (m[2] ?? '').toUpperCase(),
+        betSide: 'NO' as const,
+        marketQuery: m[3],
+      },
+      0.85,
+    );
+  }
+  if ((m = raw.match(BUY_BET_RE))) {
+    return make(
+      'BET',
+      raw,
+      {
+        betAmount: m[1],
+        betAsset: (m[2] ?? '').toUpperCase(),
+        betSide: (m[3] ?? '').toUpperCase() as 'YES' | 'NO',
+        marketQuery: m[4],
+      },
+      0.88,
+    );
+  }
   if ((m = raw.match(BET_RE))) {
     return make('BET', raw, { usd: m[1], predicate: m[2] ?? '' }, 0.75);
   }
@@ -115,12 +180,67 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('LEND', raw, { amount: m[1], asset: (m[2] ?? '').toUpperCase() }, 0.9);
   }
 
+  // BORROW patterns
+  // STAKE patterns (Lido)
+  if ((m = raw.match(STAKE_FOR_RE))) {
+    return make('STAKE', raw, { stakeAsset: 'ETH', stakeAmount: m[1], receiveAsset: 'stETH' }, 0.92);
+  }
+  if ((m = raw.match(STAKE_RE))) {
+    return make('STAKE', raw, { stakeAsset: 'ETH', stakeAmount: m[1] }, 0.9);
+  }
+
+  if ((m = raw.match(BORROW_RE))) {
+    return make('BORROW', raw, { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], interestMode: 'variable' }, 0.9);
+  }
+  if ((m = raw.match(BORROW_AGAINST_RE))) {
+    return make('BORROW', raw, { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], collateralAsset: (m[3] ?? '').toUpperCase(), interestMode: 'variable' }, 0.92);
+  }
+  if ((m = raw.match(BORROW_LOAN_RE))) {
+    return make('BORROW', raw, { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], interestMode: 'variable' }, 0.85);
+  }
+  if ((m = raw.match(BORROW_RATE_RE))) {
+    return make('BORROW', raw, { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], interestMode: (m[3] ?? 'variable').toLowerCase() }, 0.9);
+  }
+  if ((m = raw.match(BORROW_HF_RE))) {
+    return make('BORROW', raw, { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], targetHealthFactor: m[3], interestMode: 'variable' }, 0.9);
+  }
+
   if (BALANCE_RE.test(raw)) {
     return make('BALANCE', raw, {}, 0.95);
   }
 
   if ((m = raw.match(HISTORY_RE))) {
     return make('HISTORY', raw, { limit: m[1] ? Number(m[1]) : 10 }, 0.9);
+  }
+
+  if ((m = raw.match(LP_RE))) {
+    return make(
+      'LP',
+      raw,
+      {
+        asset1: (m[2] ?? '').toUpperCase(),
+        amount1: m[1],
+        asset2: (m[4] ?? '').toUpperCase(),
+        amount2: m[3],
+      },
+      0.9,
+    );
+  }
+
+  if ((m = raw.match(LP_POOL_RE))) {
+    const a1 = (m[2] ?? '').toUpperCase();
+    const a2 = (m[4] ?? '').toUpperCase();
+    return make(
+      'LP',
+      raw,
+      {
+        asset1: a1,
+        amount1: m[1],
+        asset2: a2,
+        poolName: `${a1}/${a2}`,
+      },
+      0.88,
+    );
   }
 
   if ((m = raw.match(SWAP_RE))) {
@@ -136,6 +256,68 @@ export function parseDeterministic(input: string): ParsedIntent {
       },
       0.9,
     );
+  }
+
+  if ((m = raw.match(BRIDGE_RE))) {
+    return make('BRIDGE', raw, { bridgeAsset: (m[2] ?? '').toUpperCase(), bridgeAmount: m[1], destinationChain: (m[3] ?? '').toLowerCase() }, 0.9);
+  }
+
+  if ((m = raw.match(BRIDGE_FROM_RE))) {
+    return make('BRIDGE', raw, { bridgeAsset: (m[2] ?? '').toUpperCase(), bridgeAmount: m[1], destinationChain: (m[3] ?? '').toLowerCase(), sourceChain: (m[4] ?? '').toLowerCase() }, 0.88);
+  }
+
+  // DCA patterns
+  if ((m = raw.match(DCA_RE))) {
+    return make(
+      'DCA',
+      raw,
+      {
+        dcaAmount: m[1],
+        dcaAsset: (m[2] ?? '').toUpperCase(),
+        frequency: (m[3] ?? '').toLowerCase(),
+        duration: m[4],
+        durationUnit: m[5],
+        untilAmount: m[6],
+      },
+      0.9,
+    );
+  }
+  if ((m = raw.match(DCA_BUY_RE))) {
+    return make(
+      'DCA',
+      raw,
+      {
+        dcaAmount: m[1],
+        dcaAsset: (m[2] ?? '').toUpperCase(),
+        frequency: (m[4] ?? '').toLowerCase(),
+      },
+      0.88,
+    );
+  }
+
+  // ALERT patterns
+  if ((m = raw.match(ALERT_PRICE_RE))) {
+    return make('ALERT', raw, { conditionType: 'price', asset: (m[1] ?? '').toUpperCase(), comparison: m[2], threshold: m[3] }, 0.9);
+  }
+  if ((m = raw.match(ALERT_BALANCE_RE))) {
+    return make('ALERT', raw, { conditionType: 'balance', asset: (m[1] ?? '').toUpperCase(), comparison: m[2], threshold: m[3] }, 0.9);
+  }
+  if ((m = raw.match(ALERT_HF_RE))) {
+    return make('ALERT', raw, { conditionType: 'health-factor', comparison: m[1], threshold: m[2] }, 0.9);
+  }
+  if ((m = raw.match(ALERT_CROSS_RE))) {
+    return make('ALERT', raw, { conditionType: 'price', asset: (m[1] ?? '').toUpperCase(), comparison: 'cross', threshold: m[2] }, 0.85);
+  }
+
+  // AUTO_REPAY patterns
+  if ((m = raw.match(AUTO_REPAY_SETUP_RE))) {
+    return make('AUTO_REPAY', raw, { triggerHF: m[1], setup: true }, 0.92);
+  }
+  if ((m = raw.match(AUTO_REPAY_HF_RE))) {
+    return make('AUTO_REPAY', raw, { comparison: m[1], triggerHF: m[2] }, 0.92);
+  }
+  if ((m = raw.match(AUTO_REPAY_AMOUNT_RE))) {
+    return make('AUTO_REPAY', raw, { maxRepay: m[1], repayAsset: (m[2] ?? '').toUpperCase(), triggerHF: m[3] }, 0.88);
   }
 
   return make('UNKNOWN', raw, {}, 0);
@@ -154,15 +336,22 @@ const VALID_INTENTS: readonly Intent[] = [
   'BET',
   'SWAP',
   'LEND',
+  'BORROW',
+  'LP',
+  'STAKE',
+  'BRIDGE',
   'DEPOSIT',
   'BALANCE',
   'HISTORY',
+  'DCA',
+  'ALERT',
+  'AUTO_REPAY',
 ];
 
 const PARSE_SYSTEM = `You translate a user's natural-language Web3 instruction into a strict JSON object.
 
 Output ONLY a single JSON object, no prose, with this shape:
-{ "intent": "SEND|BUY|BET|SWAP|LEND|DEPOSIT|BALANCE|HISTORY|UNKNOWN", "slots": { ... }, "confidence": 0..1 }
+{ "intent": "SEND|BUY|BET|SWAP|LEND|BORROW|DEPOSIT|BALANCE|HISTORY|BRIDGE|UNKNOWN", "slots": { ... }, "confidence": 0..1 }
 
 Slot conventions:
 - SEND     { "amount": "5", "asset": "USDC", "to": "<address|handle|ens>" }
@@ -170,8 +359,11 @@ Slot conventions:
 - BET      { "usd": "5", "predicate": "<text>", "outcome": "YES|NO" }
 - DEPOSIT  { "usd": "50", "asset": "USDC" }
 - LEND     { "amount": "100", "asset": "USDC" }
+- BORROW   { "borrowAmount": "100", "borrowAsset": "USDC", "interestMode": "variable|stable", "collateralAsset": "ETH", "targetHealthFactor": "1.5" }
+- LP       { "asset1": "USDC", "amount1": "100", "asset2": "ETH", "amount2": "0.05" } or { "asset1": "USDC", "amount1": "100", "asset2": "ETH", "poolName": "USDC/ETH" }
 - BALANCE  {}
 - HISTORY  { "limit": 10 }
+- BRIDGE   { "bridgeAmount": "100", "bridgeAsset": "USDC", "destinationChain": "optimism", "sourceChain": "base" }
 
 If you cannot parse, return { "intent": "UNKNOWN", "slots": {}, "confidence": 0 }.`;
 

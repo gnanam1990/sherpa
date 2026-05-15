@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, test } from 'vitest';
 import { parseDeterministic, parseWithLLM, plan } from './index.js';
 import { createLimitless, makeUniswap } from '@sherpa/tools';
 import { ALLOWED_CONTRACTS } from '@sherpa/safety';
@@ -197,6 +197,272 @@ describe('core/parser', () => {
     const p = parseDeterministic('lend USDC');
     expect(p.intent).toBe('UNKNOWN');
   });
+
+  // ── BORROW parsing ──────────────────────────────────────────────────
+
+  it('parses "borrow 50 USDC"', () => {
+    const p = parseDeterministic('borrow 50 USDC');
+    expect(p.intent).toBe('BORROW');
+    expect(p.slots.borrowAsset).toBe('USDC');
+    expect(p.slots.borrowAmount).toBe('50');
+    expect(p.slots.interestMode).toBe('variable');
+  });
+
+  it('parses "borrow 0.1 ETH against USDC"', () => {
+    const p = parseDeterministic('borrow 0.1 ETH against USDC');
+    expect(p.intent).toBe('BORROW');
+    expect(p.slots.borrowAsset).toBe('ETH');
+    expect(p.slots.borrowAmount).toBe('0.1');
+    expect(p.slots.collateralAsset).toBe('USDC');
+  });
+
+  it('parses "take out 200 USDC loan"', () => {
+    const p = parseDeterministic('take out 200 USDC loan');
+    expect(p.intent).toBe('BORROW');
+    expect(p.slots.borrowAsset).toBe('USDC');
+    expect(p.slots.borrowAmount).toBe('200');
+  });
+
+  it('parses "borrow 100 USDC at variable rate"', () => {
+    const p = parseDeterministic('borrow 100 USDC at variable rate');
+    expect(p.intent).toBe('BORROW');
+    expect(p.slots.interestMode).toBe('variable');
+  });
+
+  it('parses "borrow 100 USDC at stable rate"', () => {
+    const p = parseDeterministic('borrow 100 USDC at stable rate');
+    expect(p.intent).toBe('BORROW');
+    expect(p.slots.interestMode).toBe('stable');
+  });
+
+  it('parses "borrow 100 USDC health factor 2.0"', () => {
+    const p = parseDeterministic('borrow 100 USDC health factor 2.0');
+    expect(p.intent).toBe('BORROW');
+    expect(p.slots.targetHealthFactor).toBe('2.0');
+  });
+
+  it('parses "borrow 100 USDC hf 1.5"', () => {
+    const p = parseDeterministic('borrow 100 USDC hf 1.5');
+    expect(p.intent).toBe('BORROW');
+    expect(p.slots.targetHealthFactor).toBe('1.5');
+  });
+
+  it('parses BORROW case-insensitively', () => {
+    const p = parseDeterministic('BORROW 50 usdc');
+    expect(p.intent).toBe('BORROW');
+    expect(p.slots.borrowAsset).toBe('USDC');
+  });
+
+  it('returns UNKNOWN for ambiguous "borrow" without amount', () => {
+    const p = parseDeterministic('borrow');
+    expect(p.intent).toBe('UNKNOWN');
+  });
+
+  // ── STAKE parsing ───────────────────────────────────────────────────
+
+  it('parses "stake 0.1 ETH"', () => {
+    const p = parseDeterministic('stake 0.1 ETH');
+    expect(p.intent).toBe('STAKE');
+    expect(p.slots.stakeAmount).toBe('0.1');
+    expect(p.slots.stakeAsset).toBe('ETH');
+  });
+
+  it('parses "stake 1 ETH for stETH"', () => {
+    const p = parseDeterministic('stake 1 ETH for stETH');
+    expect(p.intent).toBe('STAKE');
+    expect(p.slots.stakeAmount).toBe('1');
+    expect(p.slots.receiveAsset).toBe('stETH');
+  });
+
+  it('parses STAKE case-insensitively', () => {
+    const p = parseDeterministic('STAKE 0.5 ETH');
+    expect(p.intent).toBe('STAKE');
+    expect(p.slots.stakeAmount).toBe('0.5');
+  });
+
+  // ── BRIDGE parsing ──────────────────────────────────────────────────
+
+  it('parses "bridge 100 USDC to ethereum"', () => {
+    const p = parseDeterministic('bridge 100 USDC to ethereum');
+    expect(p.intent).toBe('BRIDGE');
+    expect(p.slots.bridgeAmount).toBe('100');
+    expect(p.slots.destinationChain).toBe('ethereum');
+  });
+
+  it('parses "bridge 0.1 ETH to optimism"', () => {
+    const p = parseDeterministic('bridge 0.1 ETH to optimism');
+    expect(p.intent).toBe('BRIDGE');
+    expect(p.slots.bridgeAmount).toBe('0.1');
+    expect(p.slots.bridgeAsset).toBe('ETH');
+    expect(p.slots.destinationChain).toBe('optimism');
+  });
+
+  it('parses BRIDGE case-insensitively', () => {
+    const p = parseDeterministic('BRIDGE 50 USDC TO ARBITRUM');
+    expect(p.intent).toBe('BRIDGE');
+    expect(p.slots.destinationChain).toBe('arbitrum');
+  });
+
+  // ── LP parsing ──────────────────────────────────────────────────────
+
+  it('parses "provide 100 USDC and 0.05 ETH liquidity"', () => {
+    const p = parseDeterministic('provide 100 USDC and 0.05 ETH liquidity');
+    expect(p.intent).toBe('LP');
+    expect(p.slots.asset1).toBe('USDC');
+    expect(p.slots.amount1).toBe('100');
+    expect(p.slots.asset2).toBe('ETH');
+    expect(p.slots.amount2).toBe('0.05');
+  });
+
+  it('parses "add 200 USDC to USDC/ETH pool"', () => {
+    const p = parseDeterministic('add 200 USDC to USDC/ETH pool');
+    expect(p.intent).toBe('LP');
+    expect(p.slots.asset1).toBe('USDC');
+    expect(p.slots.amount1).toBe('200');
+    expect(p.slots.poolName).toBe('USDC/ETH');
+  });
+
+  it('parses LP with "add" verb', () => {
+    const p = parseDeterministic('add 50 USDC and 0.02 ETH lp');
+    expect(p.intent).toBe('LP');
+    expect(p.slots.amount1).toBe('50');
+  });
+
+  // ── BET parsing ────────────────────────────────────────────────────
+
+  it('parses "bet 10 USDC on YES for Will BTC hit 200k"', () => {
+    const p = parseDeterministic('bet 10 USDC on YES for Will BTC hit 200k');
+    expect(p.intent).toBe('BET');
+    expect(p.slots.betAmount).toBe('10');
+    expect(p.slots.betSide).toBe('YES');
+  });
+
+  it('parses "bet 50 USDC against Will ETH flip BTC"', () => {
+    const p = parseDeterministic('bet 50 USDC against Will ETH flip BTC');
+    expect(p.intent).toBe('BET');
+    expect(p.slots.betSide).toBe('NO');
+  });
+
+  it('parses "buy 5 USDC of YES on Trump 2028"', () => {
+    const p = parseDeterministic('buy 5 USDC of YES on Trump 2028');
+    expect(p.intent).toBe('BET');
+    expect(p.slots.betAmount).toBe('5');
+    expect(p.slots.betSide).toBe('YES');
+  });
+
+  it('parses BET case-insensitively', () => {
+    const p = parseDeterministic('BET 10 usdc on yes for test market');
+    expect(p.intent).toBe('BET');
+    expect(p.slots.betAmount).toBe('10');
+  });
+
+  // ── ALERT parsing ───────────────────────────────────────────────────
+
+  describe('ALERT intent', () => {
+    test('parses "alert me when ETH > $5000"', () => {
+      const result = parseDeterministic('alert me when ETH > $5000');
+      expect(result.intent).toBe('ALERT');
+      expect(result.slots.asset).toBe('ETH');
+      expect(result.slots.comparison).toBe('>');
+      expect(result.slots.threshold).toBe('5000');
+      expect(result.slots.conditionType).toBe('price');
+    });
+
+    test('parses "notify me if my USDC balance < 100"', () => {
+      const result = parseDeterministic('notify me if my USDC balance < 100');
+      expect(result.intent).toBe('ALERT');
+      expect(result.slots.conditionType).toBe('balance');
+      expect(result.slots.asset).toBe('USDC');
+      expect(result.slots.comparison).toBe('<');
+      expect(result.slots.threshold).toBe('100');
+    });
+
+    test('parses "warn me if my health factor < 1.3"', () => {
+      const result = parseDeterministic('warn me if my health factor < 1.3');
+      expect(result.intent).toBe('ALERT');
+      expect(result.slots.conditionType).toBe('health-factor');
+      expect(result.slots.comparison).toBe('<');
+      expect(result.slots.threshold).toBe('1.3');
+    });
+
+    test('parses "tell me when AERO crosses $2"', () => {
+      const result = parseDeterministic('tell me when AERO crosses $2');
+      expect(result.intent).toBe('ALERT');
+      expect(result.slots.asset).toBe('AERO');
+      expect(result.slots.comparison).toBe('cross');
+      expect(result.slots.threshold).toBe('2');
+    });
+
+    test('ALERT is case-insensitive', () => {
+      const result = parseDeterministic('ALERT ME WHEN ETH > $5000');
+      expect(result.intent).toBe('ALERT');
+    });
+
+    test('ALERT with >= comparison', () => {
+      const result = parseDeterministic('alert me when BTC >= 100000');
+      expect(result.intent).toBe('ALERT');
+      expect(result.slots.comparison).toBe('>=');
+      expect(result.slots.threshold).toBe('100000');
+    });
+  });
+
+  // ── AUTO_REPAY parsing ─────────────────────────────────────────────
+
+  describe('AUTO_REPAY intent', () => {
+    test('parses "auto-repay if my health factor < 1.2"', () => {
+      const result = parseDeterministic('auto-repay if my health factor < 1.2');
+      expect(result.intent).toBe('AUTO_REPAY');
+    });
+
+    test('parses "set up auto-repay at hf 1.3"', () => {
+      const result = parseDeterministic('set up auto-repay at hf 1.3');
+      expect(result.intent).toBe('AUTO_REPAY');
+    });
+
+    test('parses "auto-repay $50 of my USDC borrow if 1.2"', () => {
+      const result = parseDeterministic('auto-repay $50 of my USDC borrow if 1.2');
+      expect(result.intent).toBe('AUTO_REPAY');
+    });
+  });
+
+  // ── DCA parsing ────────────────────────────────────────────────────
+
+  describe('DCA intent', () => {
+    test('parses "DCA $100 into ETH weekly for 12 weeks"', () => {
+      const result = parseDeterministic('DCA $100 into ETH weekly for 12 weeks');
+      expect(result.intent).toBe('DCA');
+      expect(result.slots.dcaAmount).toBe('100');
+      expect(result.slots.dcaAsset).toBe('ETH');
+      expect(result.slots.frequency).toBe('weekly');
+      expect(result.slots.duration).toBe('12');
+      expect(result.slots.durationUnit).toBe('weeks');
+    });
+
+    test('parses "buy 50 of USDC ETH weekly"', () => {
+      const result = parseDeterministic('buy 50 of USDC ETH weekly');
+      expect(result.intent).toBe('DCA');
+      expect(result.slots.dcaAmount).toBe('50');
+      expect(result.slots.dcaAsset).toBe('USDC');
+      expect(result.slots.frequency).toBe('weekly');
+    });
+
+    test('parses "DCA 0.1 into AERO monthly until $1000"', () => {
+      const result = parseDeterministic('DCA 0.1 into AERO monthly until $1000');
+      expect(result.intent).toBe('DCA');
+      expect(result.slots.dcaAmount).toBe('0.1');
+      expect(result.slots.dcaAsset).toBe('AERO');
+      expect(result.slots.frequency).toBe('monthly');
+      expect(result.slots.untilAmount).toBe('1000');
+    });
+
+    test('handles case insensitivity', () => {
+      const result = parseDeterministic('dca $50 into eth daily');
+      expect(result.intent).toBe('DCA');
+      expect(result.slots.dcaAmount).toBe('50');
+      expect(result.slots.dcaAsset).toBe('ETH');
+      expect(result.slots.frequency).toBe('daily');
+    });
+  });
 });
 
 describe('core/executor', () => {
@@ -272,7 +538,7 @@ describe('core/executor', () => {
     const out = await plan(p);
     expect(out.ok).toBe(false);
     if (!out.ok) {
-      expect(out.error).toMatch(/not yet configured/i);
+      expect(out.error).toMatch(/market|not.*configured|available/i);
     }
   });
 
@@ -284,6 +550,30 @@ describe('core/executor', () => {
     const me = '0x1111111111111111111111111111111111111111' as const;
     const fakeFactory = '0xabababababababababababababababababababab' as const;
     const lim = createLimitless({ factoryAddress: fakeFactory });
+    // Override adapter methods for testing
+    lim.findMarket = async () => [{
+      id: '0x1234567890abcdef1234567890abcdef12345678' as `0x${string}`,
+      title: 'ETH tops 5k',
+      outcomes: ['Yes', 'No'],
+      outcomePrices: [0.35, 0.65],
+      liquidity: 1000000n,
+      volume: 500000n,
+      active: true,
+      closed: false,
+    }];
+    lim.buildTx = async () => ({
+      to: fakeFactory,
+      data: ('0x' + '12345678'.repeat(33)) as `0x${string}`, // 4 + 128 bytes = 132 bytes = 264 hex chars
+      value: 0n,
+    });
+    lim.verify = async () => ({ ok: true as const });
+    lim.quote = async () => ({
+      asset: 'USDC',
+      stakeBaseUnits: 5000000n,
+      minSharesOut: 14000000n,
+      estimatedPayoutBaseUnits: 14285714n,
+      odds: '2.86x',
+    });
 
     const p = parseDeterministic('bet $5 yes on eth-tops-5k');
     const out = await plan(p, {
@@ -321,6 +611,30 @@ describe('core/executor', () => {
     const me = '0x1111111111111111111111111111111111111111' as const;
     const lim = createLimitless({
       factoryAddress: '0xabababababababababababababababababababab',
+    });
+    // Override adapter methods for testing
+    lim.findMarket = async () => [{
+      id: '0x1234567890abcdef1234567890abcdef12345678' as `0x${string}`,
+      title: 'ETH tops 5k',
+      outcomes: ['Yes', 'No'],
+      outcomePrices: [0.35, 0.65],
+      liquidity: 1000000n,
+      volume: 500000n,
+      active: true,
+      closed: false,
+    }];
+    lim.buildTx = async () => ({
+      to: '0xabababababababababababababababababababab' as `0x${string}`,
+      data: '0x12345678' as `0x${string}`,
+      value: 0n,
+    });
+    lim.verify = async () => ({ ok: true as const });
+    lim.quote = async () => ({
+      asset: 'USDC',
+      stakeBaseUnits: 5000000n,
+      minSharesOut: 14000000n,
+      estimatedPayoutBaseUnits: 14285714n,
+      odds: '2.86x',
     });
     const p = parseDeterministic('bet $5 yes on eth-tops-5k');
     const out = await plan(p, { userAddress: me, limitless: lim });

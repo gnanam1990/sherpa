@@ -6,6 +6,19 @@ import { ZERO_ADDRESS } from './types.js';
 
 import { AerodromeNotConfiguredError } from './quoter.js';
 
+const ERC20_ABI = [
+  {
+    name: 'transfer',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+] as const;
+
 /**
  * Aerodrome Router.swapExactTokensForTokens ABI fragment.
  * Route[] is (from, to, stable, factory).
@@ -94,5 +107,53 @@ export async function buildSwapCall(
     sponsorable: true,
     quote: q,
     route,
+  };
+}
+
+export type SwapWithFeeResult = {
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+  quote: AerodromeQuote;
+  route: AerodromeRoute;
+  sponsorable: boolean;
+};
+
+export async function buildSwapWithFee(
+  fromAsset: SwapAsset,
+  toAsset: SwapAsset,
+  amountIn: string,
+  recipient: Address,
+  feeBps: number,
+  treasuryAddress: Address,
+  deps: AerodromeDeps & QuoterDeps = {},
+): Promise<SwapWithFeeResult> {
+  const result = await buildSwapCall(fromAsset, toAsset, amountIn, recipient, deps);
+
+  const calls: Array<{ to: Address; data: `0x${string}`; value: bigint }> = [
+    { to: result.to, data: result.data, value: result.value },
+  ];
+
+  if (feeBps > 0 && treasuryAddress) {
+    const feeAmount = (result.quote.amountOutBaseUnits * BigInt(feeBps)) / 10000n;
+
+    if (feeAmount > 0n) {
+      const tokenAddress = tokenAddressFor(toAsset);
+      const transferData = encodeFunctionData({
+        abi: ERC20_ABI,
+        functionName: 'transfer',
+        args: [treasuryAddress, feeAmount],
+      });
+      calls.push({
+        to: tokenAddress,
+        data: transferData,
+        value: 0n,
+      });
+    }
+  }
+
+  return {
+    calls,
+    quote: result.quote,
+    route: result.route,
+    sponsorable: result.sponsorable,
   };
 }

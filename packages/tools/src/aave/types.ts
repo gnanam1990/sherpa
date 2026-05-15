@@ -38,5 +38,28 @@ export type AaveDeps = {
   now?: () => number;
 };
 
+export type AaveBorrowParams = {
+  asset: string;
+  amount: bigint;
+  interestMode: 'variable' | 'stable';
+  collateralAsset?: string;
+  targetHealthFactor?: number;
+};
+
+export type AaveBorrowQuote = {
+  borrowApyBps: number;
+  interestMode: 'variable' | 'stable';
+  resultingHealthFactor: number;
+  liquidationThresholdBps: number;
+  availableBorrowsBase: bigint;
+  pool: AavePoolInfo;
+};
+
+export type BorrowSimulation = {
+  resultingHealthFactor: number;
+  liquidationThresholdBps: number;
+  availableBorrowsBase: bigint;
+};
+
 export const STUB_SUPPLY_APY_BPS = 380; // 3.80%
 export const DEFAULT_DEADLINE_SECONDS = 600;

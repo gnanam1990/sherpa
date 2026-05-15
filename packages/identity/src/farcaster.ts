@@ -15,6 +15,53 @@ import type { Address, ResolvedAddress, ResolverError } from './types.js';
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
+export type FidSmartWalletLink = {
+  fid: number;
+  smartwalletAddress: `0x${string}`;
+  linkedAt: Date;
+  verified: boolean;
+};
+
+type SupabaseLike = {
+  from(table: string): {
+    upsert(data: Record<string, unknown>, options?: Record<string, unknown>): Promise<{ error: unknown }>;
+    select(columns: string): {
+      eq(column: string, value: unknown): Promise<{ data: unknown[] | null; error: unknown }>;
+    };
+  };
+};
+
+export async function linkFidToSmartWallet(
+  fid: number,
+  address: `0x${string}`,
+  deps: { db?: SupabaseLike },
+): Promise<FidSmartWalletLink> {
+  if (deps.db) {
+    const { error } = await deps.db
+      .from('fid_smartwallet_links')
+      .upsert(
+        { fid, smartwallet_address: address.toLowerCase(), linked_at: new Date().toISOString() },
+        { onConflict: 'fid' },
+      );
+    if (error) throw new Error(`[farcaster] linkFidToSmartWallet upsert failed: ${error}`);
+  }
+  return { fid, smartwalletAddress: address, linkedAt: new Date(), verified: false };
+}
+
+export async function getSmartWalletForFid(
+  fid: number,
+  deps: { db?: SupabaseLike },
+): Promise<`0x${string}` | null> {
+  if (!deps.db) return null;
+  const { data, error } = await deps.db
+    .from('fid_smartwallet_links')
+    .select('smartwallet_address')
+    .eq('fid', fid);
+  if (error) throw new Error(`[farcaster] getSmartWalletForFid query failed: ${error}`);
+  const row = data?.[0] as { smartwallet_address?: string } | undefined;
+  return row?.smartwallet_address ? (row.smartwallet_address.toLowerCase() as `0x${string}`) : null;
+}
+
 export type FarcasterConfig = {
   apiKey: string;
   baseUrl?: string;

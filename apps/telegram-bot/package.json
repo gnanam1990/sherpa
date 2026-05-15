@@ -1,0 +1,26 @@
+{
+  "name": "@sherpa/telegram-bot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "grammy": "^1.21.0",
+    "@sherpa/core": "workspace:*",
+    "@sherpa/agentkit": "workspace:*",
+    "@sherpa/tools": "workspace:*",
+    "@sherpa/identity": "workspace:*",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0"
+  }
+}

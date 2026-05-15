@@ -20,6 +20,7 @@ export * from './spend-cap.postgres.js';
 export * from './llm-usage.postgres.js';
 export * from './llm-usage.reports.js';
 export * from './paymaster-ratelimit.js';
+export * from './alerts.js';
 
 /**
  * Pick the right AuditStore implementation based on config flags.

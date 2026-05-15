@@ -8,9 +8,16 @@ export type Intent =
   | 'BET'
   | 'SWAP'
   | 'LEND'
+  | 'BORROW'
+  | 'LP'
+  | 'STAKE'
+  | 'BRIDGE'
   | 'DEPOSIT'
   | 'BALANCE'
   | 'HISTORY'
+  | 'DCA'
+  | 'ALERT'
+  | 'AUTO_REPAY'
   | 'UNKNOWN';
 
 export type ParsedIntent = {
@@ -71,6 +78,27 @@ export type ConfirmationCardProps = {
   gas_display: string;
   warnings: string[];
   estimated_completion_ms: number;
+  /** Protocol fee in basis points (e.g. 10 = 0.1%). Absent when fee is disabled. */
+  protocolFeeBps?: number;
+  /** Protocol fee amount in base units of feeAsset. */
+  protocolFeeAmount?: bigint;
+  /** Token the fee is charged in (e.g. 'USDC'). */
+  feeAsset?: string;
+  /** Alert configuration (ALERT intent only). */
+  alert?: {
+    conditionType: string;
+    asset: string;
+    comparison: string;
+    threshold: number;
+    notificationChannels: string[];
+  };
+  /** Auto-repay configuration (AUTO_REPAY intent only). */
+  autoRepay?: {
+    triggerHF: number;
+    targetHF: number;
+    maxRepayPerExecution?: string;
+    repaySource: string[];
+  };
 };
 
 export type ParseResponse = {
@@ -141,6 +169,16 @@ export type SwapPlan = {
   deadline: number;
   /** EIP-5792-ready call sequence: [approve?, swap]. */
   calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+  protocolFeeBps: number;
+  protocolFeeAmount: bigint;
+  feeAsset?: TokenInfo;
+};
+
+export type FeeBreakdown = {
+  feeBps: number;
+  feeAmount: bigint;
+  feeAsset: TokenInfo;
+  treasuryAddress: `0x${string}`;
 };
 
 // ── Lend types (Stage 2 — Aave V3) ──────────────────────────────────
@@ -160,4 +198,154 @@ export type LendPlan = {
   deadline: number;
   /** EIP-5792-ready call sequence: [approve?, supply]. */
   calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Borrow types (Stage 2 — Aave V3) ─────────────────────────────────
+
+export type RiskBadge = {
+  type: 'HEALTH_FACTOR_DANGER' | 'HEALTH_FACTOR_WARNING' | 'LIQUIDATION_RISK_NEAR_TERM' | 'HIGH_BORROW_UTILIZATION' | 'PRICE_IMPACT_HIGH';
+  severity: 'red' | 'yellow' | 'orange';
+  message: string;
+};
+
+export type BorrowPlan = {
+  type: 'BORROW';
+  borrowAsset: TokenInfo;
+  borrowAmount: bigint;
+  borrowApyBps: number;
+  interestMode: 'variable' | 'stable';
+  collateralAsset?: TokenInfo;
+  currentCollateralValueUsd: bigint;
+  resultingHealthFactor: number;
+  liquidationThresholdBps: number;
+  pool: { address: Address; chainId: number };
+  deadline: number;
+  riskBadges: RiskBadge[];
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Bridge types (Stage 2 — Across Protocol) ──────────────────────────
+
+export type BridgePlan = {
+  type: 'BRIDGE';
+  asset: TokenInfo;
+  amount: bigint;
+  sourceChain: string;
+  destinationChain: string;
+  estimatedTime: number;
+  relayerFee: bigint;
+  minOutAmount: bigint;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── LP types (Stage 2 — Aerodrome) ─────────────────────────────────
+
+export type LPPlan = {
+  type: 'LP';
+  asset1: TokenInfo;
+  amount1: bigint;
+  asset2: TokenInfo;
+  amount2: bigint;
+  pool: { address: Address; stable: boolean };
+  lpTokenAmount: bigint;
+  priceImpactBps: number;
+  impermanentLossWarning: boolean;
+  deadline: number;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Stake types (Stage 2 — Lido) ─────────────────────────────────────
+
+export type StakePlan = {
+  type: 'STAKE';
+  stakeAsset: TokenInfo;
+  stakeAmount: bigint;
+  receiveAsset: TokenInfo;
+  pool: { address: Address; chainId: number };
+  deadline: number;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Bet types (Stage 3 — Limitless / PolyForge) ──────────────────────
+
+export type MarketInfo = {
+  id: string;
+  question: string;
+  resolutionDate: string;
+  yesPrice: number;
+  noPrice: number;
+  liquidity: bigint;
+};
+
+export type BetPlan = {
+  type: 'BET';
+  asset: TokenInfo;
+  amount: bigint;
+  market: MarketInfo;
+  side: 'YES' | 'NO';
+  expectedShares: bigint;
+  pricePerShare: number;
+  provider: 'limitless' | 'polyforge';
+  deadline: number;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── DCA types (Stage 4 — Scheduled Buys) ─────────────────────────────
+
+export type DCASchedule = {
+  type: 'DCA';
+  userAddress: `0x${string}`;
+  fromAsset: TokenInfo;
+  toAsset: TokenInfo;
+  amountPerTick: bigint;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  dayOfWeek?: number; // 0=Sun, 6=Sat
+  dayOfMonth?: number; // 1-31
+  hourOfDay: number; // 0-23 UTC
+  status: 'active' | 'paused' | 'completed';
+  totalBudget?: bigint;
+  remainingBudget?: bigint;
+  totalExecutions: number;
+  maxExecutions?: number;
+  createdAt: number;
+  nextExecutionAt: number;
+  lastExecutedAt?: number;
+};
+
+// ── Alert types (Stage 4 — Price/Balance/HF Alerts) ────────────────────
+
+export type Alert = {
+  id: string;
+  userAddress: `0x${string}`;
+  conditionType: 'price' | 'balance' | 'health-factor';
+  asset?: TokenInfo;
+  comparison: '<' | '>' | '<=' | '>=' | '==' | 'cross-above' | 'cross-below';
+  threshold: bigint | number;
+  thresholdAsset?: TokenInfo;
+  notificationChannels: ('email' | 'push' | 'farcaster' | 'telegram')[];
+  triggeredIntent?: string;
+  status: 'active' | 'paused' | 'triggered' | 'completed';
+  createdAt: number;
+  lastEvaluatedAt?: number;
+  triggeredAt?: number;
+  triggerCount: number;
+};
+
+// ── Auto-Repay types (Stage 4 — Health Factor Protection) ──────────────
+
+export type AutoRepayRule = {
+  id: string;
+  userAddress: `0x${string}`;
+  triggerHF: number; // basis points (e.g., 12000 = 1.2x)
+  targetHF: number; // basis points
+  maxRepayPerExecution: bigint;
+  repaySource: ('usdc' | 'sell-eth-then-usdc')[];
+  status: 'active' | 'paused' | 'disabled';
+  consecutiveFailures: number;
+  totalRepayments: number;
+  totalRepaidUsd: bigint;
+  createdAt: number;
+  lastEvaluatedAt?: number;
+  lastTriggeredAt?: number;
+  authorizationTxHash?: string;
 };

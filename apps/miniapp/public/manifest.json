@@ -1,0 +1,12 @@
+{
+  "frame": {
+    "name": "Sherpa",
+    "iconUrl": "https://sherpa-web.vercel.app/icon-512.png",
+    "homeUrl": "https://sherpa-mini.vercel.app",
+    "imageUrl": "https://sherpa-web.vercel.app/og-image.png",
+    "buttonTitle": "Open Sherpa",
+    "splashImageUrl": "https://sherpa-web.vercel.app/splash.png",
+    "splashBackgroundColor": "#0052FF",
+    "webhookUrl": "https://sherpa-api.up.railway.app/api/webhooks/farcaster"
+  }
+}
