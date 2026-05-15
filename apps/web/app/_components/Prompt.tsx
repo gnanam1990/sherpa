@@ -109,6 +109,17 @@ function errorDetailFrom(err: unknown): string {
   return String(err);
 }
 
+function isWalletCancellationError(errorDetail: string): boolean {
+  const normalized = errorDetail.toLowerCase();
+  return (
+    normalized.includes('user rejected') ||
+    normalized.includes('user cancelled') ||
+    normalized.includes('user canceled') ||
+    normalized.includes('request rejected') ||
+    normalized.includes('rejected the request')
+  );
+}
+
 function txHashFromCallsStatus(status: CallsStatusResult | undefined): `0x${string}` | undefined {
   const txHash = status?.receipts?.find((receipt) => receipt.transactionHash)?.transactionHash;
   if (typeof txHash === 'string' && /^0x[a-fA-F0-9]{64}$/.test(txHash)) {
@@ -121,9 +132,10 @@ async function reportExecutionResult(
   auditLogId: number,
   result: { error?: string; txHash?: `0x${string}` },
 ) {
+  const payload = result.error ? { ...result, error: result.error.slice(0, 500) } : result;
   try {
     await fetch(`/api/execute/${auditLogId}/confirm`, {
-      body: JSON.stringify(result),
+      body: JSON.stringify(payload),
       headers: { 'content-type': 'application/json' },
       method: 'POST',
     });
@@ -194,9 +206,14 @@ function summaryFor(
   errorDetail?: string,
 ): ActionSummary {
   if (status === 'failed') {
+    const cancelled = errorDetail ? isWalletCancellationError(errorDetail) : false;
     return {
-      action: 'Transaction failed',
-      error: errorDetail ? formatExecutionError(errorDetail) : undefined,
+      action: cancelled ? 'Transaction cancelled' : 'Transaction failed',
+      error: errorDetail
+        ? cancelled
+          ? 'Wallet request was cancelled.'
+          : formatExecutionError(errorDetail)
+        : undefined,
       status,
       subject: actionDescription(card),
       txHash,
@@ -367,11 +384,26 @@ export function Prompt({
         return;
       }
       if (body.ok && body.card.batch) {
-        const sendResult = await sendSponsoredCallsAsync(toSendCallsVariables(body.card.batch));
-        if (!sendResult.id) throw new Error('Wallet did not return a call id');
-        setConfirmingAction({ auditLogId: body.auditLogId, card, messageId, sourceInput });
-        setCallsStatusId(sendResult.id);
-        setPhase('confirming');
+        try {
+          const sendResult = await sendSponsoredCallsAsync(toSendCallsVariables(body.card.batch));
+          if (!sendResult.id) throw new Error('Wallet did not return a call id');
+          setConfirmingAction({ auditLogId: body.auditLogId, card, messageId, sourceInput });
+          setCallsStatusId(sendResult.id);
+          setPhase('confirming');
+        } catch (err) {
+          const errorDetail = errorDetailFrom(err);
+          void reportExecutionResult(body.auditLogId, { error: errorDetail });
+          chat.updateMessage(messageId, {
+            content: {
+              kind: 'action',
+              summary: summaryFor(card, 'failed', undefined, errorDetail),
+              card,
+            },
+          });
+          setCallsStatusId(undefined);
+          setConfirmingAction(null);
+          setPhase('idle');
+        }
         return;
       }
       if (!body.card.batch) {

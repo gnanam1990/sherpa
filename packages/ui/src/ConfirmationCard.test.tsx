@@ -6,6 +6,7 @@ import {
   ExecutionFailureCard,
   ExecutionSuccessCard,
   formatExecutionError,
+  isUserRejectedExecutionError,
   type SerializedConfirmationCardProps,
 } from './ConfirmationCard.js';
 
@@ -198,6 +199,9 @@ describe('execution result cards', () => {
   });
 
   it('maps known execution errors to plain English', () => {
+    const rejectedError =
+      'User rejected the request. Request Arguments: chain: undefined (id: 84532) Details: User cancelled transaction Version: viem@2.48.4';
+
     expect(formatExecutionError('INSUFFICIENT_FUNDS_FOR_GAS')).toBe(
       'Not enough Sepolia ETH for gas',
     );
@@ -207,6 +211,8 @@ describe('execution result cards', () => {
     expect(formatExecutionError('TIMEOUT')).toBe(
       'Transaction took too long. Check basescan with the tx hash.',
     );
+    expect(isUserRejectedExecutionError(rejectedError)).toBe(true);
+    expect(formatExecutionError(rejectedError)).toBe('Wallet request was cancelled.');
     expect(formatExecutionError('RAW_PROVIDER_ERROR')).toBe('RAW_PROVIDER_ERROR');
   });
 });

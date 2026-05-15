@@ -331,6 +331,49 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  it('POST /api/execute/:id/confirm records success or failure status from the payload', async () => {
+    const auditStore = createInMemoryAuditStore();
+    const app = buildServer({ auditStore });
+    const txHash = `0x${'a'.repeat(64)}` as const;
+
+    const successExecute = await app.inject({
+      method: 'POST',
+      url: '/api/execute',
+      payload: { input: `send 1 usdc to ${USDC_RECIPIENT}`, userAddress: USDC_RECIPIENT },
+    });
+    const successBody = successExecute.json() as { auditLogId: number };
+    const successConfirm = await app.inject({
+      method: 'POST',
+      url: `/api/execute/${successBody.auditLogId}/confirm`,
+      payload: { txHash },
+    });
+
+    const failedExecute = await app.inject({
+      method: 'POST',
+      url: '/api/execute',
+      payload: { input: `send 2 usdc to ${USDC_RECIPIENT}`, userAddress: USDC_RECIPIENT },
+    });
+    const failedBody = failedExecute.json() as { auditLogId: number };
+    const failedConfirm = await app.inject({
+      method: 'POST',
+      url: `/api/execute/${failedBody.auditLogId}/confirm`,
+      payload: { error: 'Wallet request was cancelled.' },
+    });
+
+    expect(successConfirm.statusCode).toBe(200);
+    expect(failedConfirm.statusCode).toBe(200);
+    const rows = await auditStore.list(USDC_RECIPIENT);
+    expect(rows.find((row) => row.id === successBody.auditLogId)?.patch).toMatchObject({
+      status: 'success',
+      txHash,
+    });
+    expect(rows.find((row) => row.id === failedBody.auditLogId)?.patch).toMatchObject({
+      error: 'Wallet request was cancelled.',
+      status: 'failed',
+    });
+    await app.close();
+  });
+
   // ---- /admin/llm-usage ---------------------------------------------------
   // The success path (200 with aggregated rows) requires a live Postgres
   // pool and is exercised by the integration tests under @sherpa/memory.

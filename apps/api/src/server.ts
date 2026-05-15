@@ -325,9 +325,15 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
     }
     try {
+      const status = parsed.data.error ? 'failed' : parsed.data.txHash ? 'success' : undefined;
       await updateAuditLog(
         id,
-        { txHash: parsed.data.txHash, error: parsed.data.error, confirmedAt: Date.now() },
+        {
+          txHash: parsed.data.txHash,
+          error: parsed.data.error,
+          confirmedAt: Date.now(),
+          status,
+        },
         auditStore,
       );
     } catch (err) {

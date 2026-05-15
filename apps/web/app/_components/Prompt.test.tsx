@@ -22,6 +22,8 @@ vi.mock('../../lib/wagmi', () => ({
 const USER_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 const DEFAULT_INPUT = `send 5 usdc to ${USER_ADDRESS}`;
 const TX_HASH = `0x${'b'.repeat(64)}`;
+const WALLET_REJECTED_ERROR =
+  'User rejected the request. Request Arguments: chain: undefined (id: 84532) Details: User cancelled transaction Version: viem@2.48.4';
 
 function jsonResponse(body: unknown, status = 200) {
   return Promise.resolve(
@@ -317,5 +319,34 @@ describe('Prompt', () => {
     expect(
       screen.getByText('Transaction would fail. Try a smaller amount or different recipient.'),
     ).toBeTruthy();
+  });
+
+  it('renders wallet rejection as a cancellation and reports the failed audit result', async () => {
+    sendSponsoredCallsAsync.mockRejectedValueOnce(new Error(WALLET_REJECTED_ERROR));
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({ parsed: { intent: 'SEND', confidence: 1 }, card: sendCard() });
+      }
+      if (url === '/api/execute') return jsonResponse(executeBody());
+      if (url === '/api/execute/7/confirm') {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(init?.body as string)).toMatchObject({ error: WALLET_REJECTED_ERROR });
+        return jsonResponse({ ok: true });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<Prompt isConnected userAddress={USER_ADDRESS} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    await screen.findByRole('heading', { name: 'Send 5 USDC' });
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed' }));
+
+    expect(await screen.findByText('Transaction cancelled')).toBeTruthy();
+    expect(screen.getByText('Wallet request was cancelled.')).toBeTruthy();
+    expect(screen.queryByText('Transaction failed')).toBeNull();
   });
 });

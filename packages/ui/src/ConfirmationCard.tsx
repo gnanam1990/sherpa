@@ -353,7 +353,19 @@ export function ExecutionSuccessCard({
   );
 }
 
+export function isUserRejectedExecutionError(errorDetail: string): boolean {
+  const normalized = errorDetail.toLowerCase();
+  return (
+    normalized.includes('user rejected') ||
+    normalized.includes('user cancelled') ||
+    normalized.includes('user canceled') ||
+    normalized.includes('request rejected') ||
+    normalized.includes('rejected the request')
+  );
+}
+
 export function formatExecutionError(errorDetail: string): string {
+  if (isUserRejectedExecutionError(errorDetail)) return 'Wallet request was cancelled.';
   if (errorDetail === 'INSUFFICIENT_FUNDS_FOR_GAS') return 'Not enough Sepolia ETH for gas';
   if (errorDetail === 'RECIPIENT_INVALID') return "Recipient address couldn't be resolved";
   if (errorDetail === 'SIMULATION_FAILED') {
