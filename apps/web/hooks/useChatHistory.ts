@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatMessage, MessageContent } from '@sherpa/ui';
 
 export type HistoryItem = {
@@ -33,6 +33,8 @@ type UseChatHistoryOptions = {
 };
 
 const emptyCache: AddressCache = { serverMessages: [], sessionMessages: [], showLoadOlder: false };
+const STORAGE_PREFIX = 'sherpa.chatHistory.v1:';
+const SESSION_MESSAGE_LIMIT = 100;
 
 function directionVerb(direction: HistoryItem['direction']) {
   if (direction === 'in') return 'Received';
@@ -64,8 +66,69 @@ function mapHistoryItem(item: HistoryItem): ChatMessage {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isChatMessage(value: unknown): value is ChatMessage {
+  if (!isRecord(value)) return false;
+  if (value.role !== 'user' && value.role !== 'sherpa') return false;
+  if (typeof value.id !== 'string' || typeof value.timestamp !== 'number') return false;
+  if (value.timestampSource !== 'server' && value.timestampSource !== 'client') return false;
+  if (!isRecord(value.content) || typeof value.content.kind !== 'string') return false;
+  return true;
+}
+
+function storageKey(address: string) {
+  return `${STORAGE_PREFIX}${address.toLowerCase()}`;
+}
+
+function readStoredSessionMessages(address: string): ChatMessage[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(storageKey(address));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isChatMessage).slice(-SESSION_MESSAGE_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredSessionMessages(address: string, messages: ChatMessage[]) {
+  if (typeof window === 'undefined') return;
+  const persistable = messages
+    .filter((message) => message.content.kind !== 'thinking')
+    .slice(-SESSION_MESSAGE_LIMIT);
+  try {
+    if (persistable.length === 0) {
+      window.localStorage.removeItem(storageKey(address));
+      return;
+    }
+    window.localStorage.setItem(storageKey(address), JSON.stringify(persistable));
+  } catch {
+    // Browser storage is a convenience; history still works from the API.
+  }
+}
+
+function txHashForMessage(message: ChatMessage): string | undefined {
+  if (message.content.kind !== 'action') return undefined;
+  const txHash = message.content.summary.txHash;
+  return typeof txHash === 'string' ? txHash.toLowerCase() : undefined;
+}
+
 function sortMessages(messages: ChatMessage[]) {
   return [...messages].sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id));
+}
+
+function mergeMessages(serverMessages: ChatMessage[], sessionMessages: ChatMessage[]) {
+  const serverTxHashes = new Set(serverMessages.map(txHashForMessage).filter(Boolean));
+  const dedupedSessionMessages = sessionMessages.filter((message) => {
+    const txHash = txHashForMessage(message);
+    return !txHash || !serverTxHashes.has(txHash);
+  });
+  return sortMessages([...serverMessages, ...dedupedSessionMessages]);
 }
 
 async function fetchHistory(
@@ -84,10 +147,23 @@ export function useChatHistory(address?: string, options: UseChatHistoryOptions 
   const [cache, setCache] = useState<Record<string, AddressCache>>({});
   const [error, setError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
+  const loadedAddresses = useRef(new Set<string>());
 
   useEffect(() => {
     if (!address) return;
-    if (cache[address]) return;
+    const loadedKey = address.toLowerCase();
+    if (loadedAddresses.current.has(loadedKey)) return;
+    loadedAddresses.current.add(loadedKey);
+    const storedSessionMessages = readStoredSessionMessages(address);
+    if (storedSessionMessages.length > 0) {
+      setCache((current) => {
+        if (current[address]) return current;
+        return {
+          ...current,
+          [address]: { ...emptyCache, sessionMessages: storedSessionMessages },
+        };
+      });
+    }
     let cancelled = false;
     setIsLoading(true);
     setError(undefined);
@@ -98,7 +174,7 @@ export function useChatHistory(address?: string, options: UseChatHistoryOptions 
           ...current,
           [address]: {
             serverMessages: items.map(mapHistoryItem),
-            sessionMessages: current[address]?.sessionMessages ?? [],
+            sessionMessages: current[address]?.sessionMessages ?? storedSessionMessages,
             showLoadOlder: items.length >= 50,
           },
         }));
@@ -114,11 +190,16 @@ export function useChatHistory(address?: string, options: UseChatHistoryOptions 
     return () => {
       cancelled = true;
     };
-  }, [address, cache, fetcher]);
+  }, [address, fetcher]);
 
   const currentCache = address ? (cache[address] ?? emptyCache) : emptyCache;
+  useEffect(() => {
+    if (!address || !cache[address]) return;
+    writeStoredSessionMessages(address, cache[address].sessionMessages);
+  }, [address, cache]);
+
   const messages = useMemo(
-    () => sortMessages([...currentCache.serverMessages, ...currentCache.sessionMessages]),
+    () => mergeMessages(currentCache.serverMessages, currentCache.sessionMessages),
     [currentCache.serverMessages, currentCache.sessionMessages],
   );
 

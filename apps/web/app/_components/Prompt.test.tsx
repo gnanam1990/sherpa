@@ -80,6 +80,7 @@ async function flushAsyncWork() {
 }
 
 beforeEach(() => {
+  window.localStorage.clear();
   callsStatusState.current = { data: undefined, error: null, isError: false };
   sendSponsoredCallsAsync.mockClear();
   sendSponsoredCallsAsync.mockResolvedValue({ id: 'calls-id' });
