@@ -211,6 +211,22 @@ export function assessBetRisk(
   return badges;
 }
 
+export function validateTimeLock(params: {
+  scheduledTime: number;
+  minDelay?: number;
+}): { ok: boolean; error?: string } {
+  const now = Math.floor(Date.now() / 1000);
+  const minDelaySeconds = params.minDelay ?? 60; // 1 minute minimum
+
+  if (params.scheduledTime <= now) {
+    return { ok: false, error: 'Scheduled time must be in the future.' };
+  }
+  if (params.scheduledTime < now + minDelaySeconds) {
+    return { ok: false, error: `Minimum delay is ${minDelaySeconds} seconds.` };
+  }
+  return { ok: true };
+}
+
 export function validateDCASchedule(params: {
   amountPerTick: bigint;
   totalBudget?: bigint;
@@ -259,6 +275,20 @@ export function validateAutoRepay(params: {
   return { ok: true };
 }
 
+export function validateTip(params: {
+  amount: bigint;
+  recipientAddress?: `0x${string}`;
+}): { ok: boolean; error?: string } {
+  if (params.amount <= 0n) {
+    return { ok: false, error: 'Tip amount must be positive.' };
+  }
+  const maxTip = 1000000000n; // $1000 USDC (6 decimals)
+  if (params.amount > maxTip) {
+    return { ok: false, error: 'Tip amount exceeds maximum ($1000).' };
+  }
+  return { ok: true };
+}
+
 export function validateBridgeChains(
   source: string,
   dest: string,
@@ -267,5 +297,30 @@ export function validateBridgeChains(
   if (!supported[source]) return { ok: false, error: `Source chain ${source} not supported.` };
   if (!supported[dest]) return { ok: false, error: `Destination chain ${dest} not supported.` };
   if (source === dest) return { ok: false, error: 'Source and destination chains must be different.' };
+  return { ok: true };
+}
+
+export function validateCollect(params: {
+  quantity: number;
+  maxPerTx?: number;
+}): { ok: boolean; error?: string } {
+  if (params.quantity < 1) {
+    return { ok: false, error: 'Quantity must be at least 1.' };
+  }
+  const max = params.maxPerTx ?? 10;
+  if (params.quantity > max) {
+    return { ok: false, error: `Maximum ${max} per transaction.` };
+  }
+  return { ok: true };
+}
+
+export function validateRebalance(params: {
+  driftPercent: number;
+  maxDrift?: number;
+}): { ok: boolean; error?: string } {
+  const max = params.maxDrift ?? 50;
+  if (params.driftPercent > max) {
+    return { ok: false, error: `Drift exceeds maximum (${max}%). Manual review required.` };
+  }
   return { ok: true };
 }

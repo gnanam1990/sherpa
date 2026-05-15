@@ -62,6 +62,42 @@ export async function getSmartWalletForFid(
   return row?.smartwallet_address ? (row.smartwallet_address.toLowerCase() as `0x${string}`) : null;
 }
 
+export type FarcasterUser = {
+  fid: number;
+  username: string;
+  displayName: string;
+  pfpUrl?: string;
+  verifiedAddresses: `0x${string}`[];
+};
+
+export async function resolveFarcasterUser(
+  username: string,
+  deps: { neynarApiKey?: string; fetchImpl?: typeof fetch },
+): Promise<FarcasterUser | null> {
+  if (!deps.neynarApiKey) return null;
+
+  // Stub: in production, call Neynar API
+  // GET https://api.neynar.com/v2/farcaster/user/search?q={username}
+  return null;
+}
+
+export async function resolveFidToAddress(
+  fid: number,
+  deps: { neynarApiKey?: string },
+): Promise<`0x${string}` | null> {
+  // Stub: get verified ETH address for FID
+  return null;
+}
+
+export async function sendFarcasterNotification(
+  fid: number,
+  message: string,
+  deps: { neynarApiKey?: string },
+): Promise<boolean> {
+  // Stub: send notification via Neynar
+  return false;
+}
+
 export type FarcasterConfig = {
   apiKey: string;
   baseUrl?: string;

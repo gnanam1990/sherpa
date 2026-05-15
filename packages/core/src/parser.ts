@@ -77,6 +77,18 @@ const ALERT_CROSS_RE = /^tell\s+me\s+when\s+(\w+)\s+crosses?\s+\$?([\d.]+)\s*$/i
 const AUTO_REPAY_HF_RE = /^auto-repay\s+(?:if\s+my\s+health\s+factor|when\s+hf)\s*(<|<=)\s*([\d.]+)\s*$/i;
 const AUTO_REPAY_AMOUNT_RE = /^auto-repay\s+\$?([\d.]+)\s+(?:of\s+my\s+)?(\w+)?\s*(?:borrow\s+)?(?:if|when)\s+.*?([\d.]+)\s*$/i;
 const AUTO_REPAY_SETUP_RE = /^set\s+up\s+auto-repay\s+at\s+hf\s+([\d.]+)\s*$/i;
+const COLLECT_URL_RE = /^(?:collect|mint)\s+(\S+zora\S+)\s*$/i;
+const COLLECT_RE = /^(?:collect|mint)\s+(?:the\s+)?(?:post|nft|zora)\s+(?:at\s+)?(\S+)\s*$/i;
+const COLLECT_SIMPLE_RE = /^(?:collect|mint)\s+\$?([\d.]+)\s+(?:of\s+)?(?:the\s+)?(.+?)\s*$/i;
+const POLL_RE = /^(?:create|make|start)\s+(?:a\s+)?poll\s*[:"]?\s*(.+?)["']?\s*(?:with\s+options?\s+(.+))?\s*$/i;
+const POLL_SIMPLE_RE = /^poll\s*:\s*(.+?)\s*$/i;
+const TIP_RE = /^tip\s+\$?([\d.]+)\s+(?:to\s+)?@?(\w+)\s*$/i;
+const TIP_USER_RE = /^send\s+\$?([\d.]+)\s+(?:to\s+)?@?(\w+)\s+(?:on\s+)?farcaster\s*$/i;
+const TIP_USDC_RE = /^tip\s+([\d.]+)\s+(\w+)\s+(?:to\s+)?@?(\w+)\s*$/i;
+const TIMELOCK_RE = /^(?:schedule|time\s*lock|timelock)\s+(.+?)\s+(?:for|at|on|in)\s+(.+?)\s*$/i;
+const SCHEDULE_RE = /^(?:schedule)\s+(?:send|transfer)\s+\$?([\d.]+)\s+(\w+)\s+(?:to\s+)?(\S+)\s+(?:in|at|for)\s+(.+?)\s*$/i;
+const REBALANCE_RE = /^(?:rebalance|auto\s*rebalance)\s+(?:my\s+)?(?:portfolio|holdings|positions)\s*$/i;
+const REBALANCE_TARGET_RE = /^(?:rebalance|auto\s*rebalance)\s+(?:to|so\s+that)\s+(?:my\s+)?(\w+)\s+(?:is|equals?)\s+(\d+)%?\s*$/i;
 
 function make(
   intent: Intent,
@@ -166,6 +178,17 @@ export function parseDeterministic(input: string): ParsedIntent {
   }
   if ((m = raw.match(BET_RE))) {
     return make('BET', raw, { usd: m[1], predicate: m[2] ?? '' }, 0.75);
+  }
+
+  // TIP patterns
+  if ((m = raw.match(TIP_RE))) {
+    return make('TIP', raw, { tipAmount: m[1], tipRecipient: (m[2] ?? '').toLowerCase() }, 0.9);
+  }
+  if ((m = raw.match(TIP_USER_RE))) {
+    return make('TIP', raw, { tipAmount: m[1], tipRecipient: (m[2] ?? '').toLowerCase() }, 0.88);
+  }
+  if ((m = raw.match(TIP_USDC_RE))) {
+    return make('TIP', raw, { tipAmount: m[1], tipAsset: (m[2] ?? '').toUpperCase(), tipRecipient: (m[3] ?? '').toLowerCase() }, 0.9);
   }
 
   if ((m = raw.match(DEPOSIT_RE))) {
@@ -320,6 +343,42 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('AUTO_REPAY', raw, { maxRepay: m[1], repayAsset: (m[2] ?? '').toUpperCase(), triggerHF: m[3] }, 0.88);
   }
 
+  // COLLECT patterns (Zora NFTs)
+  if ((m = raw.match(COLLECT_URL_RE))) {
+    return make('COLLECT', raw, { collectUrl: m[1] }, 0.9);
+  }
+  if ((m = raw.match(COLLECT_RE))) {
+    return make('COLLECT', raw, { collectTarget: m[1] }, 0.85);
+  }
+  if ((m = raw.match(COLLECT_SIMPLE_RE))) {
+    return make('COLLECT', raw, { collectAmount: m[1], collectTarget: m[2] }, 0.8);
+  }
+
+  if ((m = raw.match(POLL_RE))) {
+    const q = m[1] ?? '';
+    const opts = m[2] ? m[2].split(/,|\bor\b/i).map((o: string) => o.trim()) : [];
+    return make('POLL', raw, { pollQuestion: q.trim(), pollOptions: opts }, 0.85);
+  }
+  if ((m = raw.match(POLL_SIMPLE_RE))) {
+    return make('POLL', raw, { pollQuestion: (m[1] ?? '').trim() }, 0.8);
+  }
+
+  // AUTO_REBALANCE patterns
+  if ((m = raw.match(REBALANCE_RE))) {
+    return make('AUTO_REBALANCE', raw, {}, 0.85);
+  }
+  if ((m = raw.match(REBALANCE_TARGET_RE))) {
+    return make('AUTO_REBALANCE', raw, { rebalanceTarget: (m[1] ?? '').toUpperCase(), rebalancePercent: m[2] }, 0.9);
+  }
+
+  // TIME_LOCK patterns
+  if ((m = raw.match(SCHEDULE_RE))) {
+    return make('TIME_LOCK', raw, { scheduledAction: 'send', scheduledAmount: m[1], scheduledAsset: (m[2] ?? '').toUpperCase(), scheduledRecipient: m[3], scheduledTime: m[4] }, 0.9);
+  }
+  if ((m = raw.match(TIMELOCK_RE))) {
+    return make('TIME_LOCK', raw, { scheduledAction: (m[1] ?? '').trim(), scheduledTime: (m[2] ?? '').trim() }, 0.85);
+  }
+
   return make('UNKNOWN', raw, {}, 0);
 }
 
@@ -346,12 +405,17 @@ const VALID_INTENTS: readonly Intent[] = [
   'DCA',
   'ALERT',
   'AUTO_REPAY',
+  'POLL',
+  'TIP',
+  'COLLECT',
+  'TIME_LOCK',
+  'AUTO_REBALANCE',
 ];
 
 const PARSE_SYSTEM = `You translate a user's natural-language Web3 instruction into a strict JSON object.
 
 Output ONLY a single JSON object, no prose, with this shape:
-{ "intent": "SEND|BUY|BET|SWAP|LEND|BORROW|DEPOSIT|BALANCE|HISTORY|BRIDGE|UNKNOWN", "slots": { ... }, "confidence": 0..1 }
+{ "intent": "SEND|BUY|BET|SWAP|LEND|BORROW|DEPOSIT|BALANCE|HISTORY|BRIDGE|COLLECT|UNKNOWN", "slots": { ... }, "confidence": 0..1 }
 
 Slot conventions:
 - SEND     { "amount": "5", "asset": "USDC", "to": "<address|handle|ens>" }
