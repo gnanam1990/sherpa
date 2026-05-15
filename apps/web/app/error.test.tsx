@@ -1,18 +1,15 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+const captureException = vi.hoisted(() => vi.fn());
+vi.mock('@sentry/nextjs', () => ({ captureException }));
 
 import GlobalError from './error';
 
 describe('GlobalError', () => {
-  let errSpy: ReturnType<typeof vi.spyOn>;
-
   beforeEach(() => {
-    errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    errSpy.mockRestore();
+    captureException.mockReset();
   });
 
   it('renders heading, friendly copy, and both CTAs', () => {
@@ -30,9 +27,9 @@ describe('GlobalError', () => {
     );
   });
 
-  it('logs the error to console on mount', () => {
+  it('captures the error to Sentry on mount', () => {
     const err = new Error('explode');
     render(<GlobalError error={err} />);
-    expect(errSpy).toHaveBeenCalledWith('[sherpa:error-boundary]', err);
+    expect(captureException).toHaveBeenCalledWith(err);
   });
 });
