@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   ALLOWED_CONTRACTS,
   assertAllowlisted,
@@ -31,6 +31,14 @@ import {
   isWhitelisted,
   registerAllowlistedAddress,
   clearDynamicAllowlist,
+  checkDailyCap,
+  resetDailyUsage,
+  isValidSignatureFormat,
+  verifyUserOpSignature,
+  isOFACSanctioned,
+  disableRegistration,
+  enableRegistration,
+  getAllowlistLog,
   type Call,
   type PendingTx,
 } from './index.js';
@@ -61,14 +69,99 @@ describe('safety/allowlist', () => {
 });
 
 describe('safety/caps', () => {
+  beforeEach(() => {
+    resetDailyUsage();
+  });
+
   it('accepts small USDC amounts', () => {
-    expect(() => assertAmountCap(ALLOWED_CONTRACTS.USDC, 1_000_000n)).not.toThrow();
+    const result = assertAmountCap(ALLOWED_CONTRACTS.USDC, 1_000_000n);
+    expect(result.ok).toBe(true);
   });
 
   it('rejects amounts over per-tx cap', () => {
-    expect(() => assertAmountCap(ALLOWED_CONTRACTS.USDC, 1_000_000_000n)).toThrow(
-      /exceeds per-tx cap/,
-    );
+    const result = assertAmountCap(ALLOWED_CONTRACTS.USDC, 1_000_000_000n);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('exceeds per-tx cap');
+  });
+
+  it('enforces per-day cap when userKey provided', () => {
+    // Use amounts under per-tx cap (100 USDC) to accumulate toward daily cap (500 USDC)
+    const result1 = assertAmountCap(ALLOWED_CONTRACTS.USDC, 90_000_000n, undefined, 'user1');
+    expect(result1.ok).toBe(true);
+
+    const result2 = assertAmountCap(ALLOWED_CONTRACTS.USDC, 90_000_000n, undefined, 'user1');
+    expect(result2.ok).toBe(true);
+
+    // Accumulated: 180 USDC. Now try 400 more → exceeds 500 daily cap
+    const result3 = assertAmountCap(ALLOWED_CONTRACTS.USDC, 90_000_000n, undefined, 'user1');
+    expect(result3.ok).toBe(true);
+
+    const result4 = assertAmountCap(ALLOWED_CONTRACTS.USDC, 90_000_000n, undefined, 'user1');
+    expect(result4.ok).toBe(true);
+
+    const result5 = assertAmountCap(ALLOWED_CONTRACTS.USDC, 90_000_000n, undefined, 'user1');
+    expect(result5.ok).toBe(true);
+
+    // Accumulated: 450 USDC. Next 90 USDC would exceed 500 cap
+    const result6 = assertAmountCap(ALLOWED_CONTRACTS.USDC, 90_000_000n, undefined, 'user1');
+    expect(result6.ok).toBe(false);
+    expect(result6.error).toContain('Daily spend limit');
+  });
+
+  it('tracks daily usage per user separately', () => {
+    const amount = 90_000_000n; // 90 USDC (under per-tx cap)
+    assertAmountCap(ALLOWED_CONTRACTS.USDC, amount, undefined, 'user1');
+    assertAmountCap(ALLOWED_CONTRACTS.USDC, amount, undefined, 'user2');
+
+    // user1 has 90 used, user2 has 90 used
+    const result1 = assertAmountCap(ALLOWED_CONTRACTS.USDC, 90_000_000n, undefined, 'user1');
+    expect(result1.ok).toBe(true);
+
+    const result2 = assertAmountCap(ALLOWED_CONTRACTS.USDC, 90_000_000n, undefined, 'user2');
+    expect(result2.ok).toBe(true);
+  });
+
+  it('skips daily check when no userKey', () => {
+    const amount = 90_000_000n; // 90 USDC (under per-tx cap)
+    assertAmountCap(ALLOWED_CONTRACTS.USDC, amount);
+    const result = assertAmountCap(ALLOWED_CONTRACTS.USDC, amount);
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe('safety/checkDailyCap', () => {
+  beforeEach(() => {
+    resetDailyUsage();
+  });
+
+  it('allows spend within daily limit', () => {
+    const result = checkDailyCap('user1', 100n, 500n);
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects spend exceeding daily limit', () => {
+    const result = checkDailyCap('user1', 600n, 500n);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('Daily spend limit');
+  });
+
+  it('accumulates usage across calls', () => {
+    checkDailyCap('user1', 300n, 500n);
+    const result = checkDailyCap('user1', 300n, 500n);
+    expect(result.ok).toBe(false);
+  });
+
+  it('allows exact limit', () => {
+    checkDailyCap('user1', 300n, 500n);
+    const result = checkDailyCap('user1', 200n, 500n);
+    expect(result.ok).toBe(true);
+  });
+
+  it('resetDailyUsage clears all usage', () => {
+    checkDailyCap('user1', 500n, 500n);
+    resetDailyUsage();
+    const result = checkDailyCap('user1', 500n, 500n);
+    expect(result.ok).toBe(true);
   });
 });
 
@@ -130,6 +223,34 @@ describe('safety/rings', () => {
     const fail = firstFailure(results);
     expect(fail?.ring).toBe('ring6_simulation');
     expect(fail && !fail.ok && fail.reason).toContain('insufficient balance');
+  });
+});
+
+describe('safety/ring5_audit_log', () => {
+  it('calls logAudit when provided', async () => {
+    const logged: any[] = [];
+    const results = await checkRings(goodTx, {
+      logAudit: async (entry) => { logged.push(entry); },
+    });
+    const ring5 = results.find((r) => r.ring === 'ring5_audit_log');
+    expect(ring5?.ok).toBe(true);
+    expect(logged).toHaveLength(1);
+    expect(logged[0].to).toBe(goodTx.to);
+    expect(logged[0].amount).toBe(goodTx.amount.toString());
+  });
+
+  it('passes when no logAudit callback provided', async () => {
+    const results = await checkRings(goodTx);
+    const ring5 = results.find((r) => r.ring === 'ring5_audit_log');
+    expect(ring5?.ok).toBe(true);
+  });
+
+  it('fails when logAudit throws', async () => {
+    const results = await checkRings(goodTx, {
+      logAudit: async () => { throw new Error('audit write failed'); },
+    });
+    const ring5 = results.find((r) => r.ring === 'ring5_audit_log');
+    expect(ring5?.ok).toBe(false);
   });
 });
 
@@ -773,5 +894,114 @@ describe('safety/dynamicAllowlist', () => {
     expect(() => assertAllowlisted(addr)).not.toThrow();
     clearDynamicAllowlist();
     expect(() => assertAllowlisted(addr)).toThrow(/not in allowlist/);
+  });
+});
+
+describe('Ring 5 audit logging', () => {
+  it('calls logAudit when provided', async () => {
+    const logAudit = vi.fn();
+    const results = await checkRings(goodTx, { logAudit });
+    expect(ringsOk(results)).toBe(true);
+    expect(logAudit).toHaveBeenCalledTimes(1);
+    expect(logAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: goodTx.to,
+        amount: goodTx.amount.toString(),
+      }),
+    );
+  });
+
+  it('skips logAudit when not provided', async () => {
+    const results = await checkRings(goodTx);
+    expect(ringsOk(results)).toBe(true);
+  });
+});
+
+describe('Daily spend caps', () => {
+  it('allows spending within daily limit', () => {
+    resetDailyUsage();
+    const result = checkDailyCap('user1', 1000000000n, 5000000000n);
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects spending over daily limit', () => {
+    resetDailyUsage();
+    checkDailyCap('user2', 4000000000n, 5000000000n);
+    const result = checkDailyCap('user2', 2000000000n, 5000000000n);
+    expect(result.ok).toBe(false);
+  });
+
+  it('resets daily usage', () => {
+    checkDailyCap('user3', 4000000000n, 5000000000n);
+    resetDailyUsage();
+    const result = checkDailyCap('user3', 4000000000n, 5000000000n);
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe('Signature format validation', () => {
+  it('rejects empty signature', () => {
+    expect(isValidSignatureFormat('0x')).toBe(false);
+  });
+
+  it('rejects short signature', () => {
+    expect(isValidSignatureFormat('0x1234')).toBe(false);
+  });
+
+  it('accepts valid 65-byte signature', () => {
+    expect(isValidSignatureFormat(('0x' + 'ab'.repeat(65)) as `0x${string}`)).toBe(true);
+  });
+
+  it('rejects all-zeros signature', () => {
+    const result = verifyUserOpSignature(
+      { sender: '0x1111111111111111111111111111111111111111', signature: ('0x' + '00'.repeat(65)) as `0x${string}` } as any,
+      '0x1111111111111111111111111111111111111111' as `0x${string}`,
+    );
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe('OFAC sanctions check', () => {
+  it('rejects sanctioned address as recipient', async () => {
+    const sanctionedTx = {
+      ...goodTx,
+      to: '0x8589427373d6d84e98730d7795d8f6f8731fda16' as `0x${string}`,
+    };
+    const results = await checkRings(sanctionedTx);
+    expect(ringsOk(results)).toBe(false);
+    expect(firstFailure(results)?.ring).toBe('ring0_sanctions');
+  });
+
+  it('allows normal address', async () => {
+    const results = await checkRings(goodTx);
+    expect(ringsOk(results)).toBe(true);
+  });
+});
+
+describe('Rate limit on mainnet', () => {
+  it('requires rate limiter on mainnet', async () => {
+    const results = await checkRings(goodTx, { isMainnet: true });
+    const ring3 = results.find((r) => r.ring === 'ring3_rate_limit');
+    expect(ring3?.ok).toBe(false);
+  });
+
+  it('allows pass-through on testnet', async () => {
+    const results = await checkRings(goodTx, { isMainnet: false });
+    const ring3 = results.find((r) => r.ring === 'ring3_rate_limit');
+    expect(ring3?.ok).toBe(true);
+  });
+});
+
+describe('Dynamic allowlist access control', () => {
+  it('blocks registration when disabled', () => {
+    disableRegistration();
+    const result = registerAllowlistedAddress('0x1234' as `0x${string}`);
+    expect(result).toBe(false);
+    enableRegistration();
+  });
+
+  it('allows registration when enabled', () => {
+    const result = registerAllowlistedAddress('0x5678' as `0x${string}`);
+    expect(result).toBe(true);
   });
 });

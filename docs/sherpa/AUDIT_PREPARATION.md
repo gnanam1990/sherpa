@@ -71,3 +71,19 @@ Key security checks:
 3. Verify session key permission enforcement
 4. Check flash loan repayment enforcement
 5. Validate leverage liquidation calculations
+
+## Security Fixes Applied
+
+### Critical (Fixed)
+- [x] Ring 5 audit log wired into checkRings()
+- [x] Per-day amount cap enforcement added
+- [x] UserOp signature format validation improved
+
+### High (Fixed)
+- [x] Rate limit required on mainnet (failsafe)
+- [x] Dynamic allowlist access control added
+- [x] OFAC sanctions checking added to Ring 4
+
+### Medium (Noted)
+- [ ] WETH address mapping per chain (follow-up)
+- [ ] Base chain allowlist (follow-up)

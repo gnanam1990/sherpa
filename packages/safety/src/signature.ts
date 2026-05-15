@@ -1,4 +1,4 @@
-import { hashMessage, type Address } from 'viem';
+import { type Address, encodePacked, keccak256 } from 'viem';
 
 export type UserOp = {
   sender: Address;
@@ -19,21 +19,36 @@ export type SignatureVerificationResult = {
   reason?: string;
 };
 
-export function getUserOpHash(userOp: UserOp, _entryPoint: Address, _chainId: number): `0x${string}` {
-  const packed = [
-    userOp.sender,
-    userOp.nonce.toString(),
-    userOp.initCode,
-    userOp.callData,
-    userOp.callGasLimit.toString(),
-    userOp.verificationGasLimit.toString(),
-    userOp.preVerificationGas.toString(),
-    userOp.maxFeePerGas.toString(),
-    userOp.maxPriorityFeePerGas.toString(),
-    userOp.paymasterAndData,
-  ].join('');
+export function getUserOpHash(
+  userOp: UserOp,
+  entryPoint: Address,
+  chainId: number,
+): `0x${string}` {
+  const packed = encodePacked(
+    ['address', 'uint256', 'bytes32', 'bytes32', 'uint256', 'uint256', 'uint256', 'uint256', 'uint256', 'bytes32'],
+    [
+      userOp.sender,
+      userOp.nonce,
+      keccak256(userOp.initCode),
+      keccak256(userOp.callData),
+      userOp.callGasLimit,
+      userOp.verificationGasLimit,
+      userOp.preVerificationGas,
+      userOp.maxFeePerGas,
+      userOp.maxPriorityFeePerGas,
+      keccak256(userOp.paymasterAndData),
+    ],
+  );
+  const userOpHash = keccak256(packed);
+  return keccak256(
+    encodePacked(['bytes32', 'address', 'uint256'], [userOpHash, entryPoint, BigInt(chainId)]),
+  );
+}
 
-  return hashMessage(packed) as `0x${string}`;
+export function isValidSignatureFormat(signature: `0x${string}`): boolean {
+  if (!signature || signature === '0x') return false;
+  const hexPart = signature.slice(2);
+  return hexPart.length === 130 || hexPart.length === 132;
 }
 
 export function verifyUserOpSignature(
@@ -46,6 +61,11 @@ export function verifyUserOpSignature(
 
   if (!userOp.signature || userOp.signature === '0x' || userOp.signature.length < 130) {
     return { ok: false, reason: 'UserOp signature is missing or too short.' };
+  }
+
+  const allZeros = '0x' + '00'.repeat(65);
+  if (userOp.signature === allZeros) {
+    return { ok: false, reason: 'UserOp signature is all zeros.' };
   }
 
   return { ok: true };

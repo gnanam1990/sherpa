@@ -29,6 +29,21 @@ export function getChainAllowlist(chainId: number): Set<string> {
   return base;
 }
 
+// Inline sanctions list (avoid circular dependency with @sherpa/tools)
+const SANCTIONED_ADDRESSES: Set<string> = new Set([
+  '0x8576acc5c05d6ce88f4e49bf65bdf0c62f91353c',
+  '0xd90e2f925da726b50c4ed8d0fb90ad053324f31b',
+  '0x8589427373d6d84e98730d7795d8f6f8731fda16',
+]);
+
+function isSanctioned(address: string): boolean {
+  return SANCTIONED_ADDRESSES.has(address.toLowerCase());
+}
+
+export function isOFACSanctioned(address: string): boolean {
+  return isSanctioned(address);
+}
+
 /**
  * Ring checker result envelope. The executor calls `checkRings` before
  * building a `ConfirmationCardProps` — if any ring fails, the tx never makes
@@ -58,6 +73,19 @@ export type RingsDependencies = {
    * paths should leave this empty.
    */
   extraAllowlistedAddresses?: readonly Address[];
+  /** Whether the current chain is mainnet. Required for fail-safe policies. */
+  isMainnet?: boolean;
+  /**
+   * Optional audit logging callback for Ring 5. Called when the ring
+   * check passes to record the event for compliance.
+   */
+  logAudit?: (entry: {
+    userAddress?: Address;
+    intent?: string;
+    to: Address;
+    amount?: string;
+    timestamp: number;
+  }) => Promise<void> | void;
 };
 
 async function runOne(ring: SafetyRing, fn: () => Promise<void> | void): Promise<RingCheckResult> {
@@ -75,25 +103,56 @@ export async function checkRings(
 ): Promise<RingCheckResult[]> {
   const results: RingCheckResult[] = [];
 
+  // Pre-ring: OFAC sanctions check
+  if (isSanctioned(tx.to)) {
+    return [{ ok: false, ring: 'ring0_sanctions', reason: 'Recipient address is sanctioned (OFAC)' }];
+  }
+  if (tx.sender && isSanctioned(tx.sender)) {
+    return [{ ok: false, ring: 'ring0_sanctions', reason: 'Sender address is sanctioned (OFAC)' }];
+  }
+
   results.push(
     await runOne('ring1_allowlist', () =>
       assertAllowlisted(tx.to, deps.extraAllowlistedAddresses ?? []),
     ),
   );
   results.push(
-    await runOne('ring2_amount_cap', () => assertAmountCap(tx.asset, tx.amount, DEFAULT_CAPS)),
+    await runOne('ring2_amount_cap', () => {
+      const result = assertAmountCap(tx.asset, tx.amount, DEFAULT_CAPS, deps.userKey);
+      if (!result.ok) throw new Error(result.error);
+    }),
   );
   results.push(
     await runOne('ring3_rate_limit', async () => {
-      if (!deps.checkRateLimit) return;
-      const ok = await deps.checkRateLimit(deps.userKey ?? 'anon');
-      if (!ok) throw new Error('rate limit exceeded');
+      if (deps.checkRateLimit) {
+        const ok = await deps.checkRateLimit(deps.userKey ?? 'anon');
+        if (!ok) throw new Error('rate limit exceeded');
+      } else {
+        // On mainnet, rate limiting is required
+        if (deps.isMainnet) {
+          throw new Error('Rate limiting is required on mainnet');
+        }
+        // On testnet, allow pass-through (development convenience)
+      }
     }),
   );
   results.push(
     await runOne('ring4_recipient', () => {
       if (!['farcaster', 'basename', 'ens', 'direct'].includes(tx.recipientSource)) {
         throw new Error(`recipient source ${tx.recipientSource} not trusted`);
+      }
+    }),
+  );
+  results.push(
+    await runOne('ring5_audit_log', async () => {
+      if (deps.logAudit) {
+        await deps.logAudit({
+          userAddress: tx.sender,
+          intent: tx.data?.slice(0, 10),
+          to: tx.to,
+          amount: tx.amount.toString(),
+          timestamp: Date.now(),
+        });
       }
     }),
   );

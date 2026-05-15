@@ -3,6 +3,7 @@ export type Address = `0x${string}`;
 
 /** The seven safety rings, checked in order per M1_BACKEND_PACK. */
 export type SafetyRing =
+  | 'ring0_sanctions'
   | 'ring1_allowlist'
   | 'ring2_amount_cap'
   | 'ring3_rate_limit'
@@ -44,6 +45,8 @@ export type PendingTx = {
   amount: bigint;
   /** Recipient resolution source; must not be `'llm'`. */
   recipientSource: 'farcaster' | 'basename' | 'ens' | 'direct';
+  /** Sender address for audit logging and per-day cap tracking. */
+  sender?: Address;
 };
 
 /**

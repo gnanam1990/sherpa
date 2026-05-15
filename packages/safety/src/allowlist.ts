@@ -100,10 +100,30 @@ export const POLYFORGE_FACTORY_ADDRESS: Address | undefined = undefined;
  */
 const DYNAMIC_ALLOWLIST = new Set<string>();
 
-export function registerAllowlistedAddress(address: Address): void {
-  DYNAMIC_ALLOWLIST.add(address.toLowerCase());
+let registrationEnabled = true;
+
+export function enableRegistration(): void {
+  registrationEnabled = true;
 }
 
+export function disableRegistration(): void {
+  registrationEnabled = false;
+}
+
+const allowlistLog: Array<{ action: string; address: string; timestamp: number }> = [];
+
+export function registerAllowlistedAddress(address: Address): boolean {
+  if (!registrationEnabled) return false;
+  DYNAMIC_ALLOWLIST.add(address.toLowerCase());
+  allowlistLog.push({ action: 'add', address: address.toLowerCase(), timestamp: Date.now() });
+  return true;
+}
+
+export function getAllowlistLog(): typeof allowlistLog {
+  return [...allowlistLog];
+}
+
+/** @internal Test-only function. Do not call in production. */
 export function clearDynamicAllowlist(): void {
   DYNAMIC_ALLOWLIST.clear();
 }
@@ -151,6 +171,6 @@ export function assertAavePool(target: Address): void {
   }
 }
 
-export function registerTreasuryAddress(address: Address): void {
-  registerAllowlistedAddress(address);
+export function registerTreasuryAddress(address: Address): boolean {
+  return registerAllowlistedAddress(address);
 }

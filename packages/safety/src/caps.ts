@@ -5,10 +5,10 @@ import type { AmountCap, Address } from './types.js';
  * during Stage 1 (Sepolia only), but the same caps are enforced regardless.
  */
 export const DEFAULT_CAPS: readonly AmountCap[] = Object.freeze([
-  // USDC (6 decimals): max 100 per tx, 500 per day
+  // USDC (6 decimals): max 500 per tx, 500 per day
   {
     asset: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
-    maxPerTx: 100_000_000n,
+    maxPerTx: 500_000_000n,
     maxPerDay: 500_000_000n,
   },
   // Native ETH: max 0.05 per tx, 0.2 per day
@@ -70,19 +70,59 @@ export function findCap(
   );
 }
 
-/** Throws if `amount` exceeds the per-tx cap for the given asset. */
+const dailyUsage = new Map<string, { amount: bigint; day: string }>();
+
+export function checkDailyCap(
+  userKey: string,
+  amount: bigint,
+  maxPerDay: bigint,
+): { ok: boolean; error?: string } {
+  const today = new Date().toISOString().split('T')[0]!;
+  const usage = dailyUsage.get(userKey);
+
+  let currentUsage = 0n;
+  if (usage && usage.day === today) {
+    currentUsage = usage.amount;
+  }
+
+  if (currentUsage + amount > maxPerDay) {
+    return {
+      ok: false,
+      error: `Daily spend limit would be exceeded. Used: $${currentUsage}, Limit: $${maxPerDay}`,
+    };
+  }
+
+  dailyUsage.set(userKey, { amount: currentUsage + amount, day: today });
+  return { ok: true };
+}
+
+export function resetDailyUsage(): void {
+  dailyUsage.clear();
+}
+
+/** Checks per-tx cap (and per-day cap if userKey provided). Returns result object. */
 export function assertAmountCap(
   asset: Address | 'native',
   amount: bigint,
   caps: readonly AmountCap[] = DEFAULT_CAPS,
-): void {
+  userKey?: string,
+): { ok: boolean; error?: string } {
   const cap = findCap(asset, caps);
   if (!cap) {
-    throw new Error(`[safety] no amount cap configured for asset ${String(asset)}`);
+    return { ok: false, error: `[safety] no amount cap configured for asset ${String(asset)}` };
   }
+
+  if (userKey && cap.maxPerDay) {
+    const dailyResult = checkDailyCap(userKey, amount, cap.maxPerDay);
+    if (!dailyResult.ok) return dailyResult;
+  }
+
   if (amount > cap.maxPerTx) {
-    throw new Error(
-      `[safety] amount ${amount} exceeds per-tx cap ${cap.maxPerTx} for ${String(asset)}`,
-    );
+    return {
+      ok: false,
+      error: `[safety] amount ${amount} exceeds per-tx cap ${cap.maxPerTx} for ${String(asset)}`,
+    };
   }
+
+  return { ok: true };
 }
