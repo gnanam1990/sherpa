@@ -23,6 +23,8 @@ export type Intent =
   | 'COLLECT'
   | 'TIME_LOCK'
   | 'AUTO_REBALANCE'
+  | 'SESSION_KEY'
+  | 'STRATEGY'
   | 'UNKNOWN';
 
 export type ParsedIntent = {
@@ -420,5 +422,86 @@ export type AutoRebalancePlan = {
   targetAllocation: Array<{ asset: TokenInfo; percent: number }>;
   rebalanceActions: Array<{ from: string; to: string; amount: bigint }>;
   threshold: number;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Session Key types (Stage 5 — Gasless Automation) ──────────────────
+
+export type SessionKey = {
+  id: string;
+  address: `0x${string}`;
+  ownerAddress: `0x${string}`;
+  chainId: number;
+  permissions: SessionPermission[];
+  spendLimit: bigint;
+  spentAmount: bigint;
+  validUntil: number;
+  validAfter: number;
+  maxExecutions: number;
+  executionCount: number;
+  status: 'active' | 'expired' | 'revoked' | 'exhausted';
+  createdAt: number;
+};
+
+export type SessionPermission = {
+  target: `0x${string}`;
+  selector: `0x${string}`;
+  maxValue: bigint;
+};
+
+export type SessionKeyPlan = {
+  type: 'SESSION_KEY';
+  action: 'create' | 'revoke' | 'extend';
+  sessionKey?: SessionKey;
+  permissions: SessionPermission[];
+  spendLimit: bigint;
+  validDuration: number;
+  calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
+};
+
+// ── Strategy types (Stage 5 — Strategy Marketplace) ────────────────────
+
+export type Strategy = {
+  id: string;
+  name: string;
+  description: string;
+  creator: `0x${string}`;
+  chainId: number;
+  intents: StrategyIntent[];
+  parameters: Record<string, StrategyParameter>;
+  visibility: 'public' | 'private' | 'unlisted';
+  version: number;
+  followers: number;
+  totalVolume: bigint;
+  successRate: number; // 0-100
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type StrategyIntent = {
+  type: Intent;
+  template: string; // e.g., "swap {{amount}} USDC for ETH"
+  conditions?: StrategyCondition[];
+};
+
+export type StrategyCondition = {
+  type: 'price' | 'balance' | 'time' | 'health_factor';
+  operator: '>' | '<' | '>=' | '<=' | '==';
+  value: string;
+};
+
+export type StrategyParameter = {
+  name: string;
+  type: 'number' | 'string' | 'token' | 'address';
+  description: string;
+  default?: string;
+  required: boolean;
+};
+
+export type StrategyPlan = {
+  type: 'STRATEGY';
+  action: 'create' | 'follow' | 'run' | 'list';
+  strategy?: Strategy;
+  parameters?: Record<string, string>;
   calls: Array<{ to: Address; data: `0x${string}`; value: bigint }>;
 };

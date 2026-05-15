@@ -7,7 +7,7 @@
 export { getBridgeQuote } from './quoter.js';
 export { buildBridgeCall, type BridgeCallResult } from './bridge-builder.js';
 export type { BridgeParams, BridgeQuote } from './types.js';
-export { SUPPORTED_CHAINS } from './types.js';
+export { SUPPORTED_CHAINS, CHAIN_IDS, SUPPORTED_BRIDGE_PAIRS, isBridgePairSupported } from './types.js';
 
 import type { Address } from '@sherpa/safety';
 import type { ToolAdapter } from '../types.js';

@@ -67,6 +67,7 @@ const SWAP_RE =
 const LP_RE = /^(?:provide|add)\s+([\d.]+)\s+(\w+)\s+and\s+([\d.]+)\s+(\w+)\s+(?:liquidity|lp)\s*$/i;
 const LP_POOL_RE = /^(?:provide|add)\s+([\d.]+)\s+(\w+)\s+(?:to|in)\s+(\w+)\/(\w+)\s+(?:pool|liquidity)\s*$/i;
 const BRIDGE_RE = /^bridge\s+([\d.]+)\s+(\w+)\s+to\s+(\w+)\s*$/i;
+const BRIDGE_L2_RE = /^bridge\s+([\d.]+)\s+(\w+)\s+(?:from\s+)?(\w+)\s+to\s+(\w+)\s*$/i;
 const BRIDGE_FROM_RE = /^send\s+([\d.]+)\s+(\w+)\s+to\s+(\w+)\s+from\s+(\w+)\s*$/i;
 const DCA_RE = /^dca\s+\$?([\d.]+)\s+(?:into|of)\s+(\w+)\s+(daily|weekly|monthly)(?:\s+for\s+(\d+)\s+(\w+))?(?:\s+until\s+\$?([\d.]+))?\s*$/i;
 const DCA_BUY_RE = /^buy\s+\$?([\d.]+)\s+(?:of|in)\s+(\w+)\s+(\w+)\s+(daily|weekly|monthly)\s*$/i;
@@ -89,6 +90,15 @@ const TIMELOCK_RE = /^(?:schedule|time\s*lock|timelock)\s+(.+?)\s+(?:for|at|on|i
 const SCHEDULE_RE = /^(?:schedule)\s+(?:send|transfer)\s+\$?([\d.]+)\s+(\w+)\s+(?:to\s+)?(\S+)\s+(?:in|at|for)\s+(.+?)\s*$/i;
 const REBALANCE_RE = /^(?:rebalance|auto\s*rebalance)\s+(?:my\s+)?(?:portfolio|holdings|positions)\s*$/i;
 const REBALANCE_TARGET_RE = /^(?:rebalance|auto\s*rebalance)\s+(?:to|so\s+that)\s+(?:my\s+)?(\w+)\s+(?:is|equals?)\s+(\d+)%?\s*$/i;
+const SESSION_KEY_RE = /^(?:create|grant|enable)\s+session\s+key(?:\s+(?:for\s+)?(.+?))?\s*$/i;
+const SESSION_KEY_LIMIT_RE = /^(?:create|grant)\s+session\s+key\s+(?:with\s+)?(?:limit|cap)\s+\$?([\d.]+)\s*$/i;
+const SESSION_KEY_REVOKE_RE = /^(?:revoke|disable|remove)\s+session\s+key\s*$/i;
+
+// STRATEGY patterns (Stage 5 — Strategy Marketplace)
+const STRATEGY_CREATE_RE = /^(?:create|publish|share)\s+strategy\s+(?:called\s+)?['"]?(.+?)['"]?\s*$/i;
+const STRATEGY_FOLLOW_RE = /^(?:follow|subscribe|copy)\s+strategy\s+(.+?)\s*$/i;
+const STRATEGY_LIST_RE = /^(?:list|show|browse)\s+strateg(?:y|ies)\s*$/i;
+const STRATEGY_RUN_RE = /^(?:run|execute|apply)\s+strategy\s+(.+?)\s*$/i;
 
 function make(
   intent: Intent,
@@ -281,6 +291,10 @@ export function parseDeterministic(input: string): ParsedIntent {
     );
   }
 
+  if ((m = raw.match(BRIDGE_L2_RE))) {
+    return make('BRIDGE', raw, { bridgeAsset: (m[2] ?? '').toUpperCase(), bridgeAmount: m[1], sourceChain: (m[3] ?? '').toLowerCase(), destinationChain: (m[4] ?? '').toLowerCase() }, 0.92);
+  }
+
   if ((m = raw.match(BRIDGE_RE))) {
     return make('BRIDGE', raw, { bridgeAsset: (m[2] ?? '').toUpperCase(), bridgeAmount: m[1], destinationChain: (m[3] ?? '').toLowerCase() }, 0.9);
   }
@@ -379,6 +393,31 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('TIME_LOCK', raw, { scheduledAction: (m[1] ?? '').trim(), scheduledTime: (m[2] ?? '').trim() }, 0.85);
   }
 
+  // SESSION_KEY patterns
+  if ((m = raw.match(SESSION_KEY_LIMIT_RE))) {
+    return make('SESSION_KEY', raw, { sessionAction: 'create', sessionLimit: m[1] }, 0.9);
+  }
+  if ((m = raw.match(SESSION_KEY_RE))) {
+    return make('SESSION_KEY', raw, { sessionAction: 'create', sessionPurpose: (m[1] ?? '').trim() }, 0.85);
+  }
+  if ((m = raw.match(SESSION_KEY_REVOKE_RE))) {
+    return make('SESSION_KEY', raw, { sessionAction: 'revoke' }, 0.9);
+  }
+
+  // STRATEGY patterns (Stage 5 — Strategy Marketplace)
+  if ((m = raw.match(STRATEGY_CREATE_RE))) {
+    return make('STRATEGY', raw, { strategyAction: 'create', strategyName: (m[1] ?? '').trim() }, 0.85);
+  }
+  if ((m = raw.match(STRATEGY_FOLLOW_RE))) {
+    return make('STRATEGY', raw, { strategyAction: 'follow', strategyName: (m[1] ?? '').trim() }, 0.85);
+  }
+  if ((m = raw.match(STRATEGY_LIST_RE))) {
+    return make('STRATEGY', raw, { strategyAction: 'list' }, 0.8);
+  }
+  if ((m = raw.match(STRATEGY_RUN_RE))) {
+    return make('STRATEGY', raw, { strategyAction: 'run', strategyName: (m[1] ?? '').trim() }, 0.9);
+  }
+
   return make('UNKNOWN', raw, {}, 0);
 }
 
@@ -410,6 +449,8 @@ const VALID_INTENTS: readonly Intent[] = [
   'COLLECT',
   'TIME_LOCK',
   'AUTO_REBALANCE',
+  'SESSION_KEY',
+  'STRATEGY',
 ];
 
 const PARSE_SYSTEM = `You translate a user's natural-language Web3 instruction into a strict JSON object.

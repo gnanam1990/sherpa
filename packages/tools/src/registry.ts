@@ -16,6 +16,8 @@ export type TokenInfo = {
 
 const SEPOLIA_CHAIN_ID = 84532;
 const MAINNET_CHAIN_ID = 8453;
+const ARBITRUM_CHAIN_ID = 42161;
+const OPTIMISM_CHAIN_ID = 10;
 
 const SEPOLIA_TOKENS: readonly TokenInfo[] = [
   {
@@ -71,9 +73,84 @@ const MAINNET_TOKENS: readonly TokenInfo[] = [
   },
 ];
 
+const ARBITRUM_TOKENS: readonly TokenInfo[] = [
+  {
+    symbol: 'USDC',
+    address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+    decimals: 6,
+    chainId: ARBITRUM_CHAIN_ID,
+  },
+  {
+    symbol: 'ETH',
+    address: 'native',
+    decimals: 18,
+    chainId: ARBITRUM_CHAIN_ID,
+  },
+  {
+    symbol: 'WETH',
+    address: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+    decimals: 18,
+    chainId: ARBITRUM_CHAIN_ID,
+  },
+  {
+    symbol: 'ARB',
+    address: '0x912CE59144191C1204E64559FE8253a0e49E6548',
+    decimals: 18,
+    chainId: ARBITRUM_CHAIN_ID,
+  },
+  {
+    symbol: 'USDT',
+    address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
+    decimals: 6,
+    chainId: ARBITRUM_CHAIN_ID,
+  },
+  {
+    symbol: 'WBTC',
+    address: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
+    decimals: 8,
+    chainId: ARBITRUM_CHAIN_ID,
+  },
+];
+
+const OPTIMISM_TOKENS: readonly TokenInfo[] = [
+  {
+    symbol: 'USDC',
+    address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85',
+    decimals: 6,
+    chainId: OPTIMISM_CHAIN_ID,
+  },
+  {
+    symbol: 'ETH',
+    address: 'native',
+    decimals: 18,
+    chainId: OPTIMISM_CHAIN_ID,
+  },
+  {
+    symbol: 'WETH',
+    address: '0x4200000000000000000000000000000000000006',
+    decimals: 18,
+    chainId: OPTIMISM_CHAIN_ID,
+  },
+  {
+    symbol: 'OP',
+    address: '0x4200000000000000000000000000000000000042',
+    decimals: 18,
+    chainId: OPTIMISM_CHAIN_ID,
+  },
+  {
+    symbol: 'USDT',
+    address: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58',
+    decimals: 6,
+    chainId: OPTIMISM_CHAIN_ID,
+  },
+];
+
 /** Returns the token list for a given chain. */
 export function getTokensForChain(chainId: number): readonly TokenInfo[] {
-  return chainId === MAINNET_CHAIN_ID ? MAINNET_TOKENS : SEPOLIA_TOKENS;
+  if (chainId === MAINNET_CHAIN_ID) return MAINNET_TOKENS;
+  if (chainId === ARBITRUM_CHAIN_ID) return ARBITRUM_TOKENS;
+  if (chainId === OPTIMISM_CHAIN_ID) return OPTIMISM_TOKENS;
+  return SEPOLIA_TOKENS;
 }
 
 function buildSymbolMap(tokens: readonly TokenInfo[]): Map<string, TokenInfo> {
@@ -87,6 +164,8 @@ function buildSymbolMap(tokens: readonly TokenInfo[]): Map<string, TokenInfo> {
 
 const SEPOLIA_BY_SYMBOL = buildSymbolMap(SEPOLIA_TOKENS);
 const MAINNET_BY_SYMBOL = buildSymbolMap(MAINNET_TOKENS);
+const ARBITRUM_BY_SYMBOL = buildSymbolMap(ARBITRUM_TOKENS);
+const OPTIMISM_BY_SYMBOL = buildSymbolMap(OPTIMISM_TOKENS);
 
 /**
  * Look up a token by symbol (case-insensitive) and optional chainId.
@@ -94,7 +173,11 @@ const MAINNET_BY_SYMBOL = buildSymbolMap(MAINNET_TOKENS);
  * Returns undefined if the token is not in the registry.
  */
 export function resolveToken(symbol: string, chainId: number = SEPOLIA_CHAIN_ID): TokenInfo | undefined {
-  const map = chainId === MAINNET_CHAIN_ID ? MAINNET_BY_SYMBOL : SEPOLIA_BY_SYMBOL;
+  let map: Map<string, TokenInfo>;
+  if (chainId === MAINNET_CHAIN_ID) map = MAINNET_BY_SYMBOL;
+  else if (chainId === ARBITRUM_CHAIN_ID) map = ARBITRUM_BY_SYMBOL;
+  else if (chainId === OPTIMISM_CHAIN_ID) map = OPTIMISM_BY_SYMBOL;
+  else map = SEPOLIA_BY_SYMBOL;
   return map.get(symbol.toUpperCase());
 }
 

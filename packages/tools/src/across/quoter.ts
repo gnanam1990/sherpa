@@ -1,5 +1,5 @@
 import type { BridgeParams, BridgeQuote } from './types.js';
-import { SUPPORTED_CHAINS } from './types.js';
+import { CHAIN_IDS, SUPPORTED_CHAINS, isBridgePairSupported } from './types.js';
 
 const SPOKE_POOLS: Record<number, `0x${string}`> = {
   8453: '0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64',
@@ -9,9 +9,15 @@ const SPOKE_POOLS: Record<number, `0x${string}`> = {
 };
 
 export async function getBridgeQuote(params: BridgeParams): Promise<BridgeQuote> {
-  const destChainId = SUPPORTED_CHAINS[params.destinationChain];
-  if (!destChainId) {
-    throw new Error(`Unsupported destination chain: ${params.destinationChain}`);
+  const sourceChainId = CHAIN_IDS[params.sourceChain];
+  const destChainId = CHAIN_IDS[params.destinationChain];
+
+  if (!sourceChainId || !destChainId) {
+    throw new Error(`Unsupported chain pair: ${params.sourceChain} → ${params.destinationChain}`);
+  }
+
+  if (!isBridgePairSupported(params.sourceChain, params.destinationChain)) {
+    throw new Error(`Bridge route not supported: ${params.sourceChain} → ${params.destinationChain}`);
   }
 
   const spokePool = SPOKE_POOLS[destChainId];
@@ -19,13 +25,13 @@ export async function getBridgeQuote(params: BridgeParams): Promise<BridgeQuote>
     throw new Error(`No spoke pool for chain ${params.destinationChain}`);
   }
 
-  // Stub: ~0.03% relayer fee, 2-min estimated time, 99.7% output
-  const relayerFee = (params.amount * 3n) / 10000n;
+  const relayerFee = params.amount / 1000n;
+  const estimatedTime = sourceChainId === 1 || destChainId === 1 ? 600 : 120;
   const minOutAmount = params.amount - relayerFee;
 
   return {
     relayerFee,
-    estimatedTime: 120,
+    estimatedTime,
     minOutAmount,
     spokePool,
   };

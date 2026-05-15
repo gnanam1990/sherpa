@@ -30,6 +30,15 @@ import type { AaveDeps, AaveLendParams, AaveLendQuote } from './types.js';
 const AAVE_POOL: Record<number, Address | undefined> = {
   84532: undefined, // Sepolia - from env
   8453: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5', // Base mainnet
+  42161: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Arbitrum
+  10: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Optimism
+};
+
+const AAVE_DATA_PROVIDERS: Record<number, Address | undefined> = {
+  84532: undefined, // Sepolia - from env
+  8453: '0x2d8A3C5677189723C4cB8CF77Fc1281663307167', // Base mainnet
+  42161: '0x69FA688f1Dc4704B157E6E1cB65E3aD2f67A822C', // Arbitrum
+  10: '0x69FA688f1Dc4704B157E6E1cB65E3aD2f67A822C', // Optimism
 };
 
 export type AaveConfig = {
@@ -42,11 +51,21 @@ export type AaveAdapter = ToolAdapter<AaveLendParams, AaveLendQuote, AaveLendPar
   poolAddress: Address | undefined;
 };
 
+export function getAavePool(chainId: number): Address | undefined {
+  return AAVE_POOL[chainId];
+}
+
+export function getAaveDataProvider(chainId: number): Address | undefined {
+  return AAVE_DATA_PROVIDERS[chainId];
+}
+
 export function createAave(config: AaveConfig = {}): AaveAdapter {
   const chainPool = config.chainId != null ? AAVE_POOL[config.chainId] : undefined;
+  const chainProvider = config.chainId != null ? AAVE_DATA_PROVIDERS[config.chainId] : undefined;
   const poolAddress = config.poolAddress ?? chainPool ?? AAVE_V3_POOL_ADDRESS;
   const deps: AaveDeps = {
     poolAddress,
+    dataProviderAddress: chainProvider,
     stubSupplyApyBps: config.stubSupplyApyBps,
   };
 

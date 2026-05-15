@@ -81,6 +81,20 @@ const GAS_SPONSORED_DISPLAY = '$0.00 (sponsored ✓)';
 const GAS_USER_PAYS = 'user pays';
 const DEFAULT_CHAIN_ID = 84532;
 
+function getChainId(deps: ExecutorDeps): number {
+  return deps.chainId ?? DEFAULT_CHAIN_ID;
+}
+
+function getSwapRouter(chainId: number): Address | undefined {
+  const routers: Record<number, Address> = {
+    84532: '0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4', // Base Sepolia: Uniswap V3 SwapRouter02
+    8453: '0x2626664c2603336E57B271c5C0b26F421741e481',  // Base mainnet: Uniswap V3 SwapRouter02
+    42161: '0xE592427A0AEce92De3Edee1F18E0157C05861564', // Arbitrum: Uniswap V3 SwapRouter
+    10: '0xE592427A0AEce92De3Edee1F18E0157C05861564',    // Optimism: Uniswap V3 SwapRouter
+  };
+  return routers[chainId];
+}
+
 function stepToCall(step: ExecutionStep): Call {
   return { to: step.to, data: step.data, value: step.value };
 }
@@ -121,6 +135,8 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'COLLECT') return planCollect(parsed, deps);
   if (parsed.intent === 'TIME_LOCK') return planTimeLock(parsed, deps);
   if (parsed.intent === 'AUTO_REBALANCE') return planAutoRebalance(parsed, deps);
+  if (parsed.intent === 'SESSION_KEY') return planSessionKey(parsed, deps);
+  if (parsed.intent === 'STRATEGY') return planStrategy(parsed, deps);
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,
@@ -980,6 +996,97 @@ async function planAutoRebalance(_parsed: ParsedIntent, _deps: ExecutorDeps): Pr
       batch: undefined,
       gas_display: 'sponsored',
       warnings: ['Portfolio rebalancing may incur swap fees.'],
+      estimated_completion_ms: 30000,
+    },
+  };
+}
+
+async function planSessionKey(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const action = (typeof slots.sessionAction === 'string' ? slots.sessionAction : 'create') as
+    | 'create'
+    | 'revoke';
+
+  if (action === 'revoke') {
+    return {
+      ok: true,
+      card: {
+        intent: 'SESSION_KEY',
+        primary_action_label: 'Revoke Session Key',
+        primary_amount_display: 'Session Key',
+        secondary_amount_display: 'Revoke',
+        steps: [],
+        batch: undefined,
+        gas_display: 'sponsored',
+        warnings: ['All automated tasks using this session key will stop.'],
+        estimated_completion_ms: 6000,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'SESSION_KEY',
+      primary_action_label: 'Create Session Key',
+      primary_amount_display: `$${(typeof slots.sessionLimit === 'string' ? slots.sessionLimit : null) ?? 'unlimited'}`,
+      secondary_amount_display:
+        (typeof slots.sessionPurpose === 'string' ? slots.sessionPurpose : null) ??
+        'General automation',
+      steps: [],
+      batch: undefined,
+      gas_display: 'sponsored',
+      warnings: [
+        'Session key allows automated transactions without your approval.',
+        'Set a spend limit to protect your funds.',
+      ],
+      estimated_completion_ms: 12000,
+    },
+  };
+}
+
+async function planStrategy(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const action = (typeof slots.strategyAction === 'string' ? slots.strategyAction : 'list') as
+    | 'list'
+    | 'create'
+    | 'follow'
+    | 'run';
+
+  if (action === 'list') {
+    return {
+      ok: true,
+      card: {
+        intent: 'STRATEGY',
+        primary_action_label: 'Browse Strategies',
+        primary_amount_display: 'Marketplace',
+        secondary_amount_display: 'Public strategies',
+        steps: [],
+        batch: undefined,
+        gas_display: 'free',
+        warnings: [],
+        estimated_completion_ms: 0,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'STRATEGY',
+      primary_action_label:
+        action === 'create'
+          ? 'Create Strategy'
+          : action === 'follow'
+            ? 'Follow Strategy'
+            : 'Run Strategy',
+      primary_amount_display:
+        typeof slots.strategyName === 'string' ? slots.strategyName : 'Strategy',
+      secondary_amount_display: action,
+      steps: [],
+      batch: undefined,
+      gas_display: 'sponsored',
+      warnings: ['Strategy execution involves automated transactions.'],
       estimated_completion_ms: 30000,
     },
   };

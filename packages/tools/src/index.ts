@@ -41,6 +41,7 @@ export {
   buildSwapCall,
   verifySwap,
   SWAP_EXACT_TOKENS_SELECTOR,
+  getSwapRouter,
 } from './aerodrome/index.js';
 export type {
   AerodromeAdapter,
@@ -60,7 +61,7 @@ export type {
   MorphoMarketParams,
   LendAction,
 } from './morpho.js';
-export { aave, createAave, AaveNotConfiguredError } from './aave/index.js';
+export { aave, createAave, AaveNotConfiguredError, getAavePool, getAaveDataProvider } from './aave/index.js';
 export type { AaveAdapter, AaveConfig, AaveLendParams, AaveLendQuote, AaveLendAction } from './aave/index.js';
 export { buildBorrowCall, buildRepayCall } from './aave/index.js';
 export { computeHealthFactor, computePostBorrowHealthFactor, healthFactorToBps, healthFactorRiskLevel } from './aave/index.js';
@@ -85,3 +86,36 @@ export { buildTipCall, resolveFarcasterAddress, buildPollCast } from './farcaste
 export type { TipParams, TipQuote, NeynarDeps, ResolvedFarcasterUser, PollParams } from './farcaster/index.js';
 export { ZoraNotConfiguredError, resolveCollection, searchCollections, buildMintCall } from './zora/index.js';
 export type { ZoraCollection, ZoraMintParams, ZoraMintQuote, ZoraDeps } from './zora/index.js';
+export {
+  uniswapV3,
+  createUniswapV3,
+  getUniswapV3Router,
+  getUniswapV3Quoter,
+  UNISWAP_V3_ROUTERS,
+  UNISWAP_V3_QUOTERS,
+} from './uniswap-v3/index.js';
+export type {
+  UniswapV3Adapter,
+  UniswapSwapParams,
+  UniswapSwapQuote,
+  UniswapV3Deps,
+} from './uniswap-v3/index.js';
+export {
+  createSessionKey,
+  validateSessionKeyConfig,
+  buildSessionKeyCall,
+  validateExecution,
+} from './session-keys/index.js';
+export type {
+  SessionKeyConfig,
+  SessionKeyPermission,
+  SessionKeyDeployment,
+  SessionKeyDeps,
+} from './session-keys/index.js';
+export { listStrategies, getStrategy, executeStrategy, validateStrategyParameters } from './strategies/index.js';
+export type {
+  StrategyMetadata,
+  StrategyExecution,
+  StrategyStepResult,
+  StrategyDeps,
+} from './strategies/index.js';

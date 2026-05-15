@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 
-export type ChainName = 'base-sepolia' | 'base-mainnet';
+export type ChainName = 'base-sepolia' | 'base-mainnet' | 'arbitrum' | 'optimism';
 
 export type ChainConfig = {
   name: ChainName;
@@ -32,7 +32,36 @@ export const CHAINS: Readonly<Record<ChainName, ChainConfig>> = Object.freeze({
     basescanUrl: 'https://api.basescan.org/api',
     explorerTxPrefix: 'https://basescan.org/tx/',
   },
+  arbitrum: {
+    name: 'arbitrum',
+    chainId: 42161,
+    rpcUrl: 'https://arb1.arbitrum.io/rpc',
+    basescanUrl: 'https://api.arbiscan.io/api',
+    explorerTxPrefix: 'https://arbiscan.io/tx/',
+  },
+  optimism: {
+    name: 'optimism',
+    chainId: 10,
+    rpcUrl: 'https://mainnet.optimism.io',
+    basescanUrl: 'https://api-optimistic.etherscan.io/api',
+    explorerTxPrefix: 'https://optimistic.etherscan.io/tx/',
+  },
 });
+
+export const SUPPORTED_CHAINS: Record<string, { chainId: number; name: string; rpcUrl?: string }> = {
+  'base-sepolia': { chainId: 84532, name: 'Base Sepolia' },
+  'base-mainnet': { chainId: 8453, name: 'Base' },
+  arbitrum: { chainId: 42161, name: 'Arbitrum One' },
+  optimism: { chainId: 10, name: 'Optimism' },
+};
+
+export function getChainId(chain: string): number {
+  return SUPPORTED_CHAINS[chain]?.chainId ?? 84532;
+}
+
+export function isL2(chain: string): boolean {
+  return ['base-mainnet', 'arbitrum', 'optimism'].includes(chain);
+}
 
 export type SherpaConfig = {
   chain: ChainConfig;
@@ -138,7 +167,7 @@ export const ONCHAIN_ADDRESSES = Object.freeze({
 export const PUBLIC_ETH_MAINNET_RPC = 'https://ethereum.publicnode.com';
 
 function pickChain(name: string | undefined): ChainConfig {
-  if (name === 'base-mainnet') return CHAINS['base-mainnet'];
+  if (name && name in CHAINS) return CHAINS[name as ChainName];
   return CHAINS['base-sepolia'];
 }
 
@@ -199,7 +228,7 @@ const PaymasterEnvSchema = z.object({
 });
 
 const ChainEnvSchema = z.object({
-  SHERPA_CHAIN: z.preprocess(emptyToUndefined, z.enum(['base-sepolia', 'base-mainnet']).default('base-sepolia')),
+  SHERPA_CHAIN: z.preprocess(emptyToUndefined, z.enum(['base-sepolia', 'base-mainnet', 'arbitrum', 'optimism']).default('base-sepolia')),
 });
 
 const TenderlyEnvSchema = z.object({
@@ -231,7 +260,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   });
   const chainName = chainEnv.SHERPA_CHAIN;
   const chain = pickChain(chainName);
-  const isMainnet = chainName === 'base-mainnet';
+  const isMainnet = chainName !== 'base-sepolia';
   const chainId = chain.chainId;
 
   const dbEnv = DbEnvSchema.parse({
@@ -280,7 +309,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   const simulationFailOpen = tenderlyEnv.SHERPA_SIMULATION_FAIL_OPEN ?? !isMainnet;
 
   if (paymasterUrl) {
-    if (isMainnet && !paymasterUrl.includes('mainnet')) {
+    if (isMainnet && chainName === 'base-mainnet' && !paymasterUrl.includes('mainnet')) {
       throw new Error('SHERPA_PAYMASTER_URL must contain "mainnet" when SHERPA_CHAIN=base-mainnet');
     }
     if (!isMainnet && !paymasterUrl.includes('sepolia')) {
@@ -341,6 +370,26 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     feeEnabled: feeEnv.SHERPA_FEE_ENABLED,
     feeBps: feeEnv.SHERPA_FEE_BPS,
   };
+}
+
+export function validateChainConfig(config: SherpaConfig): string[] {
+  const errors: string[] = [];
+
+  if (config.isMainnet && config.chainEnv === 'base-mainnet') {
+    if (!config.feeEnabled) errors.push('Protocol fee must be enabled on mainnet');
+    if (!config.feeTreasuryAddress) errors.push('Fee treasury address required on mainnet');
+    if (config.simulationFailOpen) errors.push('Simulation must be fail-closed on mainnet');
+  }
+
+  if (config.chainEnv === 'arbitrum' && !config.rpcUrl?.includes('arbitrum')) {
+    errors.push('ARBITRUM_RPC_URL required for Arbitrum');
+  }
+
+  if (config.chainEnv === 'optimism' && !config.rpcUrl?.includes('optimism')) {
+    errors.push('OPTIMISM_RPC_URL required for Optimism');
+  }
+
+  return errors;
 }
 
 export { getPool, query, resetPool, type DbPool, type QueryResult } from './db.js';

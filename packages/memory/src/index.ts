@@ -21,6 +21,8 @@ export * from './llm-usage.postgres.js';
 export * from './llm-usage.reports.js';
 export * from './paymaster-ratelimit.js';
 export * from './alerts.js';
+export * from './session-keys.js';
+export * from './strategies.js';
 
 /**
  * Pick the right AuditStore implementation based on config flags.

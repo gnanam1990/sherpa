@@ -303,6 +303,20 @@ describe('core/parser', () => {
     expect(p.slots.destinationChain).toBe('arbitrum');
   });
 
+  describe('BRIDGE L2-to-L2', () => {
+    test('parses "bridge 100 USDC from base to arbitrum"', () => {
+      const result = parseDeterministic('bridge 100 USDC from base to arbitrum');
+      expect(result.intent).toBe('BRIDGE');
+      expect(result.slots.sourceChain).toBe('base');
+      expect(result.slots.destinationChain).toBe('arbitrum');
+    });
+
+    test('parses "bridge 0.1 ETH optimism to arbitrum"', () => {
+      const result = parseDeterministic('bridge 0.1 ETH optimism to arbitrum');
+      expect(result.intent).toBe('BRIDGE');
+    });
+  });
+
   // ── LP parsing ──────────────────────────────────────────────────────
 
   it('parses "provide 100 USDC and 0.05 ETH liquidity"', () => {
@@ -525,6 +539,35 @@ describe('core/parser', () => {
     });
   });
 
+  // ── STRATEGY parsing ────────────────────────────────────────────────
+
+  describe('STRATEGY intent', () => {
+    test('parses "create strategy called DCA ETH"', () => {
+      const result = parseDeterministic('create strategy called DCA ETH');
+      expect(result.intent).toBe('STRATEGY');
+      expect(result.slots.strategyAction).toBe('create');
+      expect(result.slots.strategyName).toContain('DCA ETH');
+    });
+
+    test('parses "follow strategy dca-eth-weekly"', () => {
+      const result = parseDeterministic('follow strategy dca-eth-weekly');
+      expect(result.intent).toBe('STRATEGY');
+      expect(result.slots.strategyAction).toBe('follow');
+    });
+
+    test('parses "list strategies"', () => {
+      const result = parseDeterministic('list strategies');
+      expect(result.intent).toBe('STRATEGY');
+      expect(result.slots.strategyAction).toBe('list');
+    });
+
+    test('parses "run strategy auto-repay"', () => {
+      const result = parseDeterministic('run strategy auto-repay');
+      expect(result.intent).toBe('STRATEGY');
+      expect(result.slots.strategyAction).toBe('run');
+    });
+  });
+
   // ── DCA parsing ────────────────────────────────────────────────────
 
   describe('DCA intent', () => {
@@ -561,6 +604,34 @@ describe('core/parser', () => {
       expect(result.slots.dcaAmount).toBe('50');
       expect(result.slots.dcaAsset).toBe('ETH');
       expect(result.slots.frequency).toBe('daily');
+    });
+  });
+
+  // ── SESSION_KEY parsing ─────────────────────────────────────────────
+
+  describe('SESSION_KEY intent', () => {
+    test('parses "create session key with limit $100"', () => {
+      const result = parseDeterministic('create session key with limit $100');
+      expect(result.intent).toBe('SESSION_KEY');
+      expect(result.slots.sessionAction).toBe('create');
+      expect(result.slots.sessionLimit).toBe('100');
+    });
+
+    test('parses "grant session key for DCA"', () => {
+      const result = parseDeterministic('grant session key for DCA');
+      expect(result.intent).toBe('SESSION_KEY');
+      expect(result.slots.sessionPurpose).toContain('DCA');
+    });
+
+    test('parses "revoke session key"', () => {
+      const result = parseDeterministic('revoke session key');
+      expect(result.intent).toBe('SESSION_KEY');
+      expect(result.slots.sessionAction).toBe('revoke');
+    });
+
+    test('parses "enable session key"', () => {
+      const result = parseDeterministic('enable session key');
+      expect(result.intent).toBe('SESSION_KEY');
     });
   });
 

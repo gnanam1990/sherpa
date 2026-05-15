@@ -177,3 +177,36 @@ export const AUTO_REBALANCE_ERRORS = {
   INSUFFICIENT_LIQUIDITY: () => 'Not enough liquidity to rebalance.',
   REBALANCE_FAILED: () => 'Rebalancing failed. Please try again.',
 } as const;
+
+// ── SESSION_KEY-specific error messages ──────────────────────────────────
+
+export const SESSION_KEY_ERRORS = {
+  SPEND_LIMIT_EXCEEDED: (limit: string) => `Session key spend limit ($${limit}) exceeded.`,
+  SESSION_EXPIRED: () => 'Session key has expired.',
+  SESSION_REVOKED: () => 'Session key has been revoked.',
+  EXECUTION_LIMIT_REACHED: () => 'Maximum executions reached for this session key.',
+  PERMISSION_DENIED: (target: string) => `Session key does not have permission for ${target}.`,
+  INVALID_DURATION: () => 'Session duration must be between 1 minute and 30 days.',
+  INVALID_SPEND_LIMIT: () => 'Spend limit must be positive.',
+} as const;
+
+// ── Multi-chain error messages ──────────────────────────────────────────
+
+export const STRATEGY_ERRORS = {
+  STRATEGY_NOT_FOUND: (id: string) => `Strategy ${id} not found.`,
+  INVALID_PARAMETERS: () => 'Invalid strategy parameters.',
+  TOO_MANY_STEPS: (max: number) => `Strategy exceeds maximum steps (${max}).`,
+  UNSUPPORTED_INTENT: (intent: string) => `Strategy contains unsupported intent: ${intent}.`,
+  ALREADY_FOLLOWING: () => 'You are already following this strategy.',
+  STRATEGY_PRIVATE: () => 'This strategy is private.',
+} as const;
+
+export const CHAIN_ERRORS = {
+  UNSUPPORTED_CHAIN: (chain: string) => `Chain ${chain} is not supported yet.`,
+  CHAIN_MISMATCH: (expected: string, actual: string) =>
+    `Expected ${expected} but connected to ${actual}.`,
+  BRIDGE_NOT_SUPPORTED: (from: string, to: string) =>
+    `Bridge from ${from} to ${to} is not supported.`,
+  WRONG_CHAIN_FOR_INTENT: (intent: string, chain: string) =>
+    `${intent} is not available on ${chain}.`,
+} as const;

@@ -1,7 +1,33 @@
 import type { Address } from './types.js';
 import type { PendingTx, RingCheckResult, SafetyRing, SimulationCheckResult } from './types.js';
-import { assertAllowlisted } from './allowlist.js';
+import { assertAllowlisted, ALLOWED_CONTRACTS } from './allowlist.js';
 import { assertAmountCap, DEFAULT_CAPS } from './caps.js';
+
+const CHAIN_ALLOWLISTS: Record<number, Address[]> = {
+  42161: [ // Arbitrum
+    '0x794a61358D6845594F94dc1DB02A252b5b4814aD' as Address, // Aave V3 Pool
+    '0xc873fEcbd354f5A56E00E710B90EF4201db2448d' as Address, // Camelot Router
+  ],
+  10: [ // Optimism
+    '0x794a61358D6845594F94dc1DB02A252b5b4814aD' as Address, // Aave V3 Pool
+    '0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858' as Address, // Velodrome Router
+  ],
+};
+
+export function getChainAllowlist(chainId: number): Set<string> {
+  const base = new Set(
+    Object.values(ALLOWED_CONTRACTS).map((addr) => addr.toLowerCase()),
+  );
+
+  const chainExtras = CHAIN_ALLOWLISTS[chainId];
+  if (chainExtras) {
+    for (const addr of chainExtras) {
+      base.add(addr.toLowerCase());
+    }
+  }
+
+  return base;
+}
 
 /**
  * Ring checker result envelope. The executor calls `checkRings` before
@@ -312,6 +338,52 @@ export function validateCollect(params: {
     return { ok: false, error: `Maximum ${max} per transaction.` };
   }
   return { ok: true };
+}
+
+export function validateSessionKey(params: {
+  spendLimit: bigint;
+  validDuration: number;
+  permissions: Array<{ target: string }>;
+}): { ok: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  const maxSpend = 10000000000n; // $10,000 USDC (6 decimals)
+  if (params.spendLimit > maxSpend) {
+    errors.push('Session key spend limit exceeds maximum ($10,000)');
+  }
+
+  const maxDuration = 30 * 24 * 60 * 60; // 30 days
+  if (params.validDuration > maxDuration) {
+    errors.push('Session key duration exceeds maximum (30 days)');
+  }
+
+  const maxPermissions = 10;
+  if (params.permissions.length > maxPermissions) {
+    errors.push('Too many permissions (max 10)');
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+export function validateStrategy(params: {
+  intents: Array<{ type: string }>;
+  maxSteps?: number;
+}): { ok: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  const maxSteps = params.maxSteps ?? 10;
+  if (params.intents.length > maxSteps) {
+    errors.push(`Strategy has too many steps (max ${maxSteps})`);
+  }
+
+  const allowedIntents = new Set(['SWAP', 'LEND', 'BORROW', 'DCA', 'ALERT', 'AUTO_REPAY']);
+  for (const intent of params.intents) {
+    if (!allowedIntents.has(intent.type)) {
+      errors.push(`Strategy contains unsupported intent: ${intent.type}`);
+    }
+  }
+
+  return { ok: errors.length === 0, errors };
 }
 
 export function validateRebalance(params: {
