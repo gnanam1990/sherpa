@@ -69,7 +69,10 @@ describe('AboutPage', () => {
       'href',
       'https://github.com/gnanam1990/sherpa',
     );
-    expect(screen.getByRole('link', { name: 'Sherpa on Farcaster' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sherpa on Farcaster' })).toHaveAttribute(
+      'href',
+      'https://farcaster.xyz/sherpaonbase',
+    );
     expect(screen.getByRole('link', { name: 'Sherpa on X' })).toBeInTheDocument();
   });
 });

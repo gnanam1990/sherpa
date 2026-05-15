@@ -206,7 +206,7 @@ export default function AboutPage() {
               GitHub
             </a>
             <a
-              href="https://warpcast.com/~/sherpa"
+              href="https://farcaster.xyz/sherpaonbase"
               target="_blank"
               rel="noreferrer noopener"
               className="inline-flex items-center gap-2 transition hover:text-sherpa-fg"
