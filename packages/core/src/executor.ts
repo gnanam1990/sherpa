@@ -15,11 +15,15 @@ import {
 import {
   aave as defaultAave,
   buildApproveCall,
+  buildBorrowCall,
   limitless as defaultLimitless,
   onramp,
+  searchPolyForgeMarkets,
+  buildPolyForgeOrder,
   uniswap as defaultUniswap,
   usdc,
   type AaveAdapter,
+  type AaveBorrowParams,
   type AaveLendParams,
   type LimitlessAdapter,
   type BuyParams,
@@ -28,6 +32,7 @@ import {
 import type { ToolAdapter } from '@sherpa/tools';
 import { resolveToken } from '@sherpa/tools';
 import { buildSwapCall, verifySwap } from '@sherpa/tools';
+import { encodeFunctionData, erc20Abi } from 'viem';
 import type {
   ConfirmationCardProps,
   ExecutionStep,
@@ -62,6 +67,12 @@ export type ExecutorDeps = {
    * Caller is responsible for fail-open/fail-closed policy.
    */
   simulate?: (tx: PendingTx) => Promise<SimulationCheckResult> | SimulationCheckResult;
+  /** Whether protocol fee is enabled. */
+  feeEnabled?: boolean;
+  /** Protocol fee in basis points (e.g. 10 = 0.1%). */
+  feeBps?: number;
+  /** Treasury address to receive protocol fees. */
+  feeTreasuryAddress?: Address;
 };
 
 export type PlanResult = { ok: true; card: ConfirmationCardProps } | { ok: false; error: string };
@@ -101,6 +112,10 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'DEPOSIT') return planDeposit(parsed, deps);
   if (parsed.intent === 'SWAP') return planSwap(parsed, deps);
   if (parsed.intent === 'LEND') return planLend(parsed, deps);
+  if (parsed.intent === 'BORROW') return planBorrow(parsed, deps);
+  if (parsed.intent === 'DCA') return planDca(parsed, deps);
+  if (parsed.intent === 'ALERT') return planAlert(parsed, deps);
+  if (parsed.intent === 'AUTO_REPAY') return planAutoRepay(parsed, deps);
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,
@@ -134,13 +149,6 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
 
 async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
   const lim = deps.limitless ?? defaultLimitless;
-  if (!lim.factoryAddress) {
-    return {
-      ok: false,
-      error:
-        'Limitless Sepolia address not yet configured. BET is disabled until M1 wires the real CTFExchange address.',
-    };
-  }
   const slots = parsed.slots;
   const stakeStr =
     typeof slots.usd === 'string'
@@ -150,52 +158,144 @@ async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
         : '';
   const predicate = typeof slots.predicate === 'string' ? slots.predicate : '';
   const explicitOutcome = typeof slots.outcome === 'string' ? slots.outcome.toUpperCase() : '';
-  const marketId =
-    typeof slots.marketId === 'string' && /^0x[a-fA-F0-9]{64}$/.test(slots.marketId)
-      ? (slots.marketId as `0x${string}`)
-      : (`0x${'0'.repeat(64)}` as `0x${string}`);
   if (!stakeStr) return { ok: false, error: 'missing slots: stake' };
   const outcomeWord = explicitOutcome || (/\byes\b/i.test(predicate) ? 'YES' : 'NO');
   const outcome: 0 | 1 = outcomeWord === 'YES' ? 1 : 0;
 
-  const tx = await lim.buildTx({ stake: stakeStr, marketId, outcome });
-  const verified = await lim.verify(tx);
-  if (!verified.ok) return { ok: false, error: `tx verify failed: ${verified.reason}` };
-  const quote = await lim.quote({ stake: stakeStr, marketId, outcome });
+  // 1. Search Limitless first
+  let provider: 'limitless' | 'polyforge' = 'limitless';
+  let marketId: `0x${string}` | undefined;
+  let marketQuestion = predicate;
 
+  if (lim.factoryAddress) {
+    try {
+      const limitlessMarkets = await lim.findMarket({ predicate });
+      const best = limitlessMarkets[0];
+      if (best) {
+        marketId = best.id;
+        marketQuestion = best.title || predicate;
+      }
+    } catch {
+      // Limitless search failed — fall through to PolyForge
+    }
+  }
+
+  // 2. If no match, search PolyForge
+  if (!marketId) {
+    try {
+      const polyforgeMarkets = await searchPolyForgeMarkets({ query: predicate });
+      const best = polyforgeMarkets[0];
+      if (best) {
+        provider = 'polyforge';
+        marketId = best.id as `0x${string}`;
+        marketQuestion = best.question || predicate;
+      }
+    } catch {
+      // PolyForge search failed — fall through to error
+    }
+  }
+
+  // 3. If still no match, return error
+  if (!marketId) {
+    return { ok: false, error: "Couldn't find a market matching that question. Try being more specific." };
+  }
+
+  const warnings: string[] = [];
+
+  if (provider === 'limitless') {
+    if (!lim.factoryAddress) {
+      return { ok: false, error: "BET isn't available on this network yet." };
+    }
+
+    const tx = await lim.buildTx({ stake: stakeStr, marketId, outcome });
+    const verified = await lim.verify(tx);
+    if (!verified.ok) return { ok: false, error: `tx verify failed: ${verified.reason}` };
+    const quote = await lim.quote({ stake: stakeStr, marketId, outcome });
+
+    const pending: PendingTx = {
+      to: tx.to,
+      data: tx.data,
+      value: tx.value,
+      asset: ALLOWED_CONTRACTS.USDC,
+      amount: quote.stakeBaseUnits,
+      recipientSource: 'direct',
+    };
+    const r = await runRings(pending, deps, [lim.factoryAddress]);
+    if (!r.ok) return r;
+
+    const approve = buildApproveCall(lim.factoryAddress, quote.stakeBaseUnits);
+    const steps: ExecutionStep[] = [
+      {
+        kind: 'approve',
+        to: approve.to,
+        data: approve.data,
+        value: approve.value,
+        label: `Approve ${stakeStr} USDC for Limitless`,
+      },
+      {
+        kind: 'bet',
+        to: tx.to,
+        data: tx.data,
+        value: tx.value,
+        label: `Bet ${stakeStr} USDC on ${outcomeWord}${predicate ? ` (${predicate})` : ''}`,
+      },
+    ];
+
+    return {
+      ok: true,
+      card: {
+        intent: 'BET',
+        primary_action_label: 'Place bet',
+        primary_amount_display: `${stakeStr} USDC`,
+        secondary_amount_display: `payout ≈ ${quote.odds}`,
+        steps,
+        batch: envelopeFor(steps, deps),
+        gas_display: gasDisplay(steps, deps),
+        warnings,
+        estimated_completion_ms: 6_000,
+      },
+    };
+  }
+
+  // provider === 'polyforge'
+  const polyforgeMarkets = await searchPolyForgeMarkets({ query: predicate });
+  const matchedMarket = polyforgeMarkets.find((m) => m.id === marketId);
+  if (!matchedMarket) {
+    return { ok: false, error: "Couldn't find a market matching that question. Try being more specific." };
+  }
+
+  const side = outcomeWord === 'YES' ? 'YES' : 'NO' as const;
+  const orderCall = buildPolyForgeOrder({ market: matchedMarket, side, amount: BigInt(stakeStr) });
+
+  const expectedShares = BigInt(stakeStr);
   const pending: PendingTx = {
-    to: tx.to,
-    data: tx.data,
-    value: tx.value,
+    to: orderCall.to,
+    data: orderCall.data,
+    value: orderCall.value,
     asset: ALLOWED_CONTRACTS.USDC,
-    amount: quote.stakeBaseUnits,
+    amount: expectedShares,
     recipientSource: 'direct',
   };
-  const r = await runRings(pending, deps, [lim.factoryAddress]);
+  const r = await runRings(pending, deps);
   if (!r.ok) return r;
 
-  const approve = buildApproveCall(lim.factoryAddress, quote.stakeBaseUnits);
+  const approve = buildApproveCall(orderCall.to, expectedShares);
   const steps: ExecutionStep[] = [
     {
       kind: 'approve',
       to: approve.to,
       data: approve.data,
       value: approve.value,
-      label: `Approve ${stakeStr} USDC for Limitless`,
+      label: `Approve ${stakeStr} USDC for PolyForge`,
     },
     {
       kind: 'bet',
-      to: tx.to,
-      data: tx.data,
-      value: tx.value,
-      label: `Bet ${stakeStr} USDC on ${outcomeWord}${predicate ? ` (${predicate})` : ''}`,
+      to: orderCall.to,
+      data: orderCall.data,
+      value: orderCall.value,
+      label: `Bet ${stakeStr} USDC on ${outcomeWord} via PolyForge${predicate ? ` (${predicate})` : ''}`,
     },
   ];
-
-  const warnings: string[] = [];
-  if (marketId === `0x${'0'.repeat(64)}`) {
-    warnings.push('marketId not provided — using placeholder');
-  }
 
   return {
     ok: true,
@@ -203,7 +303,7 @@ async function planBet(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanRe
       intent: 'BET',
       primary_action_label: 'Place bet',
       primary_amount_display: `${stakeStr} USDC`,
-      secondary_amount_display: `payout ≈ ${quote.odds}`,
+      secondary_amount_display: `≈ ${expectedShares} shares`,
       steps,
       batch: envelopeFor(steps, deps),
       gas_display: gasDisplay(steps, deps),
@@ -445,7 +545,39 @@ async function planSwap(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
       label: `Swap ${fromAmount} ${fromAsset} → ${toAsset}`,
     });
 
+    // Protocol fee (P5): compute after swap quote, append ERC-20 transfer to treasury
     const q = result.quote;
+    let protocolFeeBps: number | undefined;
+    let protocolFeeAmount: bigint | undefined;
+    let feeAsset: string | undefined;
+
+    const feeEnabled = deps.feeEnabled ?? false;
+    const feeBps = deps.feeBps ?? 10;
+    const treasury = deps.feeTreasuryAddress;
+
+    // Only charge fee on ERC-20 outputs (ETH fee would require WETH wrapping)
+    if (feeEnabled && treasury && toAsset !== 'ETH' && q.amountOutBaseUnits > 0n) {
+      const feeAmount = (q.amountOutBaseUnits * BigInt(feeBps)) / 10_000n;
+      if (feeAmount > 0n) {
+        const toTokenAddress = toAsset === 'USDC' ? ALLOWED_CONTRACTS.USDC : ALLOWED_CONTRACTS.WETH;
+        const feeTransferData = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: 'transfer',
+          args: [treasury, feeAmount],
+        });
+        steps.push({
+          kind: 'custom',
+          to: toTokenAddress,
+          data: feeTransferData,
+          value: 0n,
+          label: `Protocol fee: ${toAsset}`,
+        });
+        protocolFeeBps = feeBps;
+        protocolFeeAmount = feeAmount;
+        feeAsset = toAsset;
+      }
+    }
+
     return {
       ok: true,
       card: {
@@ -458,6 +590,9 @@ async function planSwap(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
         gas_display: gasDisplay(steps, deps),
         warnings,
         estimated_completion_ms: 6_000,
+        protocolFeeBps,
+        protocolFeeAmount,
+        feeAsset,
       },
     };
   } catch (err) {
@@ -559,6 +694,168 @@ async function planLend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
     }
     return { ok: false, error: msg };
   }
+}
+
+async function planBorrow(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const amount = typeof slots.amount === 'string' ? slots.amount : '';
+  const asset = (typeof slots.asset === 'string' ? slots.asset : '').toUpperCase();
+
+  if (!amount || !asset) {
+    return { ok: false, error: 'missing slots: amount/asset' };
+  }
+  if (!deps.userAddress) {
+    return { ok: false, error: 'BORROW requires a connected wallet.' };
+  }
+
+  const token = resolveToken(asset);
+  if (!token) {
+    return { ok: false, error: `Sherpa doesn't know about ${asset} yet. Try USDC, ETH, or WETH.` };
+  }
+
+  const aaveAdapter = deps.aave ?? defaultAave;
+  const poolAddress = aaveAdapter.poolAddress;
+  if (!poolAddress) {
+    return { ok: false, error: "BORROW isn't available on this network yet." };
+  }
+
+  try {
+    const borrowParams: AaveBorrowParams = {
+      asset,
+      amount: BigInt(amount),
+      interestMode: 'variable',
+    };
+
+    const borrowResult = await buildBorrowCall(
+      {
+        asset: token.address as Address,
+        amount: borrowParams.amount,
+        interestRateMode: 2,
+        onBehalfOf: deps.userAddress,
+      },
+      { poolAddress },
+    );
+
+    const warnings: string[] = [];
+
+    const steps: ExecutionStep[] = [
+      {
+        kind: 'custom',
+        to: borrowResult.to,
+        data: borrowResult.data,
+        value: borrowResult.value,
+        label: `Borrow ${amount} ${asset} from Aave`,
+      },
+    ];
+
+    return {
+      ok: true,
+      card: {
+        intent: 'BORROW',
+        primary_action_label: 'Borrow',
+        primary_amount_display: `${amount} ${asset}`,
+        steps,
+        batch: envelopeFor(steps, deps),
+        gas_display: gasDisplay(steps, deps),
+        warnings,
+        estimated_completion_ms: 6_000,
+      },
+    };
+  } catch (err) {
+    const msg = (err as Error).message;
+    if (msg.includes('not yet configured') || msg.includes('not configured')) {
+      return { ok: false, error: "BORROW isn't available on this network yet." };
+    }
+    if (msg.includes('unsupported asset') || msg.includes('not borrowable')) {
+      return { ok: false, error: `Aave doesn't support borrowing ${asset} on this network.` };
+    }
+    return { ok: false, error: msg };
+  }
+}
+
+async function planDca(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const dcaAmount = typeof slots.dcaAmount === 'string' ? slots.dcaAmount : '';
+  const dcaAsset = typeof slots.dcaAsset === 'string' ? slots.dcaAsset : 'ETH';
+  const frequency = typeof slots.frequency === 'string' ? slots.frequency : 'weekly';
+
+  if (!dcaAmount) {
+    return { ok: false, error: 'missing slots: dcaAmount' };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'DCA',
+      primary_action_label: 'Start DCA',
+      primary_amount_display: `${dcaAmount} ${dcaAsset}`,
+      secondary_amount_display: `every ${frequency}`,
+      steps: [],
+      gas_display: GAS_SPONSORED_DISPLAY,
+      warnings: [],
+      estimated_completion_ms: 500,
+    },
+  };
+}
+
+async function planAlert(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const conditionType = typeof slots.conditionType === 'string' ? slots.conditionType : '';
+  const asset = typeof slots.asset === 'string' ? slots.asset : '';
+  const comparison = typeof slots.comparison === 'string' ? slots.comparison : '';
+  const threshold = typeof slots.threshold === 'number' ? slots.threshold : 0;
+  const notificationChannels = Array.isArray(slots.notificationChannels)
+    ? slots.notificationChannels
+    : ['push'];
+
+  if (!conditionType) return { ok: false, error: 'missing slots: conditionType' };
+
+  return {
+    ok: true,
+    card: {
+      intent: 'ALERT',
+      primary_action_label: 'Set alert',
+      primary_amount_display: `${conditionType} ${comparison} ${threshold}`,
+      secondary_amount_display: asset ? `on ${asset}` : undefined,
+      steps: [],
+      gas_display: GAS_SPONSORED_DISPLAY,
+      warnings: [],
+      estimated_completion_ms: 500,
+      alert: { conditionType, asset, comparison, threshold, notificationChannels },
+    },
+  };
+}
+
+async function planAutoRepay(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanResult> {
+  const slots = parsed.slots;
+  const triggerHF = typeof slots.triggerHF === 'number' ? slots.triggerHF : typeof slots.targetHealthFactor === 'number' ? slots.targetHealthFactor : undefined;
+  const targetHF = typeof slots.targetHF === 'number' ? slots.targetHF : typeof slots.targetHealthFactor === 'number' ? slots.targetHealthFactor : undefined;
+  const maxRepayPerExecution = typeof slots.maxRepayPerExecution === 'string' ? slots.maxRepayPerExecution : typeof slots.maxRepayPerExecution === 'number' ? String(slots.maxRepayPerExecution) : undefined;
+  const repaySource = Array.isArray(slots.repaySource) ? slots.repaySource : ['usdc'];
+
+  if (triggerHF === undefined || targetHF === undefined) {
+    return { ok: false, error: 'missing slots: triggerHF/targetHF' };
+  }
+
+  return {
+    ok: true,
+    card: {
+      intent: 'AUTO_REPAY',
+      primary_action_label: 'Set up auto-repay',
+      primary_amount_display: `trigger HF ${triggerHF} → target HF ${targetHF}`,
+      secondary_amount_display: maxRepayPerExecution ? `max ${maxRepayPerExecution} per execution` : undefined,
+      steps: [],
+      gas_display: GAS_SPONSORED_DISPLAY,
+      warnings: [],
+      estimated_completion_ms: 500,
+      autoRepay: {
+        triggerHF,
+        targetHF,
+        maxRepayPerExecution,
+        repaySource,
+      },
+    },
+  };
 }
 
 async function runRings(

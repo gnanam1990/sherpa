@@ -14,3 +14,5 @@ export type ScheduledJob = {
 };
 
 export * from './hourly-tasks.js';
+export * from './dca-runner.js';
+export * from './alert-runner.js';

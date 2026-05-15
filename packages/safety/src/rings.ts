@@ -91,3 +91,181 @@ export function ringsOk(results: readonly RingCheckResult[]): boolean {
 export function firstFailure(results: readonly RingCheckResult[]): RingCheckResult | undefined {
   return results.find((r) => !r.ok);
 }
+
+export function assessBorrowRisk(resultingHf: number): Array<{ type: string; severity: string; message: string }> {
+  const badges: Array<{ type: string; severity: string; message: string }> = [];
+
+  if (resultingHf < 1.1) {
+    badges.push({
+      type: 'HEALTH_FACTOR_DANGER',
+      severity: 'red',
+      message: `Health factor would drop to ${resultingHf.toFixed(2)}. Very high liquidation risk!`,
+    });
+  } else if (resultingHf < 1.5) {
+    badges.push({
+      type: 'HEALTH_FACTOR_WARNING',
+      severity: 'yellow',
+      message: `Health factor would be ${resultingHf.toFixed(2)}. Moderate liquidation risk.`,
+    });
+  }
+
+  return badges;
+}
+
+export function checkBorrowCapacity(
+  availableBorrows: bigint,
+  borrowAmount: bigint,
+): { ok: boolean; message?: string } {
+  if (borrowAmount > availableBorrows) {
+    return { ok: false, message: 'Borrow amount exceeds available capacity.' };
+  }
+  return { ok: true };
+}
+
+/**
+ * Validate mainnet-specific safety invariants.
+ *
+ * On mainnet the protocol MUST have fees enabled, a treasury address set,
+ * and simulation must be fail-closed. These checks are no-ops on Sepolia.
+ */
+export function assertMainnetSafety(config: {
+  isMainnet: boolean;
+  feeEnabled: boolean;
+  treasuryAddress?: string;
+  simulationFailOpen: boolean;
+}): { ok: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (config.isMainnet) {
+    if (!config.feeEnabled) errors.push('Protocol fee must be enabled on mainnet');
+    if (!config.treasuryAddress) errors.push('Fee treasury address required on mainnet');
+    if (config.simulationFailOpen) errors.push('Simulation must be fail-closed on mainnet');
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+export function validateFeeTransfer(
+  feeCall: { to: Address; value: bigint },
+  expectedTreasury: Address,
+  maxFeeBps: number,
+  outputAmount: bigint,
+): { ok: boolean; error?: string } {
+  if (feeCall.to.toLowerCase() !== expectedTreasury.toLowerCase()) {
+    return { ok: false, error: 'Fee transfer destination does not match treasury address.' };
+  }
+
+  const maxFee = (outputAmount * BigInt(maxFeeBps)) / 10000n;
+  if (feeCall.value > maxFee) {
+    return { ok: false, error: 'Fee amount exceeds configured maximum.' };
+  }
+
+  return { ok: true };
+}
+
+export function assessLPRisk(
+  priceImpactBps: number,
+  hasILWarning: boolean,
+): Array<{ type: string; severity: string; message: string }> {
+  const badges: Array<{ type: string; severity: string; message: string }> = [];
+
+  if (priceImpactBps > 100) {
+    badges.push({
+      type: 'PRICE_IMPACT_HIGH',
+      severity: 'red',
+      message: `High price impact: ${(priceImpactBps / 100).toFixed(1)}%`,
+    });
+  }
+  if (hasILWarning) {
+    badges.push({
+      type: 'IMPERMANENT_LOSS',
+      severity: 'yellow',
+      message: 'LP positions are subject to impermanent loss.',
+    });
+  }
+
+  return badges;
+}
+
+export function assessBetRisk(
+  market: { liquidity: bigint; status: string },
+  amount: bigint,
+): Array<{ type: string; severity: string; message: string }> {
+  const badges: Array<{ type: string; severity: string; message: string }> = [];
+
+  if (market.status === 'resolved') {
+    badges.push({
+      type: 'MARKET_RESOLVED',
+      severity: 'red',
+      message: 'This market has already resolved.',
+    });
+  }
+  if (amount > market.liquidity / 10n) {
+    badges.push({
+      type: 'BET_AMOUNT_LARGE',
+      severity: 'yellow',
+      message: 'Bet amount is large relative to market liquidity.',
+    });
+  }
+
+  return badges;
+}
+
+export function validateDCASchedule(params: {
+  amountPerTick: bigint;
+  totalBudget?: bigint;
+  maxExecutions?: number;
+}): { ok: boolean; error?: string } {
+  if (params.amountPerTick <= 0n) {
+    return { ok: false, error: 'DCA amount must be positive.' };
+  }
+  if (params.totalBudget && params.totalBudget < params.amountPerTick) {
+    return { ok: false, error: 'Total budget is less than one tick.' };
+  }
+  if (params.maxExecutions && params.maxExecutions < 1) {
+    return { ok: false, error: 'Max executions must be at least 1.' };
+  }
+  return { ok: true };
+}
+
+export function validateAlert(params: {
+  conditionType: string;
+  threshold: number;
+  comparison: string;
+}): { ok: boolean; error?: string } {
+  if (params.conditionType === 'health-factor' && params.threshold < 1.0) {
+    return { ok: false, error: 'Health factor threshold must be >= 1.0.' };
+  }
+  if (params.conditionType === 'price' && params.threshold <= 0) {
+    return { ok: false, error: 'Price threshold must be positive.' };
+  }
+  return { ok: true };
+}
+
+export function validateAutoRepay(params: {
+  triggerHF: number;
+  targetHF: number;
+  currentHF: number;
+}): { ok: boolean; error?: string } {
+  if (params.triggerHF >= params.currentHF) {
+    return { ok: false, error: 'Trigger HF must be less than current HF.' };
+  }
+  if (params.targetHF <= params.triggerHF) {
+    return { ok: false, error: 'Target HF must be greater than trigger HF.' };
+  }
+  if (params.targetHF > params.currentHF) {
+    return { ok: false, error: 'Target HF cannot exceed current HF.' };
+  }
+  return { ok: true };
+}
+
+export function validateBridgeChains(
+  source: string,
+  dest: string,
+  supported: Record<string, number>,
+): { ok: boolean; error?: string } {
+  if (!supported[source]) return { ok: false, error: `Source chain ${source} not supported.` };
+  if (!supported[dest]) return { ok: false, error: `Destination chain ${dest} not supported.` };
+  if (source === dest) return { ok: false, error: 'Source and destination chains must be different.' };
+  return { ok: true };
+}

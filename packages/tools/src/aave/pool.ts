@@ -24,7 +24,34 @@ export const AAVE_POOL_ABI = [
     ],
     outputs: [{ name: '', type: 'uint256' }],
   },
+  {
+    type: 'function',
+    name: 'borrow',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'asset', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'interestRateMode', type: 'uint256' },
+      { name: 'referralCode', type: 'uint16' },
+      { name: 'onBehalfOf', type: 'address' },
+    ],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'repay',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'asset', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'interestRateMode', type: 'uint256' },
+      { name: 'onBehalfOf', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
 ] as const;
 
 export const SUPPLY_SELECTOR = toFunctionSelector(AAVE_POOL_ABI[0]);
 export const WITHDRAW_SELECTOR = toFunctionSelector(AAVE_POOL_ABI[1]);
+export const BORROW_SELECTOR = toFunctionSelector(AAVE_POOL_ABI[2]);
+export const REPAY_SELECTOR = toFunctionSelector(AAVE_POOL_ABI[3]);

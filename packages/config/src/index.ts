@@ -36,6 +36,10 @@ export const CHAINS: Readonly<Record<ChainName, ChainConfig>> = Object.freeze({
 
 export type SherpaConfig = {
   chain: ChainConfig;
+  /** Chain environment name. */
+  chainEnv: ChainName;
+  /** Derived chain ID (8453 for mainnet, 84532 for sepolia). */
+  chainId: number;
   /** Override RPC if provided (e.g. Alchemy/Infura URL). */
   rpcUrl: string;
   /** Optional Basescan API key. */
@@ -94,12 +98,23 @@ export type SherpaConfig = {
   tenderlyProject?: string;
   /** Whether transaction simulation is enabled (default: true). */
   simulationEnabled: boolean;
+  /**
+   * Simulation fail-open mode. On mainnet defaults to false (fail-closed:
+   * reject tx if simulation service is down). On Sepolia defaults to true
+   * (fail-open: allow tx through).
+   */
+  simulationFailOpen: boolean;
   /** Whether the current chain is mainnet (derived from chain config). */
   isMainnet: boolean;
+  /** Aerodrome Router address (required on mainnet for SWAP). */
+  aerodromeRouterAddress?: `0x${string}`;
   /** Aave V3 Pool address (optional — LEND gated on this). */
   aavePoolAddress?: `0x${string}`;
   /** Aave V3 Data Provider address (optional — for reserve data). */
   aaveDataProviderAddress?: `0x${string}`;
+  feeTreasuryAddress?: `0x${string}`;
+  feeEnabled: boolean;
+  feeBps: number;
 };
 
 /**
@@ -183,11 +198,20 @@ const PaymasterEnvSchema = z.object({
   SHERPA_PAYMASTER_RPC: z.preprocess(emptyToUndefined, z.string().url().optional()),
 });
 
+const ChainEnvSchema = z.object({
+  SHERPA_CHAIN: z.preprocess(emptyToUndefined, z.enum(['base-sepolia', 'base-mainnet']).default('base-sepolia')),
+});
+
 const TenderlyEnvSchema = z.object({
   TENDERLY_API_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   TENDERLY_USER: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   TENDERLY_PROJECT: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   SHERPA_SIMULATION_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).optional()),
+  SHERPA_SIMULATION_FAIL_OPEN: z.preprocess(emptyToUndefined, z.coerce.boolean().optional()),
+});
+
+const AerodromeEnvSchema = z.object({
+  AERODROME_ROUTER_ADDRESS: z.preprocess(emptyToUndefined, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional()),
 });
 
 const AaveEnvSchema = z.object({
@@ -195,8 +219,21 @@ const AaveEnvSchema = z.object({
   AAVE_DATA_PROVIDER_ADDRESS: z.preprocess(emptyToUndefined, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional()),
 });
 
+const FeeEnvSchema = z.object({
+  SHERPA_FEE_TREASURY_ADDRESS: z.preprocess(emptyToUndefined, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional()),
+  SHERPA_FEE_ENABLED: z.preprocess(emptyToUndefined, z.coerce.boolean().default(false)),
+  SHERPA_FEE_BPS: z.preprocess(emptyToUndefined, z.coerce.number().default(10)),
+});
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
-  const chain = pickChain(env.SHERPA_CHAIN);
+  const chainEnv = ChainEnvSchema.parse({
+    SHERPA_CHAIN: env.SHERPA_CHAIN,
+  });
+  const chainName = chainEnv.SHERPA_CHAIN;
+  const chain = pickChain(chainName);
+  const isMainnet = chainName === 'base-mainnet';
+  const chainId = chain.chainId;
+
   const dbEnv = DbEnvSchema.parse({
     SHERPA_USE_REAL_DB: env.SHERPA_USE_REAL_DB,
     DATABASE_URL: env.DATABASE_URL,
@@ -224,20 +261,59 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     TENDERLY_USER: env.TENDERLY_USER,
     TENDERLY_PROJECT: env.TENDERLY_PROJECT,
     SHERPA_SIMULATION_ENABLED: env.SHERPA_SIMULATION_ENABLED,
+    SHERPA_SIMULATION_FAIL_OPEN: env.SHERPA_SIMULATION_FAIL_OPEN,
   });
   const aaveEnv = AaveEnvSchema.parse({
     AAVE_POOL_ADDRESS: env.AAVE_POOL_ADDRESS,
     AAVE_DATA_PROVIDER_ADDRESS: env.AAVE_DATA_PROVIDER_ADDRESS,
   });
+  const feeEnv = FeeEnvSchema.parse({
+    SHERPA_FEE_TREASURY_ADDRESS: env.SHERPA_FEE_TREASURY_ADDRESS,
+    SHERPA_FEE_ENABLED: env.SHERPA_FEE_ENABLED,
+    SHERPA_FEE_BPS: env.SHERPA_FEE_BPS,
+  });
+  const aerodromeEnv = AerodromeEnvSchema.parse({
+    AERODROME_ROUTER_ADDRESS: env.AERODROME_ROUTER_ADDRESS,
+  });
+
+  const paymasterUrl = env.SHERPA_PAYMASTER_URL;
+  const simulationFailOpen = tenderlyEnv.SHERPA_SIMULATION_FAIL_OPEN ?? !isMainnet;
+
+  if (paymasterUrl) {
+    if (isMainnet && !paymasterUrl.includes('mainnet')) {
+      throw new Error('SHERPA_PAYMASTER_URL must contain "mainnet" when SHERPA_CHAIN=base-mainnet');
+    }
+    if (!isMainnet && !paymasterUrl.includes('sepolia')) {
+      throw new Error('SHERPA_PAYMASTER_URL must contain "sepolia" when SHERPA_CHAIN=base-sepolia');
+    }
+  }
+
+  if (isMainnet) {
+    if (!aerodromeEnv.AERODROME_ROUTER_ADDRESS) {
+      throw new Error('AERODROME_ROUTER_ADDRESS required for mainnet');
+    }
+    if (!aaveEnv.AAVE_POOL_ADDRESS) {
+      throw new Error('AAVE_POOL_ADDRESS required for mainnet');
+    }
+    if (!feeEnv.SHERPA_FEE_TREASURY_ADDRESS) {
+      throw new Error('SHERPA_FEE_TREASURY_ADDRESS required for mainnet');
+    }
+    if (!tenderlyEnv.TENDERLY_API_KEY) {
+      throw new Error('TENDERLY_API_KEY required for mainnet');
+    }
+  }
+
   return {
     chain,
+    chainEnv: chainName,
+    chainId,
     rpcUrl: env.SHERPA_RPC_URL ?? chain.rpcUrl,
     basescanApiKey: env.BASESCAN_API_KEY,
     openaiApiKey: env.OPENAI_API_KEY,
     anthropicApiKey: env.ANTHROPIC_API_KEY,
     groqApiKey: env.GROQ_API_KEY,
     useRealRpc: env.SHERPA_USE_REAL_RPC !== 'false',
-    paymasterUrl: env.SHERPA_PAYMASTER_URL,
+    paymasterUrl,
     paymasterRpcUrl: paymasterEnv.SHERPA_PAYMASTER_RPC,
     smokeApiUrl: smokeEnv.SMOKE_API_URL ?? 'http://localhost:3001',
     useRealDb: dbEnv.SHERPA_USE_REAL_DB === 'true',
@@ -256,9 +332,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     tenderlyUser: tenderlyEnv.TENDERLY_USER,
     tenderlyProject: tenderlyEnv.TENDERLY_PROJECT,
     simulationEnabled: tenderlyEnv.SHERPA_SIMULATION_ENABLED !== 'false',
-    isMainnet: chain.name === 'base-mainnet',
+    simulationFailOpen,
+    isMainnet,
+    aerodromeRouterAddress: aerodromeEnv.AERODROME_ROUTER_ADDRESS as `0x${string}` | undefined,
     aavePoolAddress: aaveEnv.AAVE_POOL_ADDRESS as `0x${string}` | undefined,
     aaveDataProviderAddress: aaveEnv.AAVE_DATA_PROVIDER_ADDRESS as `0x${string}` | undefined,
+    feeTreasuryAddress: feeEnv.SHERPA_FEE_TREASURY_ADDRESS as `0x${string}` | undefined,
+    feeEnabled: feeEnv.SHERPA_FEE_ENABLED,
+    feeBps: feeEnv.SHERPA_FEE_BPS,
   };
 }
 

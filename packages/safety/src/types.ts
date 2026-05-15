@@ -56,3 +56,9 @@ export type PendingTx = {
 export type SimulationCheckResult =
   | { ok: true; gasEstimate: bigint }
   | { ok: false; errorCode: string; errorMessage: string };
+
+export type BorrowRiskBadge = {
+  type: string;
+  severity: 'red' | 'yellow' | 'green';
+  message: string;
+};

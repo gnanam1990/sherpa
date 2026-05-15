@@ -49,6 +49,23 @@ export const LIMITLESS_FACTORY_ADDRESS: Address | undefined = undefined;
 export const AERODROME_ROUTER_ADDRESS: Address | undefined = undefined;
 
 /**
+ * Lido stETH on Base. Stage-2 STAKE target.
+ *
+ * TODO(m1-week-3): Confirm mainnet address and Sepolia availability.
+ * Placeholder for now — adapters MUST throw when undefined.
+ */
+export const LIDO_STETH_ADDRESS: Address | undefined = undefined;
+
+/**
+ * Across spoke pool on Base. Stage-2 BRIDGE target.
+ *
+ * TODO(m1-week-3): Verify the real Across V3 spoke pool address on Base.
+ * Mainnet is `0x0000000000000000000000000000000000000000` (placeholder).
+ * Adapters MUST throw when undefined.
+ */
+export const ACROSS_SPOKE_POOL_BASE: Address | undefined = undefined;
+
+/**
  * Morpho Blue on Base. Stage-2 LEND target.
  *
  * TODO(m1-week-3): Morpho Blue's Sepolia deployment is unconfirmed. Mainnet
@@ -68,13 +85,40 @@ export const MORPHO_BLUE_ADDRESS: Address | undefined = undefined;
  */
 export const AAVE_V3_POOL_ADDRESS: Address | undefined = undefined;
 
+/**
+ * PolyForge prediction market factory on Base Sepolia.
+ *
+ * TODO(m1-week-3): replace with the real PolyForge factory address once
+ * confirmed with the PolyForge team.
+ */
+export const POLYFORGE_FACTORY_ADDRESS: Address | undefined = undefined;
+
+/**
+ * Runtime-registered addresses (e.g. from env config).
+ * Adapters call `registerAllowlistedAddress` at boot to inject
+ * addresses that aren't in the static allowlist.
+ */
+const DYNAMIC_ALLOWLIST = new Set<string>();
+
+export function registerAllowlistedAddress(address: Address): void {
+  DYNAMIC_ALLOWLIST.add(address.toLowerCase());
+}
+
+export function clearDynamicAllowlist(): void {
+  DYNAMIC_ALLOWLIST.clear();
+}
+
 export function isAllowlisted(target: Address, extras: readonly Address[] = []): boolean {
   const t = target.toLowerCase();
+  if (DYNAMIC_ALLOWLIST.has(t)) return true;
   if (Object.values(ALLOWED_CONTRACTS).some((addr) => addr.toLowerCase() === t)) return true;
   if (LIMITLESS_FACTORY_ADDRESS && LIMITLESS_FACTORY_ADDRESS.toLowerCase() === t) return true;
   if (AERODROME_ROUTER_ADDRESS && AERODROME_ROUTER_ADDRESS.toLowerCase() === t) return true;
+  if (LIDO_STETH_ADDRESS && LIDO_STETH_ADDRESS.toLowerCase() === t) return true;
+  if (ACROSS_SPOKE_POOL_BASE && ACROSS_SPOKE_POOL_BASE.toLowerCase() === t) return true;
   if (MORPHO_BLUE_ADDRESS && MORPHO_BLUE_ADDRESS.toLowerCase() === t) return true;
   if (AAVE_V3_POOL_ADDRESS && AAVE_V3_POOL_ADDRESS.toLowerCase() === t) return true;
+  if (POLYFORGE_FACTORY_ADDRESS && POLYFORGE_FACTORY_ADDRESS.toLowerCase() === t) return true;
   if (extras.some((addr) => addr.toLowerCase() === t)) return true;
   return false;
 }
@@ -105,4 +149,8 @@ export function assertAavePool(target: Address): void {
   if (target.toLowerCase() !== AAVE_V3_POOL_ADDRESS.toLowerCase()) {
     throw new Error(`[safety] target ${target} is not the Aave V3 Pool`);
   }
+}
+
+export function registerTreasuryAddress(address: Address): void {
+  registerAllowlistedAddress(address);
 }

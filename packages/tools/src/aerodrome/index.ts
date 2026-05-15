@@ -6,11 +6,13 @@
  */
 
 export { AerodromeNotConfiguredError, PoolNotFoundError, TokenNotFoundError, quote } from './quoter.js';
-export { buildSwapCall, SWAP_EXACT_TOKENS_SELECTOR } from './swap-builder.js';
+export { buildSwapCall, buildSwapWithFee, SWAP_EXACT_TOKENS_SELECTOR, type SwapWithFeeResult } from './swap-builder.js';
 export { verifySwap } from './verify.js';
 export { stubQuote, priceConvert } from './stub-pricing.js';
-export type { SwapAsset, SwapParams, SwapQuote, AerodromeQuote, AerodromeRoute, AerodromeDeps } from './types.js';
+export type { SwapAsset, SwapParams, SwapQuote, AerodromeQuote, AerodromeRoute, AerodromeDeps, SwapFeeConfig } from './types.js';
 export { DEFAULT_SLIPPAGE_BPS, DEFAULT_DEADLINE_SECONDS, ZERO_ADDRESS } from './types.js';
+export { buildAddLiquidityCall, type LPParams } from './lp-builder.js';
+export type { LPQuoteParams, LPQuote } from './lp-types.js';
 
 /**
  * Backward-compatible adapter factory. Returns a ToolAdapter-shaped object
@@ -23,12 +25,18 @@ import { buildSwapCall } from './swap-builder.js';
 import { verifySwap } from './verify.js';
 import type { AerodromeDeps, SwapParams, SwapQuote } from './types.js';
 
+const AERODROME_ROUTER: Record<number, Address | undefined> = {
+  84532: undefined, // Sepolia - not deployed (use stub)
+  8453: '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43', // Base mainnet
+};
+
 export type AerodromeAdapter = ToolAdapter<SwapParams, SwapQuote, SwapParams> & {
   routerAddress: Address | undefined;
 };
 
-export function createAerodrome(deps: AerodromeDeps = {}): AerodromeAdapter {
-  const routerAddress = deps.routerAddress ?? AERODROME_ROUTER_ADDRESS;
+export function createAerodrome(deps: AerodromeDeps & { chainId?: number } = {}): AerodromeAdapter {
+  const chainRouter = deps.chainId != null ? AERODROME_ROUTER[deps.chainId] : undefined;
+  const routerAddress = deps.routerAddress ?? chainRouter ?? AERODROME_ROUTER_ADDRESS;
 
   return {
     name: 'aerodrome',

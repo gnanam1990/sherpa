@@ -31,8 +31,13 @@ import {
 import { getPool } from '@sherpa/config';
 import { timingSafeEqual } from 'node:crypto';
 import { HOURLY_TASKS, type HourlyTask } from '@sherpa/scheduler';
+import { alertRoutes } from './routes/alerts.js';
+import { autoRepayRoutes } from './routes/auto-repay.js';
+import { dcaRoutes } from './routes/dca.js';
 import { registerCronRoutes } from './routes/cron.js';
+import { registerFarcasterRoutes } from './routes/farcaster.js';
 import { registerPaymasterRoutes } from './routes/paymaster.js';
+import { registerTelegramRoutes } from './routes/telegram.js';
 import {
   createBasescanIndexer,
   emptyIndexer,
@@ -153,6 +158,29 @@ function hashPlan(card: ConfirmationCardProps): string {
   return `0x${h.digest('hex')}`;
 }
 
+function validateMainnetConfig(config: SherpaConfig): void {
+  if (!config.isMainnet) return;
+
+  const required = [
+    { key: 'aerodromeRouterAddress' as const, name: 'AERODROME_ROUTER_ADDRESS' },
+    { key: 'aavePoolAddress' as const, name: 'AAVE_POOL_ADDRESS' },
+    { key: 'feeTreasuryAddress' as const, name: 'SHERPA_FEE_TREASURY_ADDRESS' },
+    { key: 'tenderlyApiKey' as const, name: 'TENDERLY_API_KEY' },
+    { key: 'paymasterUrl' as const, name: 'SHERPA_PAYMASTER_URL' },
+  ];
+
+  const missing = required.filter(r => !config[r.key]);
+
+  if (missing.length > 0) {
+    const names = missing.map(m => m.name).join(', ');
+    throw new Error(`Mainnet startup blocked: missing required env vars: ${names}`);
+  }
+
+  console.log(`[sherpa] Starting on BASE MAINNET (chainId 8453)`);
+  console.log(`[sherpa] Fee enabled: ${config.feeEnabled}, BPS: ${config.feeBps}`);
+  console.log(`[sherpa] Simulation: ${config.simulationFailOpen ? 'fail-open' : 'fail-closed'}`);
+}
+
 function serializeCard(card: ConfirmationCardProps): Record<string, unknown> {
   return {
     ...card,
@@ -167,6 +195,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   // log) share state across requests. Callers may inject their own (Redis /
   // Postgres) implementations in production.
   const config = options.config ?? loadConfig();
+  validateMainnetConfig(config);
   // Sentry init is idempotent (singleton) — calling buildServer() twice in
   // the same process (rare, but tests do) is safe. No-op without a DSN.
   initSentry(
@@ -412,6 +441,15 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     paymasterRpcUrl: config.paymasterRpcUrl,
     fetch: options.paymasterFetch,
   });
+
+  registerFarcasterRoutes(app);
+  registerTelegramRoutes(app);
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  dcaRoutes(app);
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  autoRepayRoutes(app);
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  alertRoutes(app);
 
   return app;
 }

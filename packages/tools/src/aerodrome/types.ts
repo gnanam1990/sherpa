@@ -45,6 +45,11 @@ export type AerodromeDeps = {
   now?: () => number;
 };
 
+export type SwapFeeConfig = {
+  feeBps: number;
+  treasuryAddress: Address;
+};
+
 export const DEFAULT_SLIPPAGE_BPS = 50;
 export const DEFAULT_DEADLINE_SECONDS = 600;
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;

@@ -49,6 +49,8 @@ export function shouldSimulate(intent: ParsedIntent): boolean {
 export type SimulationCallbackOptions = {
   /** Whether to proceed when the simulation service is unavailable (default: true = Sepolia). */
   failOpen?: boolean;
+  /** Whether the target chain is mainnet. Forces fail-closed regardless of `failOpen`. */
+  isMainnet?: boolean;
   /** Optional override for the simulator (tests inject a mock). */
   simulator?: Simulator;
   /** Optional fetch override (forwarded to createSimulator). */
@@ -73,7 +75,8 @@ export function createSimulationCallback(
   const sim = options?.simulator ?? createSimulator(tenderlyConfig, {
     fetchImpl: options?.fetchImpl,
   });
-  const failOpen = options?.failOpen ?? true;
+  // Mainnet is always fail-closed; Sepolia defaults to fail-open
+  const failOpen = options?.isMainnet ? false : (options?.failOpen ?? true);
   const log = options?.log;
 
   return async (tx: PendingTx): Promise<SimulationCheckResult> => {
