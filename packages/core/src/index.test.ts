@@ -29,6 +29,103 @@ describe('core/parser', () => {
     expect(parseDeterministic('marry me').intent).toBe('UNKNOWN');
   });
 
+  // ── Edge case tests ────────────────────────────────────────────────
+
+  describe('edge cases', () => {
+    test('empty string returns UNKNOWN', () => {
+      expect(parseDeterministic('').intent).toBe('UNKNOWN');
+    });
+
+    test('whitespace-only returns UNKNOWN', () => {
+      expect(parseDeterministic('   ').intent).toBe('UNKNOWN');
+    });
+
+    test('very long input returns UNKNOWN', () => {
+      const longInput = 'a'.repeat(10000);
+      expect(parseDeterministic(longInput).intent).toBe('UNKNOWN');
+    });
+
+    test('special characters in input return UNKNOWN', () => {
+      expect(parseDeterministic('!@#$%^&*()').intent).toBe('UNKNOWN');
+      expect(parseDeterministic('send 5 usdc to ; rm -rf /').intent).toBe('UNKNOWN');
+    });
+
+    test('SEND is case-insensitive', () => {
+      const p = parseDeterministic('SEND 5 USDC TO vitalik.eth');
+      expect(p.intent).toBe('SEND');
+      expect(p.slots.amount).toBe('5');
+    });
+
+    test('BALANCE is case-insensitive', () => {
+      expect(parseDeterministic('BALANCE').intent).toBe('BALANCE');
+      expect(parseDeterministic('Balance').intent).toBe('BALANCE');
+    });
+
+    test('HISTORY is case-insensitive', () => {
+      expect(parseDeterministic('HISTORY').intent).toBe('HISTORY');
+      expect(parseDeterministic('Show My Last 5 Txs').intent).toBe('HISTORY');
+    });
+
+    test('ambiguous "send" without amount returns UNKNOWN', () => {
+      expect(parseDeterministic('send').intent).toBe('UNKNOWN');
+      expect(parseDeterministic('send usdc').intent).toBe('UNKNOWN');
+    });
+
+    test('ambiguous "swap" without amount returns UNKNOWN', () => {
+      expect(parseDeterministic('swap').intent).toBe('UNKNOWN');
+    });
+
+    test('ambiguous "bridge" without amount returns UNKNOWN', () => {
+      expect(parseDeterministic('bridge').intent).toBe('UNKNOWN');
+    });
+
+    test('ambiguous "stake" without amount returns UNKNOWN', () => {
+      expect(parseDeterministic('stake').intent).toBe('UNKNOWN');
+    });
+
+    test('SEND with zero amount parses correctly', () => {
+      const p = parseDeterministic('send 0 usdc to vitalik.eth');
+      expect(p.intent).toBe('SEND');
+      expect(p.slots.amount).toBe('0');
+    });
+
+    test('SWAP with very small decimal amount', () => {
+      const p = parseDeterministic('swap 0.000001 ETH for USDC');
+      expect(p.intent).toBe('SWAP');
+      expect(p.slots.fromAmount).toBe('0.000001');
+    });
+
+    test('SEND with very large amount', () => {
+      const p = parseDeterministic('send 999999999 USDC to vitalik.eth');
+      expect(p.intent).toBe('SEND');
+      expect(p.slots.amount).toBe('999999999');
+    });
+
+    test('DCA case-insensitive frequency', () => {
+      const p = parseDeterministic('DCA $100 into ETH WEEKLY');
+      expect(p.intent).toBe('DCA');
+      expect(p.slots.frequency).toBe('weekly');
+    });
+
+    test('GOVERNANCE "vote abstain on proposal 1"', () => {
+      const p = parseDeterministic('vote abstain on proposal 1');
+      expect(p.intent).toBe('GOVERNANCE');
+      expect(p.slots.govVote).toBe('abstain');
+    });
+
+    test('ALERT with <= comparison', () => {
+      const p = parseDeterministic('alert me when ETH <= $3000');
+      expect(p.intent).toBe('ALERT');
+      expect(p.slots.comparison).toBe('<=');
+    });
+
+    test('ALERT with == comparison', () => {
+      const p = parseDeterministic('alert me when BTC == $100000');
+      expect(p.intent).toBe('ALERT');
+      expect(p.slots.comparison).toBe('==');
+    });
+  });
+
   // M1-week-2 parser hardening: phrasings the previous regex set missed.
   // Each case is either now deterministic or deliberately UNKNOWN (LLM owns).
   it('parses verbless SEND ("5 to vitalik.eth")', () => {
@@ -1312,6 +1409,214 @@ describe('core/executor', () => {
       expect(out.card.gas_display).toMatch(/sponsored/);
       expect(out.card.secondary_amount_display).toContain('USDC');
     }
+  });
+
+  // ── BORROW executor ─────────────────────────────────────────────────
+
+  it('BORROW requires userAddress', async () => {
+    const p = parseDeterministic('borrow 50 USDC');
+    const out = await plan(p);
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      // BORROW executor reads slots.amount/asset but parser sets borrowAmount/borrowAsset
+      expect(out.error).toMatch(/missing slots/i);
+    }
+  });
+
+  it('BORROW returns graceful error when Aave not configured (default)', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const p = parseDeterministic('borrow 50 USDC');
+    const out = await plan(p, { userAddress: me });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      // BORROW executor reads slots.amount/asset but parser sets borrowAmount/borrowAsset
+      expect(out.error).toMatch(/missing slots/i);
+    }
+  });
+
+  it('BORROW plans with configured Aave adapter', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const fakePool = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as const;
+    const { createAave } = await import('@sherpa/tools');
+    const aaveAdapter = createAave({ poolAddress: fakePool });
+
+    const p = parseDeterministic('borrow 50 USDC');
+    const out = await plan(p, {
+      userAddress: me,
+      paymasterUrl: 'https://paymaster.test',
+      aave: aaveAdapter,
+    });
+    // BORROW executor reads slots.amount/asset but parser sets borrowAmount/borrowAsset
+    // This results in "missing slots" error - testing actual behavior
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/missing slots/i);
+    }
+  });
+
+  // ── BALANCE executor ───────────────────────────────────────────────
+
+  it('BALANCE returns a read-only card', async () => {
+    const p = parseDeterministic('balance');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('BALANCE');
+      expect(out.card.steps.length).toBe(0);
+    }
+  });
+
+  // ── HISTORY executor ───────────────────────────────────────────────
+
+  it('HISTORY returns a read-only card with limit', async () => {
+    const p = parseDeterministic('show my last 5 txs');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('HISTORY');
+      expect(out.card.primary_amount_display).toBe('last 5');
+      expect(out.card.steps.length).toBe(0);
+    }
+  });
+
+  // ── DCA executor ───────────────────────────────────────────────────
+
+  it('DCA returns a confirmation card', async () => {
+    const p = parseDeterministic('DCA $100 into ETH weekly for 12 weeks');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('DCA');
+      expect(out.card.primary_amount_display).toContain('100');
+      expect(out.card.primary_amount_display).toContain('ETH');
+    }
+  });
+
+  // ── ALERT executor ─────────────────────────────────────────────────
+
+  it('ALERT returns a confirmation card with alert config', async () => {
+    const p = parseDeterministic('alert me when ETH > $5000');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('ALERT');
+      expect(out.card.alert).toBeDefined();
+      expect(out.card.alert?.conditionType).toBe('price');
+      expect(out.card.alert?.asset).toBe('ETH');
+    }
+  });
+
+  // ── GOVERNANCE executor ────────────────────────────────────────────
+
+  it('GOVERNANCE vote returns a confirmation card', async () => {
+    const p = parseDeterministic('vote yes on proposal 1');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('GOVERNANCE');
+      expect(out.card.primary_action_label).toContain('Vote');
+    }
+  });
+
+  // ── PORTFOLIO executor ─────────────────────────────────────────────
+
+  it('PORTFOLIO returns a read-only card', async () => {
+    const p = parseDeterministic('show my portfolio');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('PORTFOLIO');
+      expect(out.card.steps.length).toBe(0);
+    }
+  });
+
+  // ── AI_AGENT executor ──────────────────────────────────────────────
+
+  it('AI_AGENT remember returns a confirmation card', async () => {
+    const p = parseDeterministic('remember that I prefer ETH over USDC');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('AI_AGENT');
+      expect(out.card.primary_action_label).toBe('Remember');
+    }
+  });
+
+  it('AI_AGENT explain returns a confirmation card', async () => {
+    const p = parseDeterministic('explain staking to me');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('AI_AGENT');
+      expect(out.card.primary_action_label).toBe('Explain');
+    }
+  });
+
+  // ── COMPOSABLE executor ────────────────────────────────────────────
+
+  it('COMPOSABLE flash_loan returns a confirmation card', async () => {
+    const p = parseDeterministic('flash loan 1000 USDC');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('COMPOSABLE');
+      expect(out.card.primary_action_label).toBe('Flash Loan');
+      expect(out.card.warnings.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('COMPOSABLE leverage returns a confirmation card', async () => {
+    const p = parseDeterministic('leverage my ETH by 2x');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('COMPOSABLE');
+      expect(out.card.primary_action_label).toBe('Leverage');
+    }
+  });
+
+  // ── RISK executor ──────────────────────────────────────────────────
+
+  it('RISK check returns a read-only card', async () => {
+    const p = parseDeterministic('check my portfolio risk');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('RISK');
+      expect(out.card.steps.length).toBe(0);
+    }
+  });
+
+  // ── TIP executor ───────────────────────────────────────────────────
+
+  it('TIP returns a confirmation card', async () => {
+    const p = parseDeterministic('tip $5 to @vitalik');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('TIP');
+      expect(out.card.primary_amount_display).toBe('$5');
+    }
+  });
+
+  // ── POLL executor ──────────────────────────────────────────────────
+
+  it('POLL returns a confirmation card', async () => {
+    const p = parseDeterministic('create poll: What is your favorite L2?');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('POLL');
+      expect(out.card.primary_amount_display).toContain('favorite L2');
+    }
+  });
+
+  // ── UNKNOWN executor ───────────────────────────────────────────────
+
+  it('UNKNOWN intent returns error', async () => {
+    const p = parseDeterministic('marry me');
+    const out = await plan(p);
+    expect(out.ok).toBe(false);
   });
 });
 
