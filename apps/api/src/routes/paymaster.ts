@@ -30,6 +30,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
+import { verifyUserOpSignature, validateUserOpFields } from '@sherpa/safety';
 import {
   createAuditLog,
   updateAuditLog,
@@ -121,6 +122,21 @@ export function registerPaymasterRoutes(
       return reply.code(validation.status).send({ error: validation.error });
     }
     const { method, sender } = validation;
+
+    const rpcBody = req.body as JsonRpcRequest;
+    const userOp = (rpcBody.params as unknown[])[0] as Record<string, unknown>;
+
+    // Security: verify UserOp signature before rate limit to prevent
+    // attackers from exhausting rate limits with invalid UserOps
+    const fieldValidation = validateUserOpFields(userOp as any);
+    if (!fieldValidation.ok) {
+      return reply.status(400).send({ error: fieldValidation.reason });
+    }
+
+    const sigVerification = verifyUserOpSignature(userOp as any, sender as any);
+    if (!sigVerification.ok) {
+      return reply.status(401).send({ error: sigVerification.reason });
+    }
 
     const limit = await rateLimiter.consume(sender);
     if (!limit.ok) {

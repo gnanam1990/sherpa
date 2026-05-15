@@ -28,7 +28,7 @@ import {
   type PaymasterRateLimiter,
   type RateLimiter,
 } from '@sherpa/memory';
-import { getPool } from '@sherpa/config';
+import { getPool, query } from '@sherpa/config';
 import { timingSafeEqual } from 'node:crypto';
 import { HOURLY_TASKS, type HourlyTask } from '@sherpa/scheduler';
 import { alertRoutes } from './routes/alerts.js';
@@ -397,6 +397,62 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     const pool = getPool(config);
     const rows = await fetchUserUsage(pool, req.params.address);
     return reply.send({ address: req.params.address, count: rows.length, rows });
+  });
+
+  app.get('/admin/paymaster-usage/today', async (req, reply) => {
+    if (!adminGuard(req, reply)) return;
+    const pool = getPool(config);
+    const result = await query(
+      pool,
+      `SELECT
+         COUNT(*) as total_users,
+         SUM(count) as total_operations,
+         AVG(count)::numeric(10,2) as avg_ops_per_user,
+         MAX(count) as max_ops_user
+       FROM paymaster_ratelimit
+       WHERE window_start > NOW() - INTERVAL '24 hours'`,
+    );
+    return reply.send({
+      period: 'last_24h',
+      stats: result.rows[0],
+    });
+  });
+
+  app.get<{ Params: { address: string } }>('/admin/paymaster-usage/user/:address', async (req, reply) => {
+    if (!adminGuard(req, reply)) return;
+    if (!/^0x[a-fA-F0-9]{40}$/.test(req.params.address)) {
+      return reply.code(400).send({ error: 'address must be 0x-prefixed 20-byte hex' });
+    }
+    const pool = getPool(config);
+    const result = await query(
+      pool,
+      'SELECT count, window_start FROM paymaster_ratelimit WHERE user_address = $1',
+      [req.params.address.toLowerCase()],
+    );
+    return reply.send({
+      address: req.params.address,
+      usage: result.rows[0] || { count: 0, window_start: null },
+    });
+  });
+
+  app.get('/admin/audit-log/today', async (req, reply) => {
+    if (!adminGuard(req, reply)) return;
+    const pool = getPool(config);
+    const result = await query(
+      pool,
+      `SELECT
+         surface,
+         status,
+         COUNT(*) as count
+       FROM audit_log
+       WHERE created_at > NOW() - INTERVAL '24 hours'
+       GROUP BY surface, status
+       ORDER BY surface, status`,
+    );
+    return reply.send({
+      period: 'last_24h',
+      breakdown: result.rows,
+    });
   });
 
   app.get<{ Params: { addr: string }; Querystring: { limit?: string } }>(

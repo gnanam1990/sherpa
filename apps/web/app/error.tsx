@@ -1,15 +1,13 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { AlertCircle } from './_components/icons';
 
 export default function GlobalError({ error }: { error: Error & { digest?: string } }) {
   useEffect(() => {
-    // Browser error reporting (Sentry) is wired in a follow-up PR via
-    // @sentry/nextjs — see STAGE_1_LAUNCH_CHECKLIST.md. Server-side
-    // errors already route through @sherpa/logger on apps/api.
-    console.error('[sherpa:error-boundary]', error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
