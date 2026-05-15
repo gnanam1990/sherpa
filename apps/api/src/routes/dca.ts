@@ -31,7 +31,7 @@ export async function dcaRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get('/api/dca/:userAddress', async (req: FastifyRequest, reply: FastifyReply) => {
-    const { userAddress } = req.params as { userAddress: string };
+    const { userAddress: _userAddress } = req.params as { userAddress: string };
     return reply.send({ schedules: [] });
   });
 

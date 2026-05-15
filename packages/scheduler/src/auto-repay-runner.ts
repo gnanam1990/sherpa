@@ -30,7 +30,7 @@ export async function runAutoRepayTasks(ctx: TaskContext): Promise<{ ok: boolean
           triggered++;
 
           // 3. Calculate required repayment to restore target HF
-          const repayAmount = calculateRepayAmount(currentHF, rule.target_hf, rule.max_repay_per_execution);
+          const _repayAmount = calculateRepayAmount(currentHF, rule.target_hf, rule.max_repay_per_execution);
 
           // 4. Execute repay via buildRepayCall from @sherpa/tools/aave
           // 5. Send notification

@@ -1,6 +1,5 @@
-import type { Address } from '@sherpa/safety';
 import type { LidoDeps, LidoStakeParams, LidoStakeQuote } from './types.js';
-import { LIDO_STETH_ADDRESS, STUB_EXCHANGE_RATE, DEFAULT_DEADLINE_SECONDS } from './types.js';
+import { LIDO_STETH_ADDRESS, STUB_EXCHANGE_RATE } from './types.js';
 
 export class LidoNotConfiguredError extends Error {
   constructor() {

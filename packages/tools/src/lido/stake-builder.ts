@@ -1,7 +1,7 @@
 import { encodeFunctionData } from 'viem';
 import { assertAllowlisted, type Address } from '@sherpa/safety';
 import { LidoNotConfiguredError } from './index.js';
-import { STETH_ABI, SUBMIT_SELECTOR } from './steth.js';
+import { STETH_ABI } from './steth.js';
 import type { LidoDeps } from './types.js';
 import { LIDO_STETH_ADDRESS } from './types.js';
 

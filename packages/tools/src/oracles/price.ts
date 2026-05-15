@@ -1,6 +1,4 @@
-export type PriceOracleConfig = {
-  /** Future: inject Pyth config, RPC client, etc. */
-};
+export type PriceOracleConfig = Record<string, never>;
 
 export async function getPrice(
   _symbol: string,
