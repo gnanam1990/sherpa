@@ -24,6 +24,7 @@ import {
   fetchTodayUsage,
   fetchUserUsage,
   updateAuditLog,
+  type AuditLogRow,
   type AuditStore,
   type PaymasterRateLimiter,
   type RateLimiter,
@@ -52,6 +53,7 @@ import {
   emptyIndexer,
   fetchBalance,
   getPublicClient,
+  type HistoryItem,
   type HistoryIndexer,
 } from '@sherpa/tools';
 
@@ -79,6 +81,74 @@ const confirmBody = z.object({
     .optional(),
   error: z.string().max(500).optional(),
 });
+
+const txHashPattern = /^0x[a-fA-F0-9]{64}$/;
+
+function stringField(source: Record<string, unknown> | undefined, key: string): string | undefined {
+  const value = source?.[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function firstAuditTxHash(row: AuditLogRow): `0x${string}` | undefined {
+  const txHash = row.patch.txHash ?? row.patch.txHashes?.[0];
+  return typeof txHash === 'string' && txHashPattern.test(txHash)
+    ? (txHash as `0x${string}`)
+    : undefined;
+}
+
+function auditRowToHistoryItem(row: AuditLogRow): HistoryItem | undefined {
+  if (row.patch.error) return undefined;
+  const txHash = firstAuditTxHash(row);
+  if (!txHash) return undefined;
+
+  const plan = row.plan;
+  const amountDisplay =
+    stringField(plan, 'primary_amount_display') ??
+    stringField(plan, 'primary_action_label') ??
+    row.intent;
+  const amountParts = amountDisplay.trim().split(/\s+/);
+  const counterparty =
+    stringField(plan, 'recipient_display') ??
+    stringField(plan, 'secondary_amount_display') ??
+    row.userAddress;
+
+  return {
+    txHash,
+    timestamp: row.patch.confirmedAt ?? row.submittedAt,
+    direction: 'out',
+    counterparty,
+    asset: amountParts.at(-1) ?? row.intent,
+    amountDisplay,
+    sherpaIntent: row.intent,
+  };
+}
+
+async function listAuditHistory(
+  auditStore: AuditStore,
+  address: `0x${string}`,
+): Promise<HistoryItem[]> {
+  const rows = await auditStore.list(address);
+  return rows
+    .map(auditRowToHistoryItem)
+    .filter((item): item is HistoryItem => Boolean(item));
+}
+
+function mergeHistoryItems(
+  indexedItems: HistoryItem[],
+  auditItems: HistoryItem[],
+  limit: number,
+): HistoryItem[] {
+  const byHash = new Map<string, HistoryItem>();
+  for (const item of indexedItems) byHash.set(item.txHash.toLowerCase(), item);
+  for (const item of auditItems) {
+    const key = item.txHash.toLowerCase();
+    const existing = byHash.get(key);
+    byHash.set(key, existing ? { ...existing, sherpaIntent: item.sherpaIntent } : item);
+  }
+  return [...byHash.values()]
+    .sort((a, b) => b.timestamp - a.timestamp || b.txHash.localeCompare(a.txHash))
+    .slice(0, limit);
+}
 
 export type BuildServerOptions = {
   auditStore?: AuditStore;
@@ -483,7 +553,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       }
       const limit = Math.min(50, Math.max(1, Math.floor(rawLimit)));
       try {
-        const items = await indexer.list(resolved.address, limit);
+        const [indexedItems, auditItems] = await Promise.all([
+          indexer.list(resolved.address, limit),
+          listAuditHistory(auditStore, resolved.address),
+        ]);
+        const items = mergeHistoryItems(indexedItems, auditItems, limit);
         return reply.send({ address: resolved.address, chain: config.chain.name, items });
       } catch (err) {
         return reply.code(502).send({ error: 'indexer_error', message: (err as Error).message });

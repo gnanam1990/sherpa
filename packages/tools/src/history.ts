@@ -8,7 +8,7 @@ export type HistoryItem = {
   txHash: `0x${string}`;
   timestamp: number;
   direction: 'in' | 'out' | 'self';
-  counterparty: Address;
+  counterparty: string;
   /** Asset symbol when recognised ("ETH", "USDC") or the contract address. */
   asset: string;
   /** Human-friendly amount ("5.00 USDC", "0.01 ETH"). */

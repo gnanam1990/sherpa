@@ -7,7 +7,7 @@ export type HistoryItem = {
   txHash: `0x${string}`;
   timestamp: number;
   direction: 'in' | 'out' | 'self';
-  counterparty: `0x${string}`;
+  counterparty: string;
   asset: string;
   amountDisplay: string;
   sherpaIntent?: string;

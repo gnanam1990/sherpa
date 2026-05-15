@@ -270,6 +270,47 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  it('GET /api/history/:addr includes confirmed Sherpa audit transactions', async () => {
+    const auditStore = createInMemoryAuditStore();
+    const app = buildServer({ auditStore, config: offlineConfig });
+    const txHash = `0x${'b'.repeat(64)}` as const;
+
+    const execute = await app.inject({
+      method: 'POST',
+      url: '/api/execute',
+      payload: {
+        input: `send 1 usdc to ${USDC_RECIPIENT}`,
+        userAddress: USDC_RECIPIENT,
+      },
+    });
+    const executeBody = execute.json() as { auditLogId: number };
+    await app.inject({
+      method: 'POST',
+      url: `/api/execute/${executeBody.auditLogId}/confirm`,
+      payload: { txHash },
+    });
+
+    const res = await app.inject({ method: 'GET', url: `/api/history/${USDC_RECIPIENT}?limit=5` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      items: Array<{
+        amountDisplay: string;
+        counterparty: string;
+        sherpaIntent?: string;
+        txHash: string;
+      }>;
+    };
+    expect(body.items).toEqual([
+      expect.objectContaining({
+        amountDisplay: '1 USDC',
+        counterparty: USDC_RECIPIENT,
+        sherpaIntent: 'SEND',
+        txHash,
+      }),
+    ]);
+    await app.close();
+  });
+
   it('GET /api/history/:addr rejects non-numeric limit', async () => {
     const app = buildServer({ config: offlineConfig });
     const res = await app.inject({
