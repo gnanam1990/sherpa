@@ -300,7 +300,7 @@ to bleed into their domain, flag it. Don't try to do their work.
     Pane 0: Claude Code in worktrees/m1-week-{N}
     Pane 1: bash for git/test runs
     Pane 2: Codex (review your CC's PR)
-    Pane 3: pnpm test:watch
+    Pane 3: pnpm --filter <package> exec vitest
 
 13:00 — break
 
