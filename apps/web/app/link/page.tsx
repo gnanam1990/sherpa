@@ -1,11 +1,11 @@
 import { Suspense } from 'react';
-import { SignFlow } from './SignFlow';
+import { LinkFlow } from './LinkFlow';
 
-export default function SignPage() {
+export default function LinkPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
       <Suspense fallback={<div className="text-slate-400">Loading...</div>}>
-        <SignFlow />
+        <LinkFlow />
       </Suspense>
     </main>
   );

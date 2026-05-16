@@ -11,13 +11,13 @@ Sherpa is a natural-language operating system for the Base L2 blockchain. Users 
 
 ## Status
 
-| Stage        | Description                                             | Status                                            |
-| ------------ | ------------------------------------------------------- | ------------------------------------------------- |
-| **Stage 1**  | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP on Base Sepolia | Live public smoke                                 |
-| **Stage 2**  | DeFi (SWAP, LEND, BORROW, STAKE, BRIDGE, LP)            | Code present, gated behind config and audit       |
-| **Stage 3**  | Multi-surface (Farcaster Mini App, Telegram bot)        | Scaffolded, not deployed                          |
-| **Stage 4**  | Automation (DCA, ALERT, AUTO_REPAY)                     | Scheduler code present, not running in production |
-| **Stage 5+** | Multi-chain, Session Keys, Strategy, etc.               | Planned/scaffolded                                |
+| Stage        | Description                                             | Status                                                                                 |
+| ------------ | ------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Stage 1**  | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP on Base Sepolia | Live public smoke                                                                      |
+| **Stage 2**  | DeFi (SWAP, LEND, BORROW, STAKE, BRIDGE, LP)            | Code present, gated behind config and audit                                            |
+| **Stage 3**  | Multi-surface (Farcaster Mini App, Telegram bot)        | Code complete, deployment gated by Mini App account association and Telegram bot token |
+| **Stage 4**  | Automation (DCA, ALERT, AUTO_REPAY)                     | Scheduler code present, not running in production                                      |
+| **Stage 5+** | Multi-chain, Session Keys, Strategy, etc.               | Planned/scaffolded                                                                     |
 
 **Stage 1 web is live on Base Sepolia.** Future stages are intentionally gated behind production config, audits, or separate deployments for safety.
 
@@ -42,8 +42,8 @@ Sherpa does not have a token. Any SHERPA token claiming to be affiliated with th
 | API URL               | Railway deployment behind the web app proxy |
 | First public smoke tx | Verified on Base Sepolia                    |
 | Demo video            | Pending live URL smoke test                 |
-| Farcaster Mini App    | Not deployed                                |
-| Telegram bot          | Not deployed                                |
+| Farcaster Mini App    | Deployment pending account association      |
+| Telegram bot          | Deployment pending BotFather token          |
 
 ## Quick Start
 

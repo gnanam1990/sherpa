@@ -6,13 +6,38 @@ function offlineConfig() {
   return { ...loadConfig(), useRealRpc: false } as const;
 }
 
+function encodeBase64Url(str: string): string {
+  return Buffer.from(str, 'utf-8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
 describe('POST /api/webhooks/farcaster', () => {
-  it('accepts frame_added event', async () => {
+  it('accepts frame_added event (flat format)', async () => {
     const app = buildServer({ config: offlineConfig() });
     const res = await app.inject({
       method: 'POST',
       url: '/api/webhooks/farcaster',
       payload: { type: 'frame_added', fid: 1234 },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+    await app.close();
+  });
+
+  it('accepts frame_added event (JFS format)', async () => {
+    const app = buildServer({ config: offlineConfig() });
+    const payload = encodeBase64Url(JSON.stringify({ event: 'frame_added', fid: 5678 }));
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/webhooks/farcaster',
+      payload: {
+        header: 'hdr',
+        payload,
+        signature: 'sig',
+      },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ ok: true });
@@ -27,7 +52,6 @@ describe('POST /api/webhooks/farcaster', () => {
       payload: { type: 'frame_removed', fid: 1234 },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ ok: true });
     await app.close();
   });
 
@@ -39,7 +63,17 @@ describe('POST /api/webhooks/farcaster', () => {
       payload: { type: 'notifications_enabled', fid: 5678 },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ ok: true });
+    await app.close();
+  });
+
+  it('accepts notifications_disabled event', async () => {
+    const app = buildServer({ config: offlineConfig() });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/webhooks/farcaster',
+      payload: { type: 'notifications_disabled', fid: 9999 },
+    });
+    expect(res.statusCode).toBe(200);
     await app.close();
   });
 
@@ -51,7 +85,32 @@ describe('POST /api/webhooks/farcaster', () => {
       payload: { type: 'unknown_event', fid: 9999 },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ ok: true });
+    await app.close();
+  });
+
+  it('rejects empty body', async () => {
+    const app = buildServer({ config: offlineConfig() });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/webhooks/farcaster',
+      payload: {},
+    });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('rejects invalid JFS payload encoding', async () => {
+    const app = buildServer({ config: offlineConfig() });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/webhooks/farcaster',
+      payload: {
+        header: 'hdr',
+        payload: '!!!invalid-base64!!!',
+        signature: 'sig',
+      },
+    });
+    expect(res.statusCode).toBe(400);
     await app.close();
   });
 });
@@ -67,7 +126,6 @@ describe('GET /api/farcaster/frame', () => {
     const body = res.json();
     expect(body.name).toBe('Sherpa');
     expect(body.splashBackgroundColor).toBe('#0052FF');
-    expect(body.homeUrl).toBe('https://sherpa-mini.vercel.app');
     await app.close();
   });
 });

@@ -52,11 +52,11 @@ const steps = [
 const faqs = [
   {
     q: "What's a Smart Wallet?",
-    a: 'A Smart Wallet is an ERC-4337 account: code, not a private key. Coinbase Smart Wallet uses your device passkey for signing, so there\'s no seed phrase to lose and no extension to install. It also unlocks batched transactions and sponsored gas — both of which Sherpa uses by default.',
+    a: "A Smart Wallet is an ERC-4337 account: code, not a private key. Coinbase Smart Wallet uses your device passkey for signing, so there's no seed phrase to lose and no extension to install. It also unlocks batched transactions and sponsored gas — both of which Sherpa uses by default.",
   },
   {
     q: 'Is this safe?',
-    a: 'Stage 1 runs on Base Sepolia (testnet) only — no mainnet funds at risk. Every transaction shows a confirmation card with the exact calls before you sign, and the paymaster URL is held server-side so it can\'t leak from the browser. The source is open at github.com/gnanam1990/sherpa.',
+    a: "Stage 1 runs on Base Sepolia (testnet) only — no mainnet funds at risk. Every transaction shows a confirmation card with the exact calls before you sign, and the paymaster URL is held server-side so it can't leak from the browser. The source is open at github.com/gnanam1990/sherpa.",
   },
   {
     q: 'What networks do you support?',
@@ -90,9 +90,10 @@ export default function AboutPage() {
         <header className="flex items-center justify-between gap-4">
           <Link
             href="/"
-            className="text-sm font-semibold tracking-[-0.02em] text-sherpa-blue"
+            className="inline-flex items-center gap-2 text-sm font-semibold tracking-[-0.02em] text-sherpa-blue"
             aria-label="Sherpa home"
           >
+            <img src="/sherpa-icon-192.svg" alt="" className="h-6 w-6 rounded-md" />
             Sherpa
           </Link>
           <Link
@@ -110,8 +111,8 @@ export default function AboutPage() {
             <span className="text-sherpa-blue">Sherpa does it.</span> On Base.
           </h1>
           <p className="max-w-xl text-base text-sherpa-muted sm:text-lg">
-            A natural-language agent for Base. Plain English in, signed onchain
-            action out. Passkey wallet, sponsored gas, no extension.
+            A natural-language agent for Base. Plain English in, signed onchain action out. Passkey
+            wallet, sponsored gas, no extension.
           </p>
           <Link
             href="/"
@@ -143,10 +144,7 @@ export default function AboutPage() {
         </section>
 
         <section aria-labelledby="how-heading" className="flex flex-col gap-6">
-          <h2
-            id="how-heading"
-            className="text-2xl font-semibold tracking-[-0.02em] sm:text-3xl"
-          >
+          <h2 id="how-heading" className="text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
             How it works
           </h2>
           <ol className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -155,9 +153,7 @@ export default function AboutPage() {
                 key={n}
                 className="flex flex-col gap-3 rounded-2xl border border-sherpa-surface2 bg-sherpa-surface p-5"
               >
-                <span className="font-mono text-xs tracking-wider text-sherpa-muted">
-                  {n}
-                </span>
+                <span className="font-mono text-xs tracking-wider text-sherpa-muted">{n}</span>
                 <h3 className="m-0 text-base font-semibold text-sherpa-fg">{title}</h3>
                 <p className="m-0 text-sm leading-relaxed text-sherpa-muted">{body}</p>
               </li>

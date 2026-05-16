@@ -24,6 +24,8 @@ export * from './alerts.js';
 export * from './session-keys.js';
 export * from './strategies.js';
 export * from './notifications.js';
+export * from './surface-links.js';
+export * from './notification-tokens.js';
 
 /**
  * Pick the right AuditStore implementation based on config flags.

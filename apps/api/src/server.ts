@@ -48,6 +48,7 @@ import { registerCronRoutes } from './routes/cron.js';
 import { registerFarcasterRoutes } from './routes/farcaster.js';
 import { registerPaymasterRoutes } from './routes/paymaster.js';
 import { registerTelegramRoutes } from './routes/telegram.js';
+import { surfacesRoutes } from './routes/surfaces.js';
 import {
   createBasescanIndexer,
   emptyIndexer,
@@ -589,7 +590,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     fetch: options.paymasterFetch,
   });
 
-  registerFarcasterRoutes(app);
+  registerFarcasterRoutes(app, config);
   registerTelegramRoutes(app);
   dcaRoutes(app);
   autoRepayRoutes(app);
@@ -603,6 +604,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   securityRoutes(app);
   developerRoutes(app);
   composableRoutes(app);
+  surfacesRoutes(app, config);
 
   return app;
 }

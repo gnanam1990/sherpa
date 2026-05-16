@@ -1,0 +1,54 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <title>Sherpa — The natural-language Base agent</title>
+  <defs>
+    <clipPath id="ogClip">
+      <rect x="100" y="155" width="320" height="320" rx="72"/>
+    </clipPath>
+  </defs>
+  <!-- Background -->
+  <rect x="0" y="0" width="1200" height="630" fill="#0A0F1F"/>
+
+  <!-- Subtle grid texture for tech feel -->
+  <g opacity="0.05" stroke="#0052FF" stroke-width="1">
+    <line x1="0" y1="100" x2="1200" y2="100"/>
+    <line x1="0" y1="200" x2="1200" y2="200"/>
+    <line x1="0" y1="300" x2="1200" y2="300"/>
+    <line x1="0" y1="400" x2="1200" y2="400"/>
+    <line x1="0" y1="500" x2="1200" y2="500"/>
+    <line x1="100" y1="0" x2="100" y2="630"/>
+    <line x1="300" y1="0" x2="300" y2="630"/>
+    <line x1="500" y1="0" x2="500" y2="630"/>
+    <line x1="700" y1="0" x2="700" y2="630"/>
+    <line x1="900" y1="0" x2="900" y2="630"/>
+    <line x1="1100" y1="0" x2="1100" y2="630"/>
+  </g>
+
+  <!-- Big icon -->
+  <rect x="100" y="155" width="320" height="320" rx="72" fill="#0052FF"/>
+  <g clip-path="url(#ogClip)">
+    <polygon points="100,415 228,219 356,355 420,291 420,475 100,475" fill="#1F6BFF"/>
+    <polygon points="148,475 276,235 420,415 420,475" fill="#FFFFFF"/>
+    <path d="M 196 421
+             Q 252 413 268 389
+             Q 284 365 260 343
+             Q 236 321 260 297
+             Q 284 273 324 287
+             Q 356 297 356 317"
+          fill="none" stroke="#0052FF" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="276" cy="235" r="10" fill="#FFFFFF" stroke="#0052FF" stroke-width="4"/>
+  </g>
+
+  <!-- Wordmark + tagline -->
+  <text x="480" y="295" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="104" font-weight="500" fill="#FFFFFF">sherpa</text>
+  <text x="486" y="345" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="28" font-weight="400" fill="#7B8FB5">the natural-language Base agent</text>
+
+  <!-- Bottom badges -->
+  <rect x="486" y="395" width="160" height="34" rx="6" fill="none" stroke="#0052FF" stroke-width="1"/>
+  <text x="566" y="418" text-anchor="middle" font-family="monospace" font-size="13" fill="#0052FF">STAGE 1 · LIVE</text>
+
+  <rect x="660" y="395" width="180" height="34" rx="6" fill="none" stroke="#3CC580" stroke-width="1"/>
+  <text x="750" y="418" text-anchor="middle" font-family="monospace" font-size="13" fill="#3CC580">SPONSORED GAS</text>
+
+  <!-- Tiny URL -->
+  <text x="486" y="465" font-family="monospace" font-size="16" fill="#5B6478">sherpa-web.vercel.app</text>
+</svg>

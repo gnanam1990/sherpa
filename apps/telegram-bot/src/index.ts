@@ -1,6 +1,7 @@
 import { Bot, GrammyError, HttpError } from 'grammy';
 import { handleStart, handleHelp, handleSend, handleBalance, handleHistory, handleLink } from './commands.js';
 import { handleMessage, setupCallbackHandlers } from './intent-handler.js';
+import { adminOnly } from './auth.js';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
@@ -9,6 +10,9 @@ if (!token) {
 }
 
 const bot = new Bot(token);
+
+// Admin-only middleware for beta
+bot.use(adminOnly);
 
 // Commands
 bot.command('start', handleStart);

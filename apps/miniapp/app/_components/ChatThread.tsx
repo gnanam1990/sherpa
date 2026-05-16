@@ -1,140 +1,114 @@
 'use client';
-
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { useAccount } from 'wagmi';
+import { getFarcasterUser, type FarcasterUser } from '../../lib/farcaster-connect';
 
-interface Message {
+type Msg = {
   id: string;
   role: 'user' | 'assistant';
-  content: string;
-  timestamp: number;
-}
+  text: string;
+  ts: number;
+};
 
 export function ChatThread() {
-  const { address, isConnected } = useAccount();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { setFrameReady, isFrameReady } = useMiniKit();
+  const { address } = useAccount();
+  const [fcUser, setFcUser] = useState<FarcasterUser | null>(null);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    if (!isFrameReady) setFrameReady();
+  }, [setFrameReady, isFrameReady]);
 
-  async function handleSend() {
-    if (!input.trim() || !isConnected || isSending) return;
+  useEffect(() => {
+    getFarcasterUser().then(setFcUser);
+  }, []);
 
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: input.trim(),
-      timestamp: Date.now(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setIsSending(true);
-
+  async function onSubmit() {
+    if (!input.trim() || busy) return;
+    const userMsg: Msg = { id: crypto.randomUUID(), role: 'user', text: input, ts: Date.now() };
+    setMessages((prev) => [...prev, userMsg]);
+    setBusy(true);
+    const apiBase = process.env.NEXT_PUBLIC_SHERPA_API_BASE || '';
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SHERPA_API_BASE ?? ''}/api/chat`, {
+      const res = await fetch(`${apiBase}/api/parse`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage.content,
-          address,
-        }),
+        body: JSON.stringify({ input: userMsg.text, userKey: address }),
       });
-
-      if (!res.ok) throw new Error('Request failed');
-
       const data = await res.json();
-      const assistantMessage: Message = {
+      const assistantMsg: Msg = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: data.response ?? 'No response received.',
-        timestamp: Date.now(),
+        text: JSON.stringify(data, null, 2),
+        ts: Date.now(),
       };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch {
+      setMessages((prev) => [...prev, assistantMsg]);
+    } catch (err) {
+      console.error(err);
       setMessages((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: 'Something went wrong. Please try again.',
-          timestamp: Date.now(),
+          text: 'Sherpa is unreachable. Try again.',
+          ts: Date.now(),
         },
       ]);
     } finally {
-      setIsSending(false);
+      setBusy(false);
+      setInput('');
     }
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col">
-      <header className="flex items-center justify-between border-b border-sherpa-surface2 px-4 py-3">
-        <span className="text-sm font-semibold tracking-[-0.02em] text-sherpa-blue">Sherpa</span>
-        <span className="text-xs text-sherpa-muted">Mini App</span>
-      </header>
-
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
-        {messages.length === 0 && (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-center text-sm text-sherpa-muted">
-              {isConnected
-                ? 'Type a message to get started.'
-                : 'Connect your wallet to start.'}
-            </p>
-          </div>
-        )}
-        <div className="flex flex-col gap-3">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
-                msg.role === 'user'
-                  ? 'ml-auto bg-sherpa-blue text-white'
-                  : 'bg-sherpa-surface text-sherpa-fg'
-              }`}
-            >
-              {msg.content}
-            </div>
-          ))}
-          {isSending && (
-            <div className="max-w-[85%] rounded-2xl bg-sherpa-surface px-4 py-3 text-sm text-sherpa-muted">
-              Thinking…
-            </div>
-          )}
-        </div>
-      </div>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSend();
-        }}
-        className="border-t border-sherpa-surface2 px-4 py-3"
-      >
+    <div className="flex flex-col h-full p-4 gap-3">
+      <header className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-3 py-2">
         <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={isConnected ? 'Ask Sherpa…' : 'Connect wallet first'}
-            disabled={!isConnected}
-            className="flex-1 rounded-xl border border-sherpa-surface2 bg-sherpa-surface px-4 py-3 text-sm text-sherpa-fg placeholder-sherpa-muted outline-none focus:border-sherpa-blue disabled:opacity-50"
-          />
-          <button
-            type="submit"
-            disabled={!isConnected || !input.trim() || isSending}
-            className="min-h-[44px] min-w-[44px] rounded-xl bg-sherpa-blue px-4 py-3 text-sm font-medium text-white transition hover:bg-sherpa-blue/90 disabled:opacity-50"
-          >
-            Send
-          </button>
+          <img src="/sherpa-icon-192.svg" alt="" className="h-8 w-8 rounded-lg" />
+          <div>
+            <div className="text-sm font-semibold text-white">Sherpa</div>
+            <div className="text-[11px] text-slate-400">Base mini app</div>
+          </div>
         </div>
-      </form>
+        <div className="text-[11px] text-blue-300">sponsored gas</div>
+      </header>
+      {fcUser && (
+        <div className="text-xs text-blue-400 mb-2">
+          FID: {fcUser.fid} · @{fcUser.username ?? 'unknown'}
+        </div>
+      )}
+      <div className="flex-1 overflow-y-auto space-y-2">
+        {messages.map((m) => (
+          <div key={m.id} className={m.role === 'user' ? 'text-right' : 'text-left'}>
+            <div
+              className={`inline-block px-3 py-2 rounded ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-100'}`}
+            >
+              {m.text}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
+          placeholder="send 0.01 usdc to vitalik.eth"
+          className="flex-1 px-3 py-2 bg-slate-900 text-white rounded"
+          disabled={busy}
+        />
+        <button
+          onClick={onSubmit}
+          disabled={busy}
+          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+        >
+          {busy ? '...' : 'Send'}
+        </button>
+      </div>
     </div>
   );
 }

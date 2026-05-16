@@ -51,7 +51,10 @@ export function HomeContent() {
       className="flex h-[100dvh] flex-col items-center gap-4 overflow-hidden bg-sherpa-bg px-4 py-4 text-sherpa-fg sm:px-6"
     >
       <header className="flex w-full max-w-5xl items-center justify-between gap-4">
-        <span className="text-sm font-semibold tracking-[-0.02em] text-sherpa-blue">Sherpa</span>
+        <span className="inline-flex items-center gap-2 text-sm font-semibold tracking-[-0.02em] text-sherpa-blue">
+          <img src="/sherpa-icon-192.svg" alt="" className="h-6 w-6 rounded-md" />
+          Sherpa
+        </span>
         <nav className="flex items-center gap-3" aria-label="Primary">
           <Link
             href="/about"
@@ -64,6 +67,11 @@ export function HomeContent() {
       </header>
 
       <section className="flex w-full max-w-2xl flex-col items-center gap-3 text-center">
+        <img
+          src="/sherpa-icon-512.svg"
+          alt=""
+          className="h-16 w-16 rounded-2xl shadow-lg shadow-blue-950/30"
+        />
         <h1 className="m-0 text-5xl font-semibold tracking-[-0.04em] text-sherpa-blue sm:text-6xl">
           Sherpa
         </h1>

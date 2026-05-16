@@ -1,6 +1,6 @@
 {
   "name": "@sherpa/miniapp",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3200",
@@ -20,7 +20,9 @@
     "wagmi": "^2.0.0",
     "@sherpa/ui": "workspace:*",
     "@sherpa/core": "workspace:*",
-    "@sherpa/tools": "workspace:*"
+    "@sherpa/tools": "workspace:*",
+    "@coinbase/onchainkit": "1.1.2",
+    "@sherpa/memory": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

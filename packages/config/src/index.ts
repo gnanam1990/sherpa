@@ -114,6 +114,8 @@ export type SherpaConfig = {
   neynarApiKey?: string;
   /** Override the Neynar base URL (defaults to https://api.neynar.com). */
   neynarBaseUrl: string;
+  /** Base URL for the Sherpa web app (used in sign-intent links). */
+  sherpaWebBase?: string;
   /** Ethereum mainnet RPC for ENS reads. Falls back to a public node when unset. */
   ethMainnetRpcUrl: string;
   /** Vercel KV REST endpoint. KV layer is disabled when unset. */
@@ -237,6 +239,7 @@ const ObservabilityEnvSchema = z.object({
 
 const SmokeEnvSchema = z.object({
   SMOKE_API_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  SHERPA_WEB_BASE: z.preprocess(emptyToUndefined, z.string().url().optional()),
 });
 
 const PaymasterEnvSchema = z.object({
@@ -297,7 +300,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     SENTRY_ENVIRONMENT: env.SENTRY_ENVIRONMENT,
     CRON_SECRET: env.CRON_SECRET,
   });
-  const smokeEnv = SmokeEnvSchema.parse({ SMOKE_API_URL: env.SMOKE_API_URL });
+  const smokeEnv = SmokeEnvSchema.parse({
+    SMOKE_API_URL: env.SMOKE_API_URL,
+    SHERPA_WEB_BASE: env.SHERPA_WEB_BASE,
+  });
   const paymasterEnv = PaymasterEnvSchema.parse({
     SHERPA_PAYMASTER_RPC: env.SHERPA_PAYMASTER_RPC,
   });
@@ -361,6 +367,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     paymasterUrl,
     paymasterRpcUrl: paymasterEnv.SHERPA_PAYMASTER_RPC,
     smokeApiUrl: smokeEnv.SMOKE_API_URL ?? 'http://localhost:3001',
+    sherpaWebBase: smokeEnv.SHERPA_WEB_BASE,
     useRealDb: dbEnv.SHERPA_USE_REAL_DB === 'true',
     databaseUrl: dbEnv.DATABASE_URL,
     supabaseServiceKey: dbEnv.SUPABASE_SERVICE_KEY,

@@ -1,0 +1,22 @@
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <title>Sherpa</title>
+  <desc>Sherpa logo — natural-language Base agent</desc>
+  <defs>
+    <clipPath id="markClip192">
+      <rect x="0" y="0" width="192" height="192" rx="42"/>
+    </clipPath>
+  </defs>
+  <rect x="0" y="0" width="192" height="192" rx="42" fill="#0052FF"/>
+  <g clip-path="url(#markClip192)">
+    <polygon points="0,162 72,48 132,112 162,76 162,192 0,192" fill="#1F6BFF"/>
+    <polygon points="30,192 84,54 162,162 162,192" fill="#FFFFFF"/>
+    <path d="M 58 166
+             Q 90 162 100 148
+             Q 110 134 96 122
+             Q 82 110 96 96
+             Q 110 82 132 92
+             Q 148 100 148 112"
+          fill="none" stroke="#0052FF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="84" cy="54" r="6" fill="#FFFFFF" stroke="#0052FF" stroke-width="2.5"/>
+  </g>
+</svg>

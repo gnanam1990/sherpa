@@ -1,52 +1,97 @@
-/**
- * Farcaster Mini App webhook and frame metadata endpoints.
- *
- * POST /api/webhooks/farcaster — receives Farcaster webhook events
- * (frame_added, frame_removed, notifications_enabled, etc.). Signature
- * verification is stubbed for now; production will verify using
- * Farcaster's public key.
- *
- * GET /api/farcaster/frame — returns frame metadata for the Farcaster
- * Mini App manifest.
- */
-
 import type { FastifyInstance } from 'fastify';
+import { saveNotificationToken, deactivateNotificationTokens } from '@sherpa/memory';
+import { getPool } from '@sherpa/config';
+import type { SherpaConfig } from '@sherpa/config';
 
-export function registerFarcasterRoutes(app: FastifyInstance): void {
+function decodeBase64Url(str: string): string {
+  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  return Buffer.from(base64, 'base64').toString('utf-8');
+}
+
+export function registerFarcasterRoutes(app: FastifyInstance, config: SherpaConfig): void {
   app.post('/api/webhooks/farcaster', async (req, reply) => {
     try {
       const body = req.body as Record<string, unknown> | undefined;
+      if (!body) return reply.code(400).send({ error: 'empty body' });
 
-      // Verify Farcaster signature (stub for now)
-      // In production: verify the request signature using Farcaster's public key
+      let eventBody: Record<string, unknown> = body;
+      let event: string | undefined;
+      let fid: number | undefined;
 
-      if (body?.type === 'frame_added') {
-        app.log.info({ fid: body.fid }, 'Frame added by user');
-        return reply.send({ ok: true });
+      if (body.header && body.payload && body.signature) {
+        try {
+          const payloadJson = decodeBase64Url(body.payload as string);
+          const payload = JSON.parse(payloadJson) as Record<string, unknown>;
+          eventBody = payload;
+          event = payload.event as string | undefined;
+        } catch {
+          return reply.code(400).send({ error: 'invalid payload encoding' });
+        }
+      } else {
+        event = eventBody.type as string | undefined;
       }
 
-      if (body?.type === 'frame_removed') {
-        app.log.info({ fid: body.fid }, 'Frame removed by user');
-        return reply.send({ ok: true });
+      const rawFid = eventBody.fid;
+      if (typeof rawFid === 'number' && Number.isInteger(rawFid)) {
+        fid = rawFid;
       }
 
-      if (body?.type === 'notifications_enabled') {
-        app.log.info({ fid: body.fid }, 'Notifications enabled');
-        return reply.send({ ok: true });
+      if (!event) return reply.code(400).send({ error: 'missing event type' });
+
+      const pool = config.useRealDb ? getPool(config) : null;
+
+      switch (event) {
+        case 'frame_added': {
+          const details = eventBody.notificationDetails as
+            | { token?: string; url?: string }
+            | undefined;
+          if (pool && fid && details?.token && details?.url) {
+            await saveNotificationToken(pool, BigInt(fid), details.token, details.url, 'farcaster');
+          }
+          app.log.info({ fid, event }, 'Frame added by user');
+          break;
+        }
+        case 'frame_removed': {
+          if (pool && fid) {
+            await deactivateNotificationTokens(pool, BigInt(fid));
+          }
+          app.log.info({ fid, event }, 'Frame removed by user');
+          break;
+        }
+        case 'notifications_enabled': {
+          const details = eventBody.notificationDetails as
+            | { token?: string; url?: string }
+            | undefined;
+          if (pool && fid && details?.token && details?.url) {
+            await saveNotificationToken(pool, BigInt(fid), details.token, details.url, 'farcaster');
+          }
+          app.log.info({ fid, event }, 'Notifications enabled');
+          break;
+        }
+        case 'notifications_disabled': {
+          if (pool && fid) {
+            await deactivateNotificationTokens(pool, BigInt(fid));
+          }
+          app.log.info({ fid, event }, 'Notifications disabled');
+          break;
+        }
+        default:
+          app.log.info({ fid, event }, 'Unknown webhook event');
       }
 
       return reply.send({ ok: true });
     } catch (err) {
       app.log.error(err, 'Farcaster webhook error');
-      return reply.status(400).send({ error: 'Invalid webhook' });
+      return reply.code(400).send({ error: 'Invalid webhook' });
     }
   });
 
   app.get('/api/farcaster/frame', async (_req, reply) => {
+    const URL = process.env.NEXT_PUBLIC_URL || 'https://sherpa-miniapp.vercel.app';
     return reply.send({
       name: 'Sherpa',
-      iconUrl: 'https://sherpa-web.vercel.app/icon-512.png',
-      homeUrl: 'https://sherpa-mini.vercel.app',
+      iconUrl: `${URL}/icon-512.png`,
+      homeUrl: URL,
       buttonTitle: 'Open Sherpa',
       splashBackgroundColor: '#0052FF',
     });
