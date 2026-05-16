@@ -1,0 +1,3 @@
+# Foundry dependencies are vendored upstream snapshots. Do not fail repository
+# whitespace checks on third-party formatting.
+packages/contracts/lib/** -whitespace
