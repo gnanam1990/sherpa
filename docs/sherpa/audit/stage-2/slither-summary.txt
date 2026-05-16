@@ -1,0 +1,29 @@
+'forge clean' running (wd: /home/gnanasekaran/dev/serpha/sherpa/packages/contracts)
+'forge config --json' running
+'forge build --build-info --skip ./test/** ./script/** --force' running (wd: /home/gnanasekaran/dev/serpha/sherpa/packages/contracts)
+
+Detector: unused-return
+SherpaRouter.getUserPositions(address) (src/SherpaRouter.sol#148-163) ignores return value by AAVE_POOL.getUserAccountData(user) (src/SherpaRouter.sol#162)
+SherpaRouter.withdraw(address,uint256) (src/SherpaRouter.sol#215-229) ignores return value by AAVE_POOL.withdraw(asset,amount,msg.sender) (src/SherpaRouter.sol#221)
+SherpaRouter.withdraw(address,uint256) (src/SherpaRouter.sol#215-229) ignores return value by (None,totalDebt,None,None,None,postHf) = AAVE_POOL.getUserAccountData(msg.sender) (src/SherpaRouter.sol#223)
+SherpaRouter.borrow(address,uint256,uint256) (src/SherpaRouter.sol#233-244) ignores return value by (None,None,None,None,None,postHf) = AAVE_POOL.getUserAccountData(msg.sender) (src/SherpaRouter.sol#240)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+
+Detector: calls-loop
+SherpaTreasury.batchWithdraw(address[],address,uint256[]) (src/SherpaTreasury.sol#54-75) has external calls inside a loop: bal = IERC20(tokens[i]).balanceOf(address(this)) (src/SherpaTreasury.sol#65)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation/#calls-inside-a-loop
+
+Detector: timestamp
+SherpaRouter.swap(address,address,uint256,uint256,IAerodromeRouter.Route[],uint256) (src/SherpaRouter.sol#168-199) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > deadline (src/SherpaRouter.sol#179)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+
+Detector: naming-convention
+Variable SherpaRouter.AERODROME_ROUTER (src/SherpaRouter.sol#44) is not in mixedCase
+Variable SherpaRouter.AAVE_POOL (src/SherpaRouter.sol#47) is not in mixedCase
+Variable SherpaRouter.SHERPA_TREASURY (src/SherpaRouter.sol#50) is not in mixedCase
+Function IAaveOracle.BASE_CURRENCY() (src/interfaces/IAaveOracle.sol#19) is not in mixedCase
+Function IAaveOracle.BASE_CURRENCY_UNIT() (src/interfaces/IAaveOracle.sol#23) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+. analyzed (17 contracts with 101 detectors), 11 result(s) found
