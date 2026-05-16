@@ -31,6 +31,7 @@ NEXT_PUBLIC_URL=https://sherpa-miniapp.vercel.app
 SHERPA_API_BASE=<apps/api URL, used by /.well-known/farcaster.json and /api/* rewrites>
 NEXT_PUBLIC_ONCHAINKIT_API_KEY=<your CDP Client API Key, cdp_pk_...>
 NEXT_PUBLIC_SHERPA_CHAIN=base-sepolia
+NEXT_PUBLIC_BASE_APP_ID=<Base Dashboard app id>
 ```
 
 Do not set `NEXT_PUBLIC_SHERPA_API_BASE` for production unless the API host has browser CORS enabled. The Mini App should call same-origin `/api/*`, and `next.config.ts` rewrites those requests to `SHERPA_API_BASE`.
