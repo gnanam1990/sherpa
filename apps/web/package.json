@@ -18,7 +18,7 @@
     "@sherpa/core": "workspace:*",
     "@sherpa/ui": "workspace:*",
     "@tanstack/react-query": "^5.100.10",
-    "next": "^15.1.3",
+    "next": "^15.5.18",
     "ox": "^0.14.21",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
