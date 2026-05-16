@@ -1,0 +1,57 @@
+import { getPool, query, type SherpaConfig } from '@sherpa/config';
+import type { Logger } from '@sherpa/logger';
+
+const SURFACE_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS fid_smartwallet_links (
+  fid                  BIGINT PRIMARY KEY,
+  smartwallet_address  TEXT NOT NULL,
+  linked_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  verified             BOOLEAN NOT NULL DEFAULT false
+);
+
+CREATE INDEX IF NOT EXISTS idx_fid_smartwallet_address
+  ON fid_smartwallet_links (smartwallet_address);
+
+CREATE TABLE IF NOT EXISTS telegram_user_links (
+  tg_user_id           BIGINT PRIMARY KEY,
+  smartwallet_address  TEXT NOT NULL,
+  linked_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  verified             BOOLEAN NOT NULL DEFAULT false
+);
+
+CREATE INDEX IF NOT EXISTS idx_tg_smartwallet_address
+  ON telegram_user_links (smartwallet_address);
+
+CREATE TABLE IF NOT EXISTS signing_tokens (
+  token               TEXT PRIMARY KEY,
+  surface             TEXT NOT NULL CHECK (surface IN ('telegram','farcaster','web')),
+  surface_user_id     TEXT NOT NULL,
+  intent_payload      JSONB NOT NULL,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at          TIMESTAMPTZ NOT NULL,
+  consumed_at         TIMESTAMPTZ,
+  resulting_tx_hash   TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_signing_tokens_expires
+  ON signing_tokens (expires_at) WHERE consumed_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_signing_tokens_surface_user
+  ON signing_tokens (surface, surface_user_id);
+
+CREATE TABLE IF NOT EXISTS notification_tokens (
+  fid         BIGINT PRIMARY KEY,
+  token       TEXT NOT NULL,
+  url         TEXT NOT NULL,
+  client      TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  active      BOOLEAN NOT NULL DEFAULT true
+);
+`;
+
+export async function ensureSurfaceSchema(config: SherpaConfig, log: Logger): Promise<void> {
+  if (!config.useRealDb) return;
+  const pool = getPool(config);
+  await query(pool, SURFACE_SCHEMA_SQL);
+  log.info('surface schema ensured');
+}
