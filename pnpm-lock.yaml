@@ -283,9 +283,6 @@ importers:
       '@sherpa/memory':
         specifier: workspace:*
         version: link:../../packages/memory
-      '@sherpa/tools':
-        specifier: workspace:*
-        version: link:../../packages/tools
       fastify:
         specifier: ^5.2.0
         version: 5.8.5
