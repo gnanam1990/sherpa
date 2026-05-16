@@ -11,7 +11,7 @@ export type { CamelotAsset, CamelotParams, CamelotQuote, CamelotDeps } from './t
 export { CAMELOT_CHAIN_ID, DEFAULT_SLIPPAGE_BPS, DEFAULT_DEADLINE_SECONDS } from './types.js';
 
 import type { Address } from '@sherpa/safety';
-import type { ToolAdapter, BuiltTx } from '../types.js';
+import type { ToolAdapter } from '../types.js';
 import { quote as doQuote } from './quoter.js';
 import { buildSwapCall } from './swap-builder.js';
 import { verifySwap } from './verify.js';

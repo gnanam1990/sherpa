@@ -1,6 +1,6 @@
 import type { TaskContext } from './hourly-tasks.js';
 import type { DCAStore, DCAScheduleRow } from '@sherpa/memory';
-import { validateDCASchedule, validateBalance, validateAllowance } from './dca-validation.js';
+import { validateBalance } from './dca-validation.js';
 import { executeDCA, MAX_CONSECUTIVE_FAILURES } from './dca-execution.js';
 
 export type { DCAScheduleRow };

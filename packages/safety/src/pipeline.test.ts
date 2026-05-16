@@ -3,10 +3,6 @@ import { runPipeline } from './pipeline.js';
 import type { PendingTx, Address } from './types.js';
 import { ALLOWED_CONTRACTS } from './allowlist.js';
 import {
-  MIN_HF_BORROW,
-  MIN_HF_WITHDRAW,
-} from './rings/health-factor.js';
-import {
   BLOCK_PRICE_IMPACT_BPS,
   MAX_SLIPPAGE_BPS,
 } from './rings/slippage.js';

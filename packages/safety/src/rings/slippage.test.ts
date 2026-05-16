@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   checkSlippage,
-  MIN_SLIPPAGE_BPS,
   MAX_SLIPPAGE_BPS,
   WARN_PRICE_IMPACT_BPS,
   BLOCK_PRICE_IMPACT_BPS,

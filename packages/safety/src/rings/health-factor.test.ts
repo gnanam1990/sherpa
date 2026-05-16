@@ -3,9 +3,7 @@ import {
   checkHealthFactor,
   MIN_HF_BORROW,
   MIN_HF_WITHDRAW,
-  WARN_HF_THRESHOLD,
 } from './health-factor.js';
-import type { HealthFactorParams } from '../types.js';
 
 describe('health-factor ring', () => {
   const toHF = (v: number) => BigInt(Math.round(v * 1e18));

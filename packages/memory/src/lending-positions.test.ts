@@ -19,15 +19,6 @@ const supplyParams = {
   builderCode: 'sherpa-v1',
 };
 
-const withdrawParams = {
-  userAddress: '0xabcdef',
-  asset: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-  operation: 'withdraw' as const,
-  amount: '500000',
-  txHash: '0xlend2',
-  builderCode: 'sherpa-v1',
-};
-
 describe('lending-positions', () => {
   test('insertLendingOp builds correct INSERT', async () => {
     const pool = makePool([{}]) as any;

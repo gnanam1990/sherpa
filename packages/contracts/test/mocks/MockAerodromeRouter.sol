@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {IAerodromeRouter} from "../../src/interfaces/IAerodromeRouter.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title MockAerodromeRouter
 /// @notice A mock Aerodrome router for testing purposes

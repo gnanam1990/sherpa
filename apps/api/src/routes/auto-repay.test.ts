@@ -1,4 +1,4 @@
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import Fastify from 'fastify';
 import { autoRepayRoutes } from './auto-repay.js';
 

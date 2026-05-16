@@ -28,6 +28,7 @@ describe('swap-history', () => {
     const row = { id: 'uuid-1', ...sampleSwap };
     const pool = makePool([row]) as any;
     const result = await insertSwap(pool, sampleSwap);
+    expect(result).toEqual(row);
     expect(pool._queryFn).toHaveBeenCalledTimes(1);
     const sql = pool._queryFn.mock.calls[0][0] as string;
     expect(sql).toContain('INSERT INTO swap_history');

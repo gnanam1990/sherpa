@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IAavePool} from "../../src/interfaces/IAavePool.sol";
-
 /// @title MockAavePool
 /// @notice A mock Aave V3 pool for testing purposes
 contract MockAavePool {

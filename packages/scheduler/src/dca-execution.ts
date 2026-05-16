@@ -106,7 +106,7 @@ async function handleFailure(
   }
 }
 
-export async function buildSwapTransaction(params: SwapParams): Promise<ExecutionResult> {
+export async function buildSwapTransaction(_params: SwapParams): Promise<ExecutionResult> {
   // Stub: in production, this would:
   // 1. Query Aerodrome router for best route
   // 2. Calculate expected output with slippage

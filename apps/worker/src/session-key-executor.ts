@@ -224,7 +224,7 @@ async function logFailedExecution(
   key: SessionKeyRecord,
   tx: TxRequest,
   deps: ExecutorDeps,
-  error: string,
+  _error: string,
 ): Promise<void> {
   const selector = tx.data.slice(0, 10) || '0x';
   await deps.store

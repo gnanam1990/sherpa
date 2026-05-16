@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  calculateLiquidationPrice,
-  WARN_BUFFER_PERCENT,
-} from './liquidation.js';
+import { calculateLiquidationPrice } from './liquidation.js';
 
 describe('liquidation ring', () => {
   const toWei = (v: number) => BigInt(Math.round(v * 1e18));

@@ -30,8 +30,6 @@ export function calculateLiquidationPrice(params: LiquidationParams): Liquidatio
     throw new Error('[safety] liquidationThreshold must be in (0, 1]');
   }
 
-  const collateralValueUSD = (Number(collateralAmount) / 1e18) * currentPriceUSD;
-
   // Liquidation price = borrowAmountUSD / (collateralAmount * liquidationThreshold)
   // In USD terms: the price at which collateral value * threshold = borrow amount
   const collateralUnits = Number(collateralAmount) / 1e18;

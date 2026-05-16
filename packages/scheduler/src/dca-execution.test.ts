@@ -6,35 +6,8 @@ import {
   BUILDER_CODE,
   MAX_CONSECUTIVE_FAILURES,
   type ExecutionResult,
-  type SwapParams,
 } from './dca-execution.js';
-import { InMemoryDCAStore, type DCAScheduleRow } from '@sherpa/memory';
-
-function makeSchedule(overrides: Partial<DCAScheduleRow> = {}): DCAScheduleRow {
-  return {
-    id: 'test-schedule-id',
-    user_address: '0x1234567890123456789012345678901234567890',
-    from_asset: { symbol: 'USDC' },
-    to_asset: { symbol: 'ETH' },
-    amount_per_tick: '100',
-    frequency: 'daily',
-    day_of_week: null,
-    day_of_month: null,
-    hour_of_day: 12,
-    status: 'active',
-    total_budget: null,
-    remaining_budget: null,
-    total_executions: 0,
-    max_executions: null,
-    consecutive_failures: 0,
-    end_condition: 'never',
-    end_date: null,
-    created_at: new Date().toISOString(),
-    next_execution_at: new Date().toISOString(),
-    last_executed_at: null,
-    ...overrides,
-  };
-}
+import { InMemoryDCAStore } from '@sherpa/memory';
 
 describe('DCA execution', () => {
   describe('BUILDER_CODE', () => {

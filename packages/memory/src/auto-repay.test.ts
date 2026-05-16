@@ -1,7 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import {
   InMemoryAutoRepayStore,
-  type AutoRepayRuleRow,
   type CreateAutoRepayRuleInput,
 } from './auto-repay.js';
 

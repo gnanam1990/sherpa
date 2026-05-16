@@ -1,4 +1,4 @@
-import type { ProposalMetadata, VoteParams, DelegateParams } from './types.js';
+import type { ProposalMetadata } from './types.js';
 
 const OPTIMISM_GOVERNOR = '0xcDF27F1077cAD0D0A5DF56f8Ec97687B78a89EE4';
 const OP_TOKEN = '0x4200000000000000000000000000000000000042';
@@ -71,11 +71,6 @@ export const OPTIMISM_GOV_ABI = [
     ],
     outputs: [],
   },
-] as const;
-
-const PROPOSAL_STATES = [
-  'pending', 'active', 'canceled', 'defeated',
-  'succeeded', 'queued', 'expired', 'executed',
 ] as const;
 
 export async function getProposals(): Promise<ProposalMetadata[]> {

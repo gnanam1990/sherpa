@@ -10,7 +10,6 @@ import {IAerodromeRouter} from "./interfaces/IAerodromeRouter.sol";
 import {IAavePool} from "./interfaces/IAavePool.sol";
 import {ISherpaRouter} from "./interfaces/ISherpaRouter.sol";
 import {FeeCalculator} from "./libraries/FeeCalculator.sol";
-import {SafetyCheck} from "./libraries/SafetyCheck.sol";
 
 /// @title SherpaRouter
 /// @notice Core routing contract for Sherpa protocol operations

@@ -5,15 +5,13 @@
  */
 
 import type { Address } from '@sherpa/safety';
-import type { TokenInfo } from '../registry.js';
 import { resolveToken } from '../registry.js';
-import type { AaveDeps, AaveLendParams, AaveLendQuote, AaveLendAction } from './types.js';
+import type { AaveDeps } from './types.js';
 import { STUB_SUPPLY_APY_BPS } from './types.js';
 import { buildSupplyCall, buildWithdrawCall } from './supply-builder.js';
 import { buildBorrowCall, buildRepayCall } from './borrow-builder.js';
-import { verifySupply } from './verify.js';
-import { formatUnits, parseUnits } from 'viem';
-import type { ToolAdapter, BuiltTx, VerifyResult } from '../types.js';
+import { parseUnits } from 'viem';
+import type { BuiltTx } from '../types.js';
 
 const POLYGON_CHAIN_ID = 137;
 

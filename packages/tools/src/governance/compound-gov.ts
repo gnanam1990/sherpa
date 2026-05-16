@@ -1,4 +1,4 @@
-import type { ProposalMetadata, VoteParams, DelegateParams } from './types.js';
+import type { ProposalMetadata } from './types.js';
 
 const COMPOUND_GOVERNOR_BRAVO = '0xc0Da02939E1441F497fd74F78cE7Decb17B66529';
 const COMPOUND_TOKEN = '0xc00e94Cb662C3520282E6f5717214004A7f26888';
@@ -64,11 +64,6 @@ export const COMPOUND_GOV_ABI = [
     inputs: [],
     outputs: [{ name: '', type: 'uint256' }],
   },
-] as const;
-
-const PROPOSAL_STATES = [
-  'pending', 'active', 'canceled', 'defeated',
-  'succeeded', 'queued', 'expired', 'executed',
 ] as const;
 
 export async function getProposals(): Promise<ProposalMetadata[]> {

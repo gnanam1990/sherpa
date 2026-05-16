@@ -2,7 +2,7 @@ import { encodeFunctionData, toFunctionSelector } from 'viem';
 import { assertAllowlisted, type Address } from '@sherpa/safety';
 import { quote, type QuickSwapDeps } from './quoter.js';
 import type { QuickSwapAsset, QuickSwapQuote } from './types.js';
-import { DEFAULT_SLIPPAGE_BPS, QUICKSWAP_CHAIN_ID } from './types.js';
+import { QUICKSWAP_CHAIN_ID } from './types.js';
 import { resolveToken } from '../registry.js';
 
 const QUICKSWAP_ROUTER_ABI = [

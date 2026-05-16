@@ -20,16 +20,6 @@ const borrowParams = {
   builderCode: 'sherpa-v1',
 };
 
-const repayParams = {
-  userAddress: '0xabcdef',
-  asset: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-  operation: 'repay' as const,
-  amount: '250000',
-  rateMode: 2 as const,
-  txHash: '0xborrow2',
-  builderCode: 'sherpa-v1',
-};
-
 describe('borrow-positions', () => {
   test('insertBorrowOp builds correct INSERT', async () => {
     const pool = makePool([{}]) as any;

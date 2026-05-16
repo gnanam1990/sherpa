@@ -160,7 +160,7 @@ export class InMemorySessionKeyStore implements SessionKeyStore {
     if (key) key.limits = { ...key.limits, ...limits };
   }
 
-  async incrementSpent(id: string, amount: string, gasUsed?: string): Promise<void> {
+  async incrementSpent(id: string, amount: string, _gasUsed?: string): Promise<void> {
     const key = this.keys.get(id);
     if (!key) return;
     key.spent_amount = (BigInt(key.spent_amount) + BigInt(amount)).toString();
@@ -235,7 +235,7 @@ export class InMemorySessionKeyStore implements SessionKeyStore {
   async cleanupExpired(): Promise<number> {
     const now = new Date();
     let count = 0;
-    for (const [id, key] of this.keys) {
+    for (const [, key] of this.keys) {
       if (key.status === 'active' && new Date(key.valid_until) <= now) {
         key.status = 'expired';
         count++;
@@ -307,7 +307,7 @@ export class PostgresSessionKeyStore implements SessionKeyStore {
     );
   }
 
-  async incrementSpent(id: string, amount: string, gasUsed?: string): Promise<void> {
+  async incrementSpent(id: string, amount: string, _gasUsed?: string): Promise<void> {
     await this.pool.query(
       `UPDATE session_keys
        SET spent_amount = spent_amount + $1::numeric,

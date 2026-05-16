@@ -1,4 +1,4 @@
-import type { ProposalMetadata, VoteParams, DelegateParams } from './types.js';
+import type { ProposalMetadata } from './types.js';
 
 const AAVE_GOVERNOR_V3 = '0xc4025b326139768a5e8C3b42F1e5E1e4e63F4D2B';
 const AAVE_TOKEN = '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9';
@@ -62,11 +62,6 @@ export const AAVE_GOV_ABI = [
     inputs: [{ name: 'proposalId', type: 'uint256' }],
     outputs: [{ name: '', type: 'uint8' }],
   },
-] as const;
-
-const PROPOSAL_STATES = [
-  'pending', 'active', 'canceled', 'defeated',
-  'succeeded', 'queued', 'expired', 'executed',
 ] as const;
 
 export async function getProposals(): Promise<ProposalMetadata[]> {
