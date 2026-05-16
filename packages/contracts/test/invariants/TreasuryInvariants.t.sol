@@ -18,6 +18,8 @@ contract TreasuryInvariants is Test {
         token = new MockERC20("Token", "TKN", 18);
         token.mint(address(treasury), INITIAL_BALANCE);
         vm.stopPrank();
+
+        targetContract(address(treasury));
     }
 
     /// @notice The treasury balance should never exceed the total minted amount
