@@ -9,6 +9,10 @@ export const metadata: Metadata = {
   title: 'Sherpa',
   description: 'The natural-language Base agent.',
   manifest: '/manifest.json',
+  other: {
+    'talentapp:project_verification':
+      'b7e6ba47c5060c17951c92322b6a5bb719093bfcef6ca7ec9a763f29d02a476b4b7ee131a0e30c58b0628dfc60279b6cee51873b359ef1e394ddc8fffdd6ad6a',
+  },
   icons: {
     icon: [
       { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
