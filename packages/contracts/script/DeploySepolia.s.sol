@@ -26,15 +26,11 @@ contract DeploySepolia is Script {
             console.log("Using existing SherpaTreasury:", treasuryAddress);
         }
 
-        // Base Sepolia addresses (update with actual addresses)
-        address aerodromeRouter = vm.envOr(
-            "AERODROME_ROUTER_ADDRESS",
-            address(0x0000000000000000000000000000000000000001)
-        );
-        address aavePool = vm.envOr(
-            "AAVE_POOL_ADDRESS",
-            address(0x0000000000000000000000000000000000000002)
-        );
+        address aerodromeRouter = vm.envAddress("AERODROME_ROUTER_ADDRESS");
+        address aavePool = vm.envAddress("AAVE_POOL_ADDRESS");
+
+        require(aerodromeRouter != address(0), "AERODROME_ROUTER_ADDRESS required");
+        require(aavePool != address(0), "AAVE_POOL_ADDRESS required");
 
         SherpaRouter router = new SherpaRouter(
             deployer,
