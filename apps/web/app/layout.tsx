@@ -6,8 +6,19 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://sherpa-web.vercel.app'),
+  applicationName: 'Sherpa',
   title: 'Sherpa',
   description: 'The natural-language Base agent.',
+  keywords: [
+    'Sherpa',
+    'Base',
+    'AI agent',
+    'onchain agent',
+    'DeFi',
+    'Coinbase Smart Wallet',
+    'sponsored gas',
+  ],
+  category: 'AI Agents',
   manifest: '/manifest.json',
   other: {
     'talentapp:project_verification':

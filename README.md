@@ -1,5 +1,9 @@
 # Sherpa
 
+<p align="center">
+  <img src="apps/web/public/sherpa-horizontal-logo.png" alt="Sherpa" width="360" />
+</p>
+
 > The natural-language Base agent.
 
 [![Live](https://img.shields.io/badge/live-Base_Sepolia-blue)](https://sherpa-web.vercel.app)

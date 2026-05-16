@@ -1,9 +1,10 @@
-const CACHE_NAME = 'sherpa-v1';
+const CACHE_NAME = 'sherpa-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/og-image.png',
 ];
 
 self.addEventListener('install', (event) => {

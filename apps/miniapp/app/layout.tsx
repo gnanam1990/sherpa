@@ -7,8 +7,19 @@ export async function generateMetadata(): Promise<Metadata> {
   const baseAppId = process.env.NEXT_PUBLIC_BASE_APP_ID || '6a06efd3067444793fb8ddba';
   return {
     metadataBase: new URL(appUrl),
+    applicationName: 'Sherpa',
     title: 'Sherpa',
     description: 'The natural-language Base agent.',
+    keywords: [
+      'Sherpa',
+      'Base',
+      'AI agent',
+      'onchain agent',
+      'DeFi',
+      'Coinbase Smart Wallet',
+      'sponsored gas',
+    ],
+    category: 'AI Agents',
     icons: {
       icon: [
         { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
