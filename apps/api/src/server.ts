@@ -50,6 +50,7 @@ import { registerFarcasterRoutes } from './routes/farcaster.js';
 import { registerPaymasterRoutes } from './routes/paymaster.js';
 import { registerTelegramRoutes } from './routes/telegram.js';
 import { surfacesRoutes } from './routes/surfaces.js';
+import { createRequireStage2 } from './middleware/feature-flag.js';
 import {
   createBasescanIndexer,
   emptyIndexer,
@@ -622,6 +623,37 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   developerRoutes(app);
   composableRoutes(app);
   surfacesRoutes(app, config);
+
+  // ---- Stage 2 routes (gated by SHERPA_STAGE_2_ENABLED) --------------------
+  const requireStage2 = createRequireStage2(config);
+
+  app.post('/api/swap', { preHandler: requireStage2 }, async (_req, reply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Swap handler pending implementation.' });
+  });
+  app.get('/api/swap/quote', { preHandler: requireStage2 }, async (_req, reply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Swap quote handler pending implementation.' });
+  });
+  app.post('/api/lend', { preHandler: requireStage2 }, async (_req, reply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Lend handler pending implementation.' });
+  });
+  app.get('/api/lend/apy', { preHandler: requireStage2 }, async (_req, reply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Lend APY handler pending implementation.' });
+  });
+  app.post('/api/withdraw', { preHandler: requireStage2 }, async (_req, reply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Withdraw handler pending implementation.' });
+  });
+  app.post('/api/borrow', { preHandler: requireStage2 }, async (_req, reply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Borrow handler pending implementation.' });
+  });
+  app.get('/api/borrow/preview', { preHandler: requireStage2 }, async (_req, reply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Borrow preview handler pending implementation.' });
+  });
+  app.post('/api/repay', { preHandler: requireStage2 }, async (_req, reply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Repay handler pending implementation.' });
+  });
+  app.get<{ Params: { address: string } }>('/api/positions/:address', { preHandler: requireStage2 }, async (_req, reply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Positions handler pending implementation.' });
+  });
 
   return app;
 }

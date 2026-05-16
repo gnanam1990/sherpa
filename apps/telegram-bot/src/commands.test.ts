@@ -1,5 +1,13 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { handleStart, handleHelp, handleBalance, handleHistory, handleLink } from './commands.js';
+import {
+  handleStart,
+  handleHelp,
+  handleBalance,
+  handleHistory,
+  handleLink,
+  handlePositions,
+  handleUnlink,
+} from './commands.js';
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
@@ -12,10 +20,7 @@ describe('Telegram bot commands', () => {
   });
 
   test('handleStart sends welcome message', async () => {
-    const ctx = {
-      reply: vi.fn(),
-      from: { id: 12345 },
-    };
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
     await handleStart(ctx as any);
     expect(ctx.reply).toHaveBeenCalledOnce();
     const msg = ctx.reply.mock.calls[0]![0] as string;
@@ -24,6 +29,8 @@ describe('Telegram bot commands', () => {
     expect(msg).toContain('/balance');
     expect(msg).toContain('/history');
     expect(msg).toContain('/link');
+    expect(msg).toContain('/positions');
+    expect(msg).toContain('/unlink');
   });
 
   test('handleHelp lists all commands', async () => {
@@ -35,6 +42,8 @@ describe('Telegram bot commands', () => {
     expect(msg).toContain('/balance');
     expect(msg).toContain('/history');
     expect(msg).toContain('/link');
+    expect(msg).toContain('/positions');
+    expect(msg).toContain('/unlink');
     expect(msg).toContain('natural language');
   });
 
@@ -52,10 +61,7 @@ describe('Telegram bot commands', () => {
         }),
       });
 
-    const ctx = {
-      reply: vi.fn(),
-      from: { id: 12345 },
-    };
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
     await handleBalance(ctx as any);
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -71,14 +77,39 @@ describe('Telegram bot commands', () => {
 
   test('handleBalance prompts link when not linked', async () => {
     fetchMock.mockResolvedValueOnce({ ok: false });
-
-    const ctx = {
-      reply: vi.fn(),
-      from: { id: 12345 },
-    };
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
     await handleBalance(ctx as any);
     const msg = ctx.reply.mock.calls[0]![0] as string;
     expect(msg).toContain('Not linked');
+  });
+
+  test('handleBalance shows unavailable when API fails', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ address: '0x1234', verified: true }),
+      })
+      .mockResolvedValueOnce({ ok: false });
+
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleBalance(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('temporarily unavailable');
+  });
+
+  test('handleBalance handles missing API base', async () => {
+    delete process.env.SHERPA_API_BASE;
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleBalance(ctx as any);
+    expect(ctx.reply).toHaveBeenCalledOnce();
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('Unable');
+  });
+
+  test('handleBalance handles missing from.id', async () => {
+    const ctx = { reply: vi.fn(), from: undefined };
+    await handleBalance(ctx as any);
+    expect(ctx.reply).toHaveBeenCalledOnce();
   });
 
   test('handleHistory shows wallet address', async () => {
@@ -104,10 +135,7 @@ describe('Telegram bot commands', () => {
         }),
       });
 
-    const ctx = {
-      reply: vi.fn(),
-      from: { id: 12345 },
-    };
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
     await handleHistory(ctx as any);
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
@@ -119,6 +147,52 @@ describe('Telegram bot commands', () => {
     expect(msg).toContain('Intent: SEND');
   });
 
+  test('handleHistory shows empty state', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ address: '0x1234', verified: true }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ chain: 'base-sepolia', items: [] }),
+      });
+
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleHistory(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('No recent transactions');
+  });
+
+  test('handleHistory prompts link when not linked', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false });
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleHistory(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('Not linked');
+  });
+
+  test('handleHistory shows unavailable when API fails', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ address: '0x1234', verified: true }),
+      })
+      .mockResolvedValueOnce({ ok: false });
+
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleHistory(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('temporarily unavailable');
+  });
+
+  test('handleHistory handles missing API base', async () => {
+    delete process.env.SHERPA_API_BASE;
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleHistory(ctx as any);
+    expect(ctx.reply).toHaveBeenCalledOnce();
+  });
+
   test('handleLink calls sign-intent API', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -128,10 +202,7 @@ describe('Telegram bot commands', () => {
       }),
     });
 
-    const ctx = {
-      reply: vi.fn(),
-      from: { id: 12345 },
-    };
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
     await handleLink(ctx as any);
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.sherpa.example/api/surfaces/sign-intent',
@@ -140,17 +211,202 @@ describe('Telegram bot commands', () => {
     expect(ctx.reply).toHaveBeenCalledOnce();
     const msg = ctx.reply.mock.calls[0]![0] as string;
     expect(msg).toContain('tok123');
+    expect(msg).toContain('Link your Smart Wallet');
   });
 
   test('handleLink shows error on API failure', async () => {
     fetchMock.mockResolvedValueOnce({ ok: false });
-
-    const ctx = {
-      reply: vi.fn(),
-      from: { id: 12345 },
-    };
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
     await handleLink(ctx as any);
     const msg = ctx.reply.mock.calls[0]![0] as string;
     expect(msg).toContain('Failed to generate link');
+  });
+
+  test('handleLink handles missing API base', async () => {
+    delete process.env.SHERPA_API_BASE;
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleLink(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('Unable');
+  });
+
+  test('handleLink handles network error', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('network'));
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleLink(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('Failed to generate link');
+  });
+
+  test('handlePositions shows supplied and borrowed', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ address: '0x1234', verified: true }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          supplied: [{ asset: 'USDC', amount: '100', apy: '3.5' }],
+          borrowed: [{ asset: 'ETH', amount: '0.5', apy: '2.1' }],
+        }),
+      });
+
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handlePositions(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('Aave Positions');
+    expect(msg).toContain('100 USDC');
+    expect(msg).toContain('0.5 ETH');
+  });
+
+  test('handlePositions shows empty state', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ address: '0x1234', verified: true }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ supplied: [], borrowed: [] }),
+      });
+
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handlePositions(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('No active Aave positions');
+  });
+
+  test('handlePositions prompts link when not linked', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false });
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handlePositions(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('Not linked');
+  });
+
+  test('handlePositions shows unavailable when API fails', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ address: '0x1234', verified: true }),
+      })
+      .mockResolvedValueOnce({ ok: false });
+
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handlePositions(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('temporarily unavailable');
+  });
+
+  test('handleUnlink successfully unlinks', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ address: '0x1234', verified: true }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true }),
+      });
+
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleUnlink(ctx as any);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://api.sherpa.example/api/surfaces/telegram/unlink',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('unlinked');
+  });
+
+  test('handleUnlink shows message when not linked', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false });
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleUnlink(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('No wallet linked');
+  });
+
+  test('handleUnlink shows error on API failure', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ address: '0x1234', verified: true }),
+      })
+      .mockResolvedValueOnce({ ok: false });
+
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleUnlink(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('Failed to unlink');
+  });
+
+  test('handleUnlink handles network error', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ address: '0x1234', verified: true }),
+      })
+      .mockRejectedValueOnce(new Error('network'));
+
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleUnlink(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('Failed to unlink');
+  });
+
+  test('handleBalance handles fetch network error', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('network'));
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleBalance(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('Failed to check balance');
+  });
+
+  test('handleHistory handles fetch network error', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('network'));
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleHistory(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('Failed to fetch history');
+  });
+
+  test('handlePositions handles fetch network error', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('network'));
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handlePositions(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('Failed to fetch positions');
+  });
+
+  test('handleHistory truncates long tx hashes', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ address: '0x1234', verified: true }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          chain: 'base-sepolia',
+          items: [
+            {
+              txHash: `0x${'a'.repeat(64)}`,
+              direction: 'in',
+              asset: 'ETH',
+              amountDisplay: '0.5',
+              counterparty: '0xdead',
+            },
+          ],
+        }),
+      });
+
+    const ctx = { reply: vi.fn(), from: { id: 12345 } };
+    await handleHistory(ctx as any);
+    const msg = ctx.reply.mock.calls[0]![0] as string;
+    expect(msg).toContain('...');
+    expect(msg).not.toContain('a'.repeat(64));
   });
 });

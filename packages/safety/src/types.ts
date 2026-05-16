@@ -65,3 +65,78 @@ export type BorrowRiskBadge = {
   severity: 'red' | 'yellow' | 'green';
   message: string;
 };
+
+// ── Stage 2 Safety Ring Types ────────────────────────────────────────────
+
+export type IntentType = 'SwapIntent' | 'BorrowIntent' | 'WithdrawIntent' | 'SendIntent';
+
+export type HealthFactorWarning = {
+  level: 'caution' | 'risky' | 'dangerous';
+  message: string;
+};
+
+export type HealthFactorResult = {
+  pass: boolean;
+  currentHF: bigint;
+  postHF: bigint;
+  blockReason?: string;
+  warning?: HealthFactorWarning;
+  severity?: 'info' | 'warning' | 'critical';
+};
+
+export type HealthFactorParams = {
+  intent: 'borrow' | 'withdraw';
+  currentHF: bigint;
+  postHF: bigint;
+  /** Optional borrow amount in wei for context in warnings. */
+  borrowAmount?: bigint;
+  /** Optional collateral value in wei. */
+  collateralValue?: bigint;
+};
+
+export type SlippageWarning = {
+  level: 'caution' | 'risky' | 'dangerous';
+  message: string;
+};
+
+export type SlippageResult = {
+  pass: boolean;
+  priceImpactBps: number;
+  slippageBps: number;
+  blockReason?: string;
+  warning?: SlippageWarning;
+};
+
+export type SlippageParams = {
+  /** Price impact in basis points (e.g. 50 = 0.5%). */
+  priceImpactBps: number;
+  /** User-specified slippage tolerance in basis points. Undefined = use default. */
+  slippageBps?: number;
+  /** Swap input amount in wei (for context in warnings). */
+  inputAmount?: bigint;
+  /** Swap output amount in wei. */
+  outputAmount?: bigint;
+};
+
+export type LiquidationWarning = {
+  level: 'caution' | 'risky' | 'dangerous';
+  message: string;
+};
+
+export type LiquidationResult = {
+  liquidationPriceUSD: number;
+  currentPriceUSD: number;
+  bufferPercent: number;
+  warning?: LiquidationWarning;
+};
+
+export type LiquidationParams = {
+  /** Current collateral price in USD. */
+  currentPriceUSD: number;
+  /** Collateral amount in wei. */
+  collateralAmount: bigint;
+  /** Borrow amount in USD. */
+  borrowAmountUSD: number;
+  /** Liquidation threshold (e.g. 0.85 for 85%). */
+  liquidationThreshold: number;
+};

@@ -162,6 +162,10 @@ export type SherpaConfig = {
   feeTreasuryAddress?: `0x${string}`;
   feeEnabled: boolean;
   feeBps: number;
+  /** Whether Stage 2 features (swap, lend, borrow, repay, withdraw) are enabled. */
+  stage2Enabled: boolean;
+  /** Public-facing Stage 2 flag (exposed via NEXT_PUBLIC_*). */
+  stage2PublicEnabled: boolean;
 };
 
 /**
@@ -273,6 +277,11 @@ const FeeEnvSchema = z.object({
   SHERPA_FEE_BPS: z.preprocess(emptyToUndefined, z.coerce.number().default(10)),
 });
 
+const Stage2EnvSchema = z.object({
+  SHERPA_STAGE_2_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('false')),
+  NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('false')),
+});
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   const chainEnv = ChainEnvSchema.parse({
     SHERPA_CHAIN: env.SHERPA_CHAIN,
@@ -325,6 +334,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   });
   const aerodromeEnv = AerodromeEnvSchema.parse({
     AERODROME_ROUTER_ADDRESS: env.AERODROME_ROUTER_ADDRESS,
+  });
+  const stage2Env = Stage2EnvSchema.parse({
+    SHERPA_STAGE_2_ENABLED: env.SHERPA_STAGE_2_ENABLED,
+    NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED: env.NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED,
   });
 
   const paymasterUrl = env.SHERPA_PAYMASTER_URL;
@@ -392,6 +405,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     feeTreasuryAddress: feeEnv.SHERPA_FEE_TREASURY_ADDRESS as `0x${string}` | undefined,
     feeEnabled: feeEnv.SHERPA_FEE_ENABLED,
     feeBps: feeEnv.SHERPA_FEE_BPS,
+    stage2Enabled: stage2Env.SHERPA_STAGE_2_ENABLED === 'true',
+    stage2PublicEnabled: stage2Env.NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED === 'true',
   };
 }
 
@@ -416,3 +431,17 @@ export function validateChainConfig(config: SherpaConfig): string[] {
 }
 
 export { getPool, query, resetPool, type DbPool, type QueryResult } from './db.js';
+
+// Stage 8: Multi-chain config
+export {
+  CHAIN_CONFIGS,
+  getChainConfig,
+  getDexRouter,
+  getAavePool as getChainAavePool,
+  getAaveDataProvider as getChainAaveDataProvider,
+  getSupportedChainIds,
+  isChainSupported,
+  getChainName,
+  chainNameToId,
+} from './chains.js';
+export type { ChainId, ChainContracts, DexConfig, AaveConfig as ChainAaveConfig, BridgeConfig } from './chains.js';

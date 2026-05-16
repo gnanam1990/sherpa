@@ -1,0 +1,123 @@
+/**
+ * Aave V3 adapter for Polygon (Stage 8).
+ *
+ * Chain-specific asset lists and pool configuration for Polygon.
+ */
+
+import type { Address } from '@sherpa/safety';
+import type { TokenInfo } from '../registry.js';
+import { resolveToken } from '../registry.js';
+import type { AaveDeps, AaveLendParams, AaveLendQuote, AaveLendAction } from './types.js';
+import { STUB_SUPPLY_APY_BPS } from './types.js';
+import { buildSupplyCall, buildWithdrawCall } from './supply-builder.js';
+import { buildBorrowCall, buildRepayCall } from './borrow-builder.js';
+import { verifySupply } from './verify.js';
+import { formatUnits, parseUnits } from 'viem';
+import type { ToolAdapter, BuiltTx, VerifyResult } from '../types.js';
+
+const POLYGON_CHAIN_ID = 137;
+
+const POLYGON_AAVE_POOL: Address = '0x794a61358D6845594F94dc1DB02A252b5b4814aD';
+const POLYGON_DATA_PROVIDER: Address = '0x69FA688f1Dc4704B157E6E1cB65E3aD2f67A822C';
+
+export const POLYGON_AAVE_ASSETS: readonly string[] = ['USDC', 'USDT', 'WETH', 'WMATIC'];
+
+export function getPolygonAaveAssets(): readonly string[] {
+  return POLYGON_AAVE_ASSETS;
+}
+
+export function isPolygonAaveAsset(asset: string): boolean {
+  return POLYGON_AAVE_ASSETS.includes(asset.toUpperCase());
+}
+
+export function getPolygonAaveDeps(overrides: Partial<AaveDeps> = {}): AaveDeps {
+  return {
+    poolAddress: overrides.poolAddress ?? POLYGON_AAVE_POOL,
+    dataProviderAddress: overrides.dataProviderAddress ?? POLYGON_DATA_PROVIDER,
+    stubSupplyApyBps: overrides.stubSupplyApyBps ?? STUB_SUPPLY_APY_BPS,
+    ...overrides,
+  };
+}
+
+export async function polygonSupply(
+  asset: string,
+  amount: string,
+  recipient: Address,
+  deps: AaveDeps = {},
+): Promise<BuiltTx> {
+  const token = resolveToken(asset, POLYGON_CHAIN_ID);
+  if (!token) throw new Error(`Asset ${asset} not found on Polygon`);
+  const amountBase = parseUnits(amount, token.decimals);
+  const poolDeps = getPolygonAaveDeps(deps);
+  const result = await buildSupplyCall(
+    token.address as Address,
+    amountBase,
+    recipient,
+    0,
+    poolDeps,
+  );
+  return { to: result.to, data: result.data, value: result.value, sponsorable: result.sponsorable };
+}
+
+export async function polygonWithdraw(
+  asset: string,
+  amount: string,
+  recipient: Address,
+  deps: AaveDeps = {},
+): Promise<BuiltTx> {
+  const token = resolveToken(asset, POLYGON_CHAIN_ID);
+  if (!token) throw new Error(`Asset ${asset} not found on Polygon`);
+  const amountBase = parseUnits(amount, token.decimals);
+  const poolDeps = getPolygonAaveDeps(deps);
+  const result = await buildWithdrawCall(
+    token.address as Address,
+    amountBase,
+    recipient,
+    poolDeps,
+  );
+  return { to: result.to, data: result.data, value: result.value, sponsorable: result.sponsorable };
+}
+
+export async function polygonBorrow(
+  asset: string,
+  amount: string,
+  onBehalfOf: Address,
+  interestMode: 'variable' | 'stable' = 'variable',
+  deps: AaveDeps = {},
+): Promise<BuiltTx> {
+  const token = resolveToken(asset, POLYGON_CHAIN_ID);
+  if (!token) throw new Error(`Asset ${asset} not found on Polygon`);
+  const amountBase = parseUnits(amount, token.decimals);
+  const poolDeps = getPolygonAaveDeps(deps);
+  const result = await buildBorrowCall(
+    {
+      asset: token.address as Address,
+      amount: amountBase,
+      interestRateMode: interestMode === 'stable' ? 1 : 2,
+      onBehalfOf,
+    },
+    poolDeps,
+  );
+  return { to: result.to, data: result.data, value: result.value, sponsorable: result.sponsorable };
+}
+
+export async function polygonRepay(
+  asset: string,
+  amount: string,
+  onBehalfOf: Address,
+  interestMode: 'variable' | 'stable' = 'variable',
+  deps: AaveDeps = {},
+): Promise<BuiltTx> {
+  const token = resolveToken(asset, POLYGON_CHAIN_ID);
+  if (!token) throw new Error(`Asset ${asset} not found on Polygon`);
+  const amountBase = parseUnits(amount, token.decimals);
+  const poolDeps = getPolygonAaveDeps(deps);
+  const result = await buildRepayCall(
+    token.address as Address,
+    amountBase,
+    interestMode === 'stable' ? 1 : 2,
+    onBehalfOf,
+    poolDeps,
+  );
+  return { to: result.to, data: result.data, value: result.value, sponsorable: result.sponsorable };
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@sherpa/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test -vv",
+    "test:fuzz": "forge test --fuzz-runs 1000",
+    "test:invariant": "forge test --match-test invariant",
+    "coverage": "forge coverage --report lcov",
+    "snapshot": "forge snapshot"
+  }
+}

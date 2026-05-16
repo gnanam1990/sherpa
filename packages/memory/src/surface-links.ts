@@ -141,3 +141,10 @@ export async function consumeSigningToken(
     throw new Error(`[memory] signing token ${token} not found or already consumed`);
   }
 }
+
+export async function unlinkTelegramUser(pool: pg.Pool, tgUserId: bigint): Promise<boolean> {
+  const res = await query(pool, 'DELETE FROM telegram_user_links WHERE tg_user_id = $1', [
+    tgUserId.toString(),
+  ]);
+  return (res.rowCount ?? 0) > 0;
+}

@@ -105,12 +105,21 @@ export {
   validateSessionKeyConfig,
   buildSessionKeyCall,
   validateExecution,
+  validateTransaction,
+  validatePermissionScope,
+  checkUsageLimits,
+  buildUsageSnapshot,
 } from './session-keys/index.js';
 export type {
   SessionKeyConfig,
   SessionKeyPermission,
   SessionKeyDeployment,
   SessionKeyDeps,
+  PermissionGrant,
+  ValidationResult,
+  UsageLimits,
+  UsageSnapshot,
+  UsageCheckResult,
 } from './session-keys/index.js';
 export { listStrategies, getStrategy, executeStrategy, validateStrategyParameters } from './strategies/index.js';
 export type {
@@ -153,6 +162,11 @@ export type {
   DelegateParams,
   GovernanceDeps,
 } from './governance/index.js';
+export * as snapshot from './governance/snapshot.js';
+export * as aaveGov from './governance/aave-gov.js';
+export * as compoundGov from './governance/compound-gov.js';
+export * as optimismGov from './governance/optimism-gov.js';
+export * as delegation from './governance/delegation.js';
 export { getVolumeMetrics, getFeeMetrics, getUsageMetrics } from './analytics/index.js';
 export type {
   AnalyticsQuery,
@@ -229,3 +243,38 @@ export type {
 } from './compliance/index.js';
 export { assessPortfolioRisk, getExposureBreakdown, calculateRiskScore, suggestHedges } from './risk/index.js';
 export type { PortfolioRisk, RiskFactor, ExposureBreakdown, RiskDeps, HedgeStrategy } from './risk/index.js';
+
+// Stage 8: Multi-chain DEX adapters
+export { quickswap, createQuickSwap, QuickSwapNotConfiguredError as QuickSwapError } from './quickswap/index.js';
+export type { QuickSwapAdapter, QuickSwapDeps, QuickSwapParams, QuickSwapQuote, QuickSwapAsset } from './quickswap/index.js';
+export { velodrome, createVelodrome, VelodromeNotConfiguredError as VelodromeError } from './velodrome/index.js';
+export type { VelodromeAdapter, VelodromeDeps, VelodromeParams, VelodromeQuote, VelodromeAsset } from './velodrome/index.js';
+export { camelot, createCamelot, CamelotNotConfiguredError as CamelotError } from './camelot/index.js';
+export type { CamelotAdapter, CamelotDeps, CamelotParams, CamelotQuote, CamelotAsset } from './camelot/index.js';
+
+// Stage 8: Per-chain Aave V3
+export {
+  polygonSupply, polygonWithdraw, polygonBorrow, polygonRepay,
+  getPolygonAaveAssets, isPolygonAaveAsset, getPolygonAaveDeps,
+  POLYGON_AAVE_ASSETS,
+} from './aave/polygon.js';
+export {
+  optimismSupply, optimismWithdraw, optimismBorrow, optimismRepay,
+  getOptimismAaveAssets, isOptimismAaveAsset, getOptimismAaveDeps,
+  OPTIMISM_AAVE_ASSETS,
+} from './aave/optimism.js';
+export {
+  arbitrumSupply, arbitrumWithdraw, arbitrumBorrow, arbitrumRepay,
+  getArbitrumAaveAssets, isArbitrumAaveAsset, getArbitrumAaveDeps,
+  ARBITRUM_AAVE_ASSETS,
+} from './aave/arbitrum.js';
+
+// Stage 8: Bridge extensions
+export { getLayerZeroQuote, buildLayerZeroCall, isLayerZeroSupported, LZ_ENDPOINT_IDS } from './layerzero/index.js';
+export type { LayerZeroParams, LayerZeroQuote } from './layerzero/index.js';
+export { getBestBridgeQuote, buildBestBridgeCall } from './bridge-aggregator.js';
+export type { BridgeProtocol, AggregatedBridgeQuote, BridgeRouteParams } from './bridge-aggregator.js';
+
+// Stage 8: Parser extensions
+export { detectChain, detectAllChains, parseBridgeIntent, hasChainMention, extractChainFromIntent } from './parser/index.js';
+export type { DetectedChain, CrossChainIntent } from './parser/index.js';

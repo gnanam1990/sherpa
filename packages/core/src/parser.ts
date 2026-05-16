@@ -75,14 +75,17 @@ const BRIDGE_RE = /^bridge\s+([\d.]+)\s+(\w+)\s+to\s+(\w+)\s*$/i;
 const BRIDGE_L2_RE = /^bridge\s+([\d.]+)\s+(\w+)\s+(?:from\s+)?(\w+)\s+to\s+(\w+)\s*$/i;
 const BRIDGE_FROM_RE = /^send\s+([\d.]+)\s+(\w+)\s+to\s+(\w+)\s+from\s+(\w+)\s*$/i;
 const DCA_RE =
-  /^dca\s+\$?([\d.]+)\s+(?:into|of)\s+(\w+)\s+(daily|weekly|monthly)(?:\s+for\s+(\d+)\s+(\w+))?(?:\s+until\s+\$?([\d.]+))?\s*$/i;
-const DCA_BUY_RE = /^buy\s+\$?([\d.]+)\s+(?:of|in)\s+(\w+)\s+(\w+)\s+(daily|weekly|monthly)\s*$/i;
+  /^dca\s+\$?([\d.]+)\s+(?:into|of)\s+(\w+)\s+(daily|weekly|biweekly|monthly)(?:\s+for\s+(\d+)\s+(\w+))?(?:\s+until\s+\$?([\d.]+))?\s*$/i;
+const DCA_BUY_RE = /^buy\s+\$?([\d.]+)\s+(?:of|in)\s+(\w+)\s+(\w+)\s+(daily|weekly|biweekly|monthly)\s*$/i;
+const DCA_MANAGE_RE = /^(?:(?:stop|pause|resume|cancel|delete)\s+(?:my\s+)?(\w+)\s+dca|(?:stop|pause|resume|cancel|delete)\s+(?:my\s+)?dca|(?:show|list|view|check)\s+(?:my\s+)?dcas?)\s*$/i;
 const ALERT_PRICE_RE = /^alert\s+me\s+when\s+(\w+)\s*(>|<|>=|<=|==)\s*\$?([\d.]+)\s*$/i;
 const ALERT_BALANCE_RE =
   /^notify\s+me\s+if\s+my\s+(\w+)\s+balance\s*(>|<|>=|<=|==)\s*([\d.]+)\s*$/i;
 const ALERT_HF_RE =
   /^warn\s+me\s+if\s+my\s+(?:aave\s+)?health\s+factor\s*(>|<|>=|<=|==)\s*([\d.]+)\s*$/i;
 const ALERT_CROSS_RE = /^tell\s+me\s+when\s+(\w+)\s+crosses?\s+\$?([\d.]+)\s*$/i;
+const ALERT_LIST_RE = /^(?:show|list|view|check)\s+(?:my\s+)?alerts?\s*$/i;
+const ALERT_CANCEL_RE = /^(?:cancel|stop|remove|delete)\s+alert\s+(.+)\s*$/i;
 const AUTO_REPAY_HF_RE =
   /^auto-repay\s+(?:if\s+my\s+health\s+factor|when\s+hf)\s*(<|<=)\s*([\d.]+)\s*$/i;
 const AUTO_REPAY_AMOUNT_RE =
@@ -109,6 +112,14 @@ const SESSION_KEY_RE = /^(?:create|grant|enable)\s+session\s+key(?:\s+(?:for\s+)
 const SESSION_KEY_LIMIT_RE =
   /^(?:create|grant)\s+session\s+key\s+(?:with\s+)?(?:limit|cap)\s+\$?([\d.]+)\s*$/i;
 const SESSION_KEY_REVOKE_RE = /^(?:revoke|disable|remove)\s+session\s+key\s*$/i;
+const SESSION_KEY_PERMIT_RE =
+  /^(?:give|allow)\s+sherpa\s+(?:permission|access)\s+to\s+(.{1,200})\s*$/i;
+const SESSION_KEY_PERMIT_LIMIT_RE =
+  /^(?:give|allow)\s+sherpa\s+(?:permission|access)\s+to\s+(\w+)\s+(?:up\s+to\s+)?\$?([\d.]+)\s+(\w+)\s*(daily|weekly|monthly)?\s*$/i;
+const SESSION_KEY_SHOW_RE =
+  /^(?:show|list|view|check|display)\s+(?:my\s+)?(?:active\s+)?(?:session\s+)?(?:keys?|permissions?)\s*$/i;
+const SESSION_KEY_STATUS_RE =
+  /^(?:what|show)\s+(?:are\s+)?(?:my\s+)?(?:current\s+)?(?:session\s+)?(?:key\s+)?(?:permissions?|grants?)\s*\??\s*$/i;
 
 // STRATEGY patterns (Stage 5 — Strategy Marketplace)
 const STRATEGY_CREATE_RE =
@@ -136,10 +147,18 @@ const NOTIFY_STATUS_RE = /^(?:show|check|list)\s+(?:my\s+)?notifications?\s*$/i;
 // GOVERNANCE patterns (Stage 7 — Governance)
 const VOTE_RE =
   /^(?:vote|cast)\s+(?:my\s+)?(?:vote\s+)?(yes|no|abstain|for|against)\s+(?:on\s+)?(?:proposal\s+)?#?(\d+)?\s*$/i;
+const VOTE_PROTOCOL_RE =
+  /^vote\s+(yes|no|abstain|for|against)\s+(?:on\s+)?(?:the\s+)?(aave|compound|optimism)\s+(?:proposal\s+)?#?(\d+)\s*$/i;
 const PROPOSAL_CREATE_RE = /^(?:create|submit|propose)\s+(?:a\s+)?proposal\s+(.{1,300})\s*$/i;
 const PROPOSAL_LIST_RE = /^(?:list|show|browse)\s+(?:active\s+)?proposals?\s*$/i;
+const PROPOSAL_SHOW_RE = /^(?:show|view|display)\s+(?:proposal|details)\s+#?(\d+)\s*$/i;
 const DELEGATE_RE =
   /^(?:delegate|assign)\s+(?:my\s+)?(?:voting\s+)?(?:power|votes?)\s+(?:to\s+)?(\S+)\s*$/i;
+const DELEGATE_PROTOCOL_RE =
+  /^delegate\s+(?:my\s+)?(?:voting\s+)?(?:power|votes?)\s+(?:to\s+)?(\S+)\s+(?:on|for|via)\s+(aave|compound|optimism)\s*$/i;
+const VOTE_HISTORY_RE = /^(?:show|list|view|check)\s+(?:my\s+)?vote\s+history\s*$/i;
+const DELEGATION_STATUS_RE = /^(?:show|list|view|check)\s+(?:my\s+)?delegation(?:s| status)?\s*$/i;
+const REVOKE_DELEGATION_RE = /^(?:revoke|remove|cancel)\s+(?:my\s+)?delegation\s+(?:on|for|via)\s+(aave|compound|optimism)\s*$/i;
 
 // ANALYTICS patterns (Stage 7 — Analytics Dashboard)
 const ANALYTICS_VOLUME_RE =
@@ -501,6 +520,24 @@ export function parseDeterministic(input: string): ParsedIntent {
     );
   }
 
+  // DCA_MANAGE patterns
+  if ((m = raw.match(DCA_MANAGE_RE))) {
+    const lower = raw.toLowerCase();
+    if (/show|list|view|check/.test(lower)) {
+      return make('DCA_MANAGE', raw, { dcaAction: 'list' }, 0.9);
+    }
+    if (/stop|cancel|delete/.test(lower)) {
+      return make('DCA_MANAGE', raw, { dcaAction: 'stop', dcaAsset: (m[1] ?? '').toUpperCase() }, 0.9);
+    }
+    if (/pause/.test(lower)) {
+      return make('DCA_MANAGE', raw, { dcaAction: 'pause', dcaAsset: (m[1] ?? '').toUpperCase() }, 0.9);
+    }
+    if (/resume/.test(lower)) {
+      return make('DCA_MANAGE', raw, { dcaAction: 'resume', dcaAsset: (m[1] ?? '').toUpperCase() }, 0.9);
+    }
+    return make('DCA_MANAGE', raw, { dcaAction: 'list' }, 0.85);
+  }
+
   // ALERT patterns
   if ((m = raw.match(ALERT_PRICE_RE))) {
     return make(
@@ -548,6 +585,12 @@ export function parseDeterministic(input: string): ParsedIntent {
       },
       0.85,
     );
+  }
+  if (ALERT_LIST_RE.test(raw)) {
+    return make('ALERT', raw, { alertAction: 'list' }, 0.9);
+  }
+  if ((m = raw.match(ALERT_CANCEL_RE))) {
+    return make('ALERT', raw, { alertAction: 'cancel', alertTarget: (m[1] ?? '').trim() }, 0.9);
   }
 
   // AUTO_REPAY patterns
@@ -638,6 +681,31 @@ export function parseDeterministic(input: string): ParsedIntent {
   if ((m = raw.match(SESSION_KEY_REVOKE_RE))) {
     return make('SESSION_KEY', raw, { sessionAction: 'revoke' }, 0.9);
   }
+  if ((m = raw.match(SESSION_KEY_PERMIT_LIMIT_RE))) {
+    return make(
+      'SESSION_KEY',
+      raw,
+      {
+        sessionAction: 'create',
+        sessionPurpose: m[1],
+        sessionLimit: m[2],
+        sessionAsset: (m[3] ?? '').toUpperCase(),
+        sessionFrequency: (m[4] ?? '').toLowerCase() || undefined,
+      },
+      0.92,
+    );
+  }
+  if ((m = raw.match(SESSION_KEY_PERMIT_RE))) {
+    return make(
+      'SESSION_KEY',
+      raw,
+      { sessionAction: 'create', sessionPurpose: (m[1] ?? '').trim() },
+      0.88,
+    );
+  }
+  if (SESSION_KEY_SHOW_RE.test(raw) || SESSION_KEY_STATUS_RE.test(raw)) {
+    return make('SESSION_KEY', raw, { sessionAction: 'list' }, 0.9);
+  }
 
   // STRATEGY patterns (Stage 5 — Strategy Marketplace)
   if ((m = raw.match(STRATEGY_CREATE_RE))) {
@@ -708,6 +776,16 @@ export function parseDeterministic(input: string): ParsedIntent {
   }
 
   // GOVERNANCE patterns (Stage 7 — Governance)
+  if ((m = raw.match(VOTE_PROTOCOL_RE))) {
+    const vote = (m[1] ?? '').toLowerCase();
+    const voteChoice = vote === 'for' ? 'yes' : vote === 'against' ? 'no' : vote;
+    return make(
+      'GOVERNANCE',
+      raw,
+      { govAction: 'vote', govVote: voteChoice, govProtocol: (m[2] ?? '').toLowerCase(), govProposalId: m[3] },
+      0.95,
+    );
+  }
   if ((m = raw.match(VOTE_RE))) {
     const vote = (m[1] ?? '').toLowerCase();
     const voteChoice = vote === 'for' ? 'yes' : vote === 'against' ? 'no' : vote;
@@ -726,11 +804,36 @@ export function parseDeterministic(input: string): ParsedIntent {
       0.85,
     );
   }
+  if ((m = raw.match(PROPOSAL_SHOW_RE))) {
+    return make('GOVERNANCE', raw, { govAction: 'show', govProposalId: m[1] }, 0.9);
+  }
   if ((m = raw.match(PROPOSAL_LIST_RE))) {
     return make('GOVERNANCE', raw, { govAction: 'list' }, 0.8);
   }
+  if ((m = raw.match(DELEGATE_PROTOCOL_RE))) {
+    return make(
+      'GOVERNANCE',
+      raw,
+      { govAction: 'delegate', govDelegatee: m[1], govProtocol: (m[2] ?? '').toLowerCase() },
+      0.92,
+    );
+  }
   if ((m = raw.match(DELEGATE_RE))) {
     return make('GOVERNANCE', raw, { govAction: 'delegate', govDelegatee: m[1] }, 0.85);
+  }
+  if (VOTE_HISTORY_RE.test(raw)) {
+    return make('GOVERNANCE', raw, { govAction: 'vote_history' }, 0.9);
+  }
+  if (DELEGATION_STATUS_RE.test(raw)) {
+    return make('GOVERNANCE', raw, { govAction: 'delegation_status' }, 0.9);
+  }
+  if ((m = raw.match(REVOKE_DELEGATION_RE))) {
+    return make(
+      'GOVERNANCE',
+      raw,
+      { govAction: 'revoke_delegation', govProtocol: (m[1] ?? '').toLowerCase() },
+      0.9,
+    );
   }
 
   // ANALYTICS patterns (Stage 7 — Analytics Dashboard)
@@ -966,6 +1069,7 @@ const VALID_INTENTS: readonly Intent[] = [
   'BALANCE',
   'HISTORY',
   'DCA',
+  'DCA_MANAGE',
   'ALERT',
   'AUTO_REPAY',
   'POLL',

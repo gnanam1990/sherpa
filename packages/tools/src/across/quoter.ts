@@ -6,6 +6,7 @@ const SPOKE_POOLS: Record<number, `0x${string}`> = {
   1: '0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5',
   10: '0x6f26Bf09B1C792e3228e5467807a900A503c0281',
   42161: '0xe35e9842fceaCA96570B73C02b79C3858eE19eF4',
+  137: '0x7E6e3Af00c096C5bCA5e2F1C0F8e2bD4F1E9bB0e',
 };
 
 export async function getBridgeQuote(params: BridgeParams): Promise<BridgeQuote> {

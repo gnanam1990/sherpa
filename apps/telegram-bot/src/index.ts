@@ -1,5 +1,14 @@
 import { Bot, GrammyError, HttpError } from 'grammy';
-import { handleStart, handleHelp, handleSend, handleBalance, handleHistory, handleLink } from './commands.js';
+import {
+  handleStart,
+  handleHelp,
+  handleSend,
+  handleBalance,
+  handleHistory,
+  handleLink,
+  handlePositions,
+  handleUnlink,
+} from './commands.js';
 import { handleMessage, setupCallbackHandlers } from './intent-handler.js';
 import { adminOnly } from './auth.js';
 
@@ -21,6 +30,8 @@ bot.command('send', handleSend);
 bot.command('balance', handleBalance);
 bot.command('history', handleHistory);
 bot.command('link', handleLink);
+bot.command('positions', handlePositions);
+bot.command('unlink', handleUnlink);
 
 // Message handler for natural language intents
 bot.on('message:text', handleMessage);

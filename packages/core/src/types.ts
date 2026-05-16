@@ -17,6 +17,7 @@ export type Intent =
   | 'HISTORY'
   | 'IDENTITY_LOOKUP'
   | 'DCA'
+  | 'DCA_MANAGE'
   | 'ALERT'
   | 'AUTO_REPAY'
   | 'POLL'

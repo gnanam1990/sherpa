@@ -34,7 +34,9 @@ export async function handleStart(ctx: Context): Promise<void> {
       '/send - Send crypto\n' +
       '/balance - Check balance\n' +
       '/history - Recent transactions\n' +
-      '/link - Link your Smart Wallet\n\n' +
+      '/positions - Aave positions\n' +
+      '/link - Link your Smart Wallet\n' +
+      '/unlink - Disconnect wallet\n\n' +
       'Or just type what you want to do:\n' +
       '"send 0.1 ETH to vitalik.base.eth"',
   );
@@ -46,7 +48,9 @@ export async function handleHelp(ctx: Context): Promise<void> {
       '/send <amount> <asset> to <recipient>\n' +
       '/balance - Show your holdings\n' +
       '/history - Recent transactions\n' +
-      '/link - Link your Coinbase Smart Wallet\n\n' +
+      '/positions - Aave lending positions\n' +
+      '/link - Link your Coinbase Smart Wallet\n' +
+      '/unlink - Disconnect your wallet\n\n' +
       'You can also type natural language:\n' +
       '"swap 100 USDC for ETH"\n' +
       '"lend 50 USDC"\n' +
@@ -162,6 +166,92 @@ function formatHistory(data: HistoryResponse): string {
   });
 
   return [`Recent transactions on ${data.chain}`, ...rows].join('\n\n');
+}
+
+export async function handlePositions(ctx: Context): Promise<void> {
+  const apiBase = process.env.SHERPA_API_BASE;
+  if (!apiBase || !ctx.from?.id) {
+    await ctx.reply('Unable to fetch positions.');
+    return;
+  }
+
+  try {
+    const link = await fetchTelegramLink(apiBase, ctx.from.id);
+    if (!link) {
+      await ctx.reply('Not linked. Use /link to connect your wallet.');
+      return;
+    }
+
+    const positionsRes = await fetch(`${apiBase}/api/lending/positions/${link.address}`);
+    if (!positionsRes.ok) {
+      await ctx.reply(
+        `🔗 Linked wallet: \`${link.address}\`\n\nAave positions are temporarily unavailable.`,
+      );
+      return;
+    }
+
+    const positions = (await positionsRes.json()) as {
+      supplied: Array<{ asset: string; amount: string; apy: string }>;
+      borrowed: Array<{ asset: string; amount: string; apy: string }>;
+    };
+
+    if (positions.supplied.length === 0 && positions.borrowed.length === 0) {
+      await ctx.reply(`🔗 Linked wallet: \`${link.address}\`\n\nNo active Aave positions.`);
+      return;
+    }
+
+    const lines = [`📊 Aave Positions for \`${link.address}\``];
+    if (positions.supplied.length > 0) {
+      lines.push('', '*Supplied:*');
+      for (const s of positions.supplied) {
+        lines.push(`  ${s.amount} ${s.asset} (APY: ${s.apy}%)`);
+      }
+    }
+    if (positions.borrowed.length > 0) {
+      lines.push('', '*Borrowed:*');
+      for (const b of positions.borrowed) {
+        lines.push(`  ${b.amount} ${b.asset} (APY: ${b.apy}%)`);
+      }
+    }
+
+    await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
+  } catch {
+    await ctx.reply('Failed to fetch positions. Please try again.');
+  }
+}
+
+export async function handleUnlink(ctx: Context): Promise<void> {
+  const apiBase = process.env.SHERPA_API_BASE;
+  if (!apiBase || !ctx.from?.id) {
+    await ctx.reply('Unable to unlink.');
+    return;
+  }
+
+  try {
+    const link = await fetchTelegramLink(apiBase, ctx.from.id);
+    if (!link) {
+      await ctx.reply('No wallet linked. Use /link to connect one.');
+      return;
+    }
+
+    const res = await fetch(`${apiBase}/api/surfaces/telegram/unlink`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tgUserId: ctx.from.id }),
+    });
+
+    if (!res.ok) {
+      await ctx.reply('Failed to unlink. Please try again.');
+      return;
+    }
+
+    await ctx.reply(
+      `✅ Wallet \`${link.address}\` has been unlinked from your Telegram account.\n\nUse /link to connect a new wallet.`,
+      { parse_mode: 'Markdown' },
+    );
+  } catch {
+    await ctx.reply('Failed to unlink. Please try again.');
+  }
 }
 
 export async function handleLink(ctx: Context): Promise<void> {

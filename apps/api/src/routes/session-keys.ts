@@ -15,20 +15,42 @@ const CreateSessionKeyBody = z.object({
       selector: z.string().regex(/^0x[a-fA-F0-9]{8}$/),
       maxValue: z.string(),
     }),
-  ),
+  ).min(1),
+  scope: z
+    .array(
+      z.object({
+        target: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+        functions: z.array(z.string()),
+        maxValuePerTx: z.string().optional(),
+      }),
+    )
+    .optional(),
+  limits: z
+    .object({
+      perTxValue: z.string().optional(),
+      dailyTotal: z.string().optional(),
+      totalLimit: z.string().optional(),
+      maxExecutionsPerDay: z.number().optional(),
+    })
+    .optional(),
+  maxExecutions: z.number().min(1).max(100000).optional(),
 });
 
-const OwnerParams = z.object({
-  ownerAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+const AddressParams = z.object({
+  address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
 });
 
 const IdParams = z.object({
   id: z.string().regex(/^[A-Za-z0-9_-]{1,80}$/),
 });
 
-const ExtendBody = z.object({
-  validUntil: z.string().datetime().optional(),
-});
+const UpdateLimitsBody = z.object({
+  perTxValue: z.string().optional(),
+  dailyTotal: z.string().optional(),
+  totalLimit: z.string().optional(),
+  maxExecutionsPerDay: z.number().optional(),
+  spendLimit: z.string().optional(),
+}).strict();
 
 export async function sessionKeyRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/session-keys', async (req: FastifyRequest, reply: FastifyReply) => {
@@ -37,26 +59,53 @@ export async function sessionKeyRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ error: parsed.error.message });
     }
 
-    return reply.send({
-      id: 'stub-session-key-id',
+    const validFrom = new Date();
+    const validUntil = new Date(Date.now() + parsed.data.validDuration * 1000);
+
+    return reply.status(201).send({
+      id: crypto.randomUUID(),
       sessionKeyAddress: '0x' + '00'.repeat(20),
       ...parsed.data,
+      scope: parsed.data.scope ?? parsed.data.permissions.map((p) => ({
+        target: p.target,
+        functions: [p.selector],
+        maxValuePerTx: p.maxValue,
+      })),
+      limits: parsed.data.limits ?? {},
       status: 'active',
       spentAmount: '0',
       executionCount: 0,
+      validFrom: validFrom.toISOString(),
+      validUntil: validUntil.toISOString(),
       createdAt: new Date().toISOString(),
     });
   });
 
-  app.get('/api/session-keys/:ownerAddress', async (req: FastifyRequest, reply: FastifyReply) => {
-    const params = OwnerParams.safeParse(req.params);
+  app.get('/api/session-keys/:address', async (req: FastifyRequest, reply: FastifyReply) => {
+    const params = AddressParams.safeParse(req.params);
     if (!params.success) {
-      return reply.status(400).send({ error: 'invalid ownerAddress' });
+      return reply.status(400).send({ error: 'invalid address' });
     }
     return reply.send({ sessionKeys: [] });
   });
 
-  app.post('/api/session-keys/:id/revoke', async (req: FastifyRequest, reply: FastifyReply) => {
+  app.patch('/api/session-keys/:id', async (req: FastifyRequest, reply: FastifyReply) => {
+    const params = IdParams.safeParse(req.params);
+    if (!params.success) {
+      return reply.status(400).send({ error: 'invalid id' });
+    }
+    const body = UpdateLimitsBody.safeParse(req.body ?? {});
+    if (!body.success) {
+      return reply.status(400).send({ error: body.error.message });
+    }
+    return reply.send({
+      id: params.data.id,
+      limits: body.data,
+      updatedAt: new Date().toISOString(),
+    });
+  });
+
+  app.delete('/api/session-keys/:id', async (req: FastifyRequest, reply: FastifyReply) => {
     const params = IdParams.safeParse(req.params);
     if (!params.success) {
       return reply.status(400).send({ error: 'invalid id' });
@@ -64,18 +113,18 @@ export async function sessionKeyRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ id: params.data.id, status: 'revoked' });
   });
 
-  app.post('/api/session-keys/:id/extend', async (req: FastifyRequest, reply: FastifyReply) => {
+  app.get('/api/session-keys/:id/usage', async (req: FastifyRequest, reply: FastifyReply) => {
     const params = IdParams.safeParse(req.params);
     if (!params.success) {
       return reply.status(400).send({ error: 'invalid id' });
     }
-    const body = ExtendBody.safeParse(req.body ?? {});
-    if (!body.success) {
-      return reply.status(400).send({ error: 'invalid body' });
-    }
     return reply.send({
       id: params.data.id,
-      validUntil: body.data.validUntil ?? new Date().toISOString(),
+      totalTransactions: 0,
+      totalGasUsed: '0',
+      totalValueTransacted: '0',
+      dailyUsage: [],
+      status: 'active',
     });
   });
 }

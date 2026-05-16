@@ -26,6 +26,13 @@ export * from './strategies.js';
 export * from './notifications.js';
 export * from './surface-links.js';
 export * from './notification-tokens.js';
+export * from './swap-history.js';
+export * from './lending-positions.js';
+export * from './borrow-positions.js';
+export * from './aave-health-log.js';
+export * from './dca.js';
+export * from './auto-repay.js';
+export * from './governance.js';
 
 /**
  * Pick the right AuditStore implementation based on config flags.

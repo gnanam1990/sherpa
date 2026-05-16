@@ -17,6 +17,7 @@ export const SUPPORTED_CHAINS: Record<string, number> = {
   ethereum: 1,
   optimism: 10,
   arbitrum: 42161,
+  polygon: 137,
 };
 
 export const CHAIN_IDS: Record<string, number> = {
@@ -24,6 +25,7 @@ export const CHAIN_IDS: Record<string, number> = {
   ethereum: 1,
   optimism: 10,
   arbitrum: 42161,
+  polygon: 137,
 };
 
 export const SUPPORTED_BRIDGE_PAIRS: Array<[string, string]> = [
@@ -33,12 +35,20 @@ export const SUPPORTED_BRIDGE_PAIRS: Array<[string, string]> = [
   ['optimism', 'base'],
   ['base', 'arbitrum'],
   ['arbitrum', 'base'],
+  ['base', 'polygon'],
+  ['polygon', 'base'],
   ['ethereum', 'optimism'],
   ['optimism', 'ethereum'],
   ['ethereum', 'arbitrum'],
   ['arbitrum', 'ethereum'],
+  ['ethereum', 'polygon'],
+  ['polygon', 'ethereum'],
   ['optimism', 'arbitrum'],
   ['arbitrum', 'optimism'],
+  ['optimism', 'polygon'],
+  ['polygon', 'optimism'],
+  ['arbitrum', 'polygon'],
+  ['polygon', 'arbitrum'],
 ];
 
 export function isBridgePairSupported(source: string, dest: string): boolean {

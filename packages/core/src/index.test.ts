@@ -737,6 +737,73 @@ describe('core/parser', () => {
       expect(result.slots.dcaAsset).toBe('ETH');
       expect(result.slots.frequency).toBe('daily');
     });
+
+    test('parses biweekly frequency', () => {
+      const result = parseDeterministic('DCA $100 into ETH biweekly');
+      expect(result.intent).toBe('DCA');
+      expect(result.slots.frequency).toBe('biweekly');
+    });
+  });
+
+  // ── DCA_MANAGE parsing ────────────────────────────────────────────
+
+  describe('DCA_MANAGE intent', () => {
+    test('parses "show my DCAs"', () => {
+      const result = parseDeterministic('show my DCAs');
+      expect(result.intent).toBe('DCA_MANAGE');
+      expect(result.slots.dcaAction).toBe('list');
+    });
+
+    test('parses "list my DCAs"', () => {
+      const result = parseDeterministic('list my DCAs');
+      expect(result.intent).toBe('DCA_MANAGE');
+      expect(result.slots.dcaAction).toBe('list');
+    });
+
+    test('parses "stop my ETH DCA"', () => {
+      const result = parseDeterministic('stop my ETH DCA');
+      expect(result.intent).toBe('DCA_MANAGE');
+      expect(result.slots.dcaAction).toBe('stop');
+      expect(result.slots.dcaAsset).toBe('ETH');
+    });
+
+    test('parses "pause my DCA"', () => {
+      const result = parseDeterministic('pause my DCA');
+      expect(result.intent).toBe('DCA_MANAGE');
+      expect(result.slots.dcaAction).toBe('pause');
+    });
+
+    test('parses "resume my DCA"', () => {
+      const result = parseDeterministic('resume my DCA');
+      expect(result.intent).toBe('DCA_MANAGE');
+      expect(result.slots.dcaAction).toBe('resume');
+    });
+
+    test('parses "cancel my BTC DCA"', () => {
+      const result = parseDeterministic('cancel my BTC DCA');
+      expect(result.intent).toBe('DCA_MANAGE');
+      expect(result.slots.dcaAction).toBe('stop');
+      expect(result.slots.dcaAsset).toBe('BTC');
+    });
+
+    test('parses "delete my AERO DCA"', () => {
+      const result = parseDeterministic('delete my AERO DCA');
+      expect(result.intent).toBe('DCA_MANAGE');
+      expect(result.slots.dcaAction).toBe('stop');
+      expect(result.slots.dcaAsset).toBe('AERO');
+    });
+
+    test('parses "check my DCAs"', () => {
+      const result = parseDeterministic('check my DCAs');
+      expect(result.intent).toBe('DCA_MANAGE');
+      expect(result.slots.dcaAction).toBe('list');
+    });
+
+    test('is case-insensitive', () => {
+      const result = parseDeterministic('SHOW MY DCAS');
+      expect(result.intent).toBe('DCA_MANAGE');
+      expect(result.slots.dcaAction).toBe('list');
+    });
   });
 
   // ── SESSION_KEY parsing ─────────────────────────────────────────────
@@ -833,6 +900,63 @@ describe('core/parser', () => {
       const result = parseDeterministic('list active proposals');
       expect(result.intent).toBe('GOVERNANCE');
       expect(result.slots.govAction).toBe('list');
+    });
+
+    test('parses "vote yes on the aave proposal 42"', () => {
+      const result = parseDeterministic('vote yes on the aave proposal 42');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govAction).toBe('vote');
+      expect(result.slots.govVote).toBe('yes');
+      expect(result.slots.govProtocol).toBe('aave');
+      expect(result.slots.govProposalId).toBe('42');
+    });
+
+    test('parses "vote for compound proposal 118"', () => {
+      const result = parseDeterministic('vote for compound proposal 118');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govVote).toBe('yes');
+      expect(result.slots.govProtocol).toBe('compound');
+    });
+
+    test('parses "vote against optimism proposal 7"', () => {
+      const result = parseDeterministic('vote against optimism proposal 7');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govVote).toBe('no');
+      expect(result.slots.govProtocol).toBe('optimism');
+    });
+
+    test('parses "show proposal 42"', () => {
+      const result = parseDeterministic('show proposal 42');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govAction).toBe('show');
+      expect(result.slots.govProposalId).toBe('42');
+    });
+
+    test('parses "delegate my voting power to 0x1234 on aave"', () => {
+      const result = parseDeterministic('delegate my voting power to 0x1234 on aave');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govAction).toBe('delegate');
+      expect(result.slots.govDelegatee).toBe('0x1234');
+      expect(result.slots.govProtocol).toBe('aave');
+    });
+
+    test('parses "show my vote history"', () => {
+      const result = parseDeterministic('show my vote history');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govAction).toBe('vote_history');
+    });
+
+    test('parses "check my delegation status"', () => {
+      const result = parseDeterministic('check my delegation status');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govAction).toBe('delegation_status');
+    });
+
+    test('parses "revoke my delegation on aave"', () => {
+      const result = parseDeterministic('revoke my delegation on aave');
+      expect(result.intent).toBe('GOVERNANCE');
+      expect(result.slots.govAction).toBe('revoke_delegation');
+      expect(result.slots.govProtocol).toBe('aave');
     });
   });
 

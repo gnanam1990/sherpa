@@ -1,0 +1,26 @@
+{
+  "name": "@sherpa/worker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Sherpa background worker — alert evaluator daemon (owner: M3).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch --env-file-if-exists=.env.local src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@sherpa/memory": "workspace:*",
+    "fastify": "^5.2.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.9"
+  }
+}

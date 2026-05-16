@@ -15,15 +15,28 @@ Sherpa is a natural-language operating system for the Base L2 blockchain. Users 
 
 ## Status
 
-| Stage        | Description                                             | Status                                                                                 |
-| ------------ | ------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| **Stage 1**  | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP on Base Sepolia | Live public smoke                                                                      |
-| **Stage 2**  | DeFi (SWAP, LEND, BORROW, STAKE, BRIDGE, LP)            | Code present, gated behind config and audit                                            |
-| **Stage 3**  | Multi-surface (Farcaster Mini App, Telegram bot)        | Code complete, deployment gated by Mini App account association and Telegram bot token |
-| **Stage 4**  | Automation (DCA, ALERT, AUTO_REPAY)                     | Scheduler code present, not running in production                                      |
-| **Stage 5+** | Multi-chain, Session Keys, Strategy, etc.               | Planned/scaffolded                                                                     |
+| Stage | Description | Status | Details |
+|---|---|---|---|
+| **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP | ✅ Live (Base Sepolia) | [Stage Status](docs/sherpa/STAGE_STATUS.md) |
+| **Stage 2** | DeFi (SWAP, LEND, BORROW, STAKE, BRIDGE, LP) | 🟡 Code Complete | Gated behind audit + mainnet deploy |
+| **Stage 3** | Multi-surface (Farcaster Mini App, Telegram bot) | 🟡 Code Complete | Pending platform account setup |
+| **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY) | 🔵 In Progress | Scheduler code present, not in production |
+| **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace | ⚪ Planned | Scaffolded |
+| **Stage 6** | Portfolio Dashboard, Notifications, Fee Taker | ⚪ Planned | Scaffolded |
+| **Stage 7** | Governance, Social, Automation Deep Dive | ⚪ Planned | Scaffolded |
+| **Stage 8** | Developer API, Cross-chain, Mobile | ⚪ Planned | Scaffolded |
+| **Stage 9** | Risk & Compliance | ⚪ Planned | Scaffolded |
 
 **Stage 1 web is live on Base Sepolia.** Future stages are intentionally gated behind production config, audits, or separate deployments for safety.
+
+## Deployment
+
+| Network | Contracts | Status |
+|---|---|---|
+| Base Sepolia | SherpaRouter, SherpaTreasury | Deployed (testnet) |
+| Base Mainnet | SherpaRouter, SherpaTreasury | Pending audit |
+
+See `docs/sherpa/audit/05_mainnet_deployment.md` for deployment guide.
 
 ## Token Disclaimer
 
@@ -70,13 +83,36 @@ pnpm --filter @sherpa/web dev
 
 See `apps/api/.env.example` and `apps/web/.env.example`.
 
-## Deployment
+## Documentation
 
-See `docs/sherpa/DEPLOYMENT_CHECKLIST.md`.
+### Audit & Launch
+| Document | Description |
+|---|---|
+| [Audit Firm Selection](docs/sherpa/audit/01_audit_firm_selection.md) | Code4rena vs Spearbit vs Trail of Bits comparison |
+| [Audit Scope](docs/sherpa/audit/02_audit_scope_document.md) | Contracts and functions in scope |
+| [Threat Model](docs/sherpa/audit/03_threat_model.md) | Security threat analysis |
+| [Known Issues](docs/sherpa/audit/04_known_issues.md) | Static analysis findings and accepted risks |
+| [Mainnet Deployment](docs/sherpa/audit/05_mainnet_deployment.md) | Step-by-step deployment guide |
+| [Safe Multisig Setup](docs/sherpa/audit/06_safe_multisig_setup.md) | 2-of-3 Safe configuration |
+| [Smoke Testing](docs/sherpa/audit/07_smoke_testing.md) | Post-deployment verification |
+| [Internal Beta](docs/sherpa/audit/08_internal_beta.md) | Beta user onboarding and feedback |
 
-## Security
+### Press & Launch
+| Document | Description |
+|---|---|
+| [Press Kit](docs/sherpa/press/README.md) | Project description, screenshots, links |
+| [Elevator Pitch](docs/sherpa/press/ELEVATOR_PITCH.md) | 30-second pitch |
+| [Technical Overview](docs/sherpa/press/TECHNICAL_OVERVIEW.md) | Architecture for technical audience |
+| [Announcement](docs/sherpa/launch/ANNOUNCEMENT.md) | Launch announcement draft |
+| [Changelog](docs/sherpa/launch/CHANGELOG.md) | What's new in this release |
+| [Migration Guide](docs/sherpa/launch/MIGRATION_GUIDE.md) | For existing users |
+| [Stage Status](docs/sherpa/STAGE_STATUS.md) | Status of each development stage |
 
-See `docs/sherpa/AUDIT_PREPARATION.md` and `docs/sherpa/THREAT_MODEL.md`.
+### Existing
+- [Deployment Checklist](docs/sherpa/DEPLOYMENT_CHECKLIST.md)
+- [Audit Preparation](docs/sherpa/AUDIT_PREPARATION.md)
+- [Threat Model](docs/sherpa/THREAT_MODEL.md)
+- [API Documentation](docs/sherpa/API.md)
 
 ## Architecture
 

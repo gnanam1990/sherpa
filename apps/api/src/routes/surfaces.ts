@@ -8,6 +8,7 @@ import {
   getFarcasterLink,
   linkTelegramUser,
   getTelegramLink,
+  unlinkTelegramUser,
   createSigningToken,
   getSigningToken,
   consumeSigningToken,
@@ -131,6 +132,21 @@ export async function surfacesRoutes(app: FastifyInstance, config: SherpaConfig)
       return reply.send(link);
     },
   );
+
+  const UnlinkBody = z.object({
+    tgUserId: z.number().int().positive(),
+  });
+
+  app.post('/api/surfaces/telegram/unlink', surfaceWriteRouteOptions, async (req, reply) => {
+    const parsed = UnlinkBody.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.message });
+    }
+    const pool = requirePool();
+    const removed = await unlinkTelegramUser(pool, BigInt(parsed.data.tgUserId));
+    if (!removed) return reply.code(404).send({ error: 'not found' });
+    return reply.send({ ok: true });
+  });
 
   app.post('/api/surfaces/sign-intent', surfaceWriteRouteOptions, async (req, reply) => {
     const parsed = SignIntentBody.safeParse(req.body);
