@@ -488,4 +488,67 @@ describe('runAutoRepayCycle', () => {
     const updated = await store.getRuleById(rule.id);
     expect(updated!.last_evaluated_at).not.toBeNull();
   });
+
+  test('post-HF RPC failure does not mark success (P0-6)', async () => {
+    const store = new InMemoryAutoRepayStore();
+    const rule = await store.createRule({
+      userAddress: '0x1111111111111111111111111111111111111111',
+      triggerHf: 13000,
+      targetHf: 15000,
+      maxRepayPerExecution: '1000000000',
+    });
+    let callCount = 0;
+    const deps = makeDeps({
+      store,
+      // First call (pre-execution): HF=1.2 triggers repay
+      // Second call (post-execution): throws RPC error
+      fetchHealthFactor: async () => {
+        callCount++;
+        if (callCount === 1) return 1.2;
+        throw new Error('rpc_timeout');
+      },
+    });
+    const result = await runAutoRepayCycle(deps);
+    expect(result.repaid).toBe(0);
+    expect(result.failed).toBe(1);
+    expect(result.errors[0]).toContain('post_hf_fetch_failed');
+    const history = await store.getExecutionHistory(rule.id);
+    expect(history[0]?.status).toBe('failed');
+    expect(history[0]?.error_message).toContain('post_hf_fetch_failed');
+  });
+
+  test('hf_did_not_improve disables rule — no success notification (P0-6, P2-9)', async () => {
+    const store = new InMemoryAutoRepayStore();
+    const rule = await store.createRule({
+      userAddress: '0x1111111111111111111111111111111111111111',
+      triggerHf: 13000,
+      targetHf: 15000,
+      maxRepayPerExecution: '1000000000',
+    });
+    const notify = vi.fn().mockResolvedValue(undefined);
+    let callCount = 0;
+    const deps = makeDeps({
+      store,
+      // First call: HF=1.2 triggers; second call: HF=1.2 (unchanged — did not improve)
+      fetchHealthFactor: async () => {
+        callCount++;
+        return 1.2;
+      },
+      notify,
+    });
+    const result = await runAutoRepayCycle(deps);
+    expect(result.repaid).toBe(0);
+    expect(result.failed).toBe(1);
+    const updated = await store.getRuleById(rule.id);
+    expect(updated!.status).toBe('paused');
+    // Must notify anomaly, must NOT notify success
+    expect(notify).toHaveBeenCalledWith(
+      '0x1111111111111111111111111111111111111111',
+      expect.stringContaining('paused'),
+    );
+    expect(notify).not.toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('Auto-repay executed'),
+    );
+  });
 });
