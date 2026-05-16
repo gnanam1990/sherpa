@@ -13,13 +13,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.message });
     }
-    return reply.send({
-      id: 'stub-subscription-id',
-      ...parsed.data,
-      enabled: true,
-      triggerCount: 0,
-      createdAt: new Date().toISOString(),
-    });
+    return reply.code(501).send({ error: 'not_implemented', details: 'Notification subscription persistence pending Stage 7.' });
   });
 
   app.get('/api/notifications/:userAddress', async (req: FastifyRequest, reply: FastifyReply) => {
@@ -27,7 +21,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post('/api/notifications/send', async (req: FastifyRequest, reply: FastifyReply) => {
-    return reply.send({ success: true, messageId: 'stub-msg-id' });
+    return reply.code(501).send({ error: 'not_implemented', details: 'Direct notification send endpoint pending Stage 7.' });
   });
 
   app.post('/api/notifications/:id/unsubscribe', async (req: FastifyRequest, reply: FastifyReply) => {

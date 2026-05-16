@@ -17,14 +17,7 @@ export async function developerRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/developer/keys', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = CreateApiKeyBody.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
-
-    return reply.send({
-      id: 'stub-key-id',
-      key: 'sk_' + 'x'.repeat(48),
-      ...parsed.data,
-      usageCount: 0,
-      createdAt: new Date().toISOString(),
-    });
+    return reply.code(501).send({ error: 'not_implemented', details: 'API key management pending Stage 8.' });
   });
 
   app.get('/api/developer/keys', async (req: FastifyRequest, reply: FastifyReply) => {
@@ -39,14 +32,7 @@ export async function developerRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/developer/webhooks', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = CreateWebhookBody.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
-
-    return reply.send({
-      id: 'stub-webhook-id',
-      secret: 'whsec_' + 'x'.repeat(32),
-      ...parsed.data,
-      status: 'active',
-      createdAt: new Date().toISOString(),
-    });
+    return reply.code(501).send({ error: 'not_implemented', details: 'Webhook management pending Stage 8.' });
   });
 
   app.get('/api/developer/webhooks', async (req: FastifyRequest, reply: FastifyReply) => {

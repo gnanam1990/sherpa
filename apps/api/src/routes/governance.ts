@@ -93,7 +93,7 @@ export async function governanceRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/governance/proposals', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = ProposeBody.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
-    return reply.send({ id: 'stub-proposal-id', ...parsed.data, status: 'pending' });
+    return reply.code(501).send({ error: 'not_implemented', details: 'On-chain proposal submission pending Stage 5.' });
   });
 
   app.post('/api/governance/vote', async (req: FastifyRequest, reply: FastifyReply) => {
