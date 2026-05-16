@@ -11,6 +11,63 @@ type Msg = {
   ts: number;
 };
 
+type ParseResponse = {
+  parsed?: {
+    intent?: string;
+    slots?: Record<string, unknown>;
+  };
+  card?: {
+    primary_action_label?: string;
+    primary_amount_display?: string;
+    secondary_amount_display?: string;
+    recipient_display?: string;
+    gas_display?: string;
+    recipient_metadata?: Record<string, unknown>;
+    warnings?: string[];
+  };
+  error?: string;
+  message?: string;
+};
+
+function stringSlot(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+export function formatAssistantText(data: ParseResponse): string {
+  if (data.error || data.message) return data.error ?? data.message ?? 'Sherpa could not parse that.';
+
+  const intent = data.parsed?.intent ?? data.card?.primary_action_label ?? 'UNKNOWN';
+  const card = data.card;
+  const slots = data.parsed?.slots ?? {};
+
+  if (intent === 'IDENTITY_LOOKUP' && card) {
+    const query = stringSlot(card.recipient_metadata?.query) ?? stringSlot(slots.query) ?? 'identity';
+    const source = stringSlot(card.recipient_metadata?.source);
+    const address = card.recipient_display ?? card.secondary_amount_display;
+    return [
+      `Resolved ${query}`,
+      address ? `Address: ${address}` : undefined,
+      source ? `Source: ${source}` : undefined,
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  if (card) {
+    const heading = card.primary_action_label ?? intent;
+    return [
+      card.primary_amount_display ? `${heading}: ${card.primary_amount_display}` : heading,
+      card.recipient_display ? `To: ${card.recipient_display}` : undefined,
+      card.gas_display ? `Gas: ${card.gas_display}` : undefined,
+      ...(card.warnings ?? []).map((warning) => `Warning: ${warning}`),
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  return `Intent: ${intent}`;
+}
+
 export function ChatThread() {
   const { setFrameReady, isFrameReady } = useMiniKit();
   const { address } = useAccount();
@@ -40,10 +97,11 @@ export function ChatThread() {
         body: JSON.stringify({ input: userMsg.text, userKey: address }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? data?.message ?? 'API request failed');
       const assistantMsg: Msg = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        text: JSON.stringify(data, null, 2),
+        text: formatAssistantText(data),
         ts: Date.now(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
@@ -85,7 +143,7 @@ export function ChatThread() {
         {messages.map((m) => (
           <div key={m.id} className={m.role === 'user' ? 'text-right' : 'text-left'}>
             <div
-              className={`inline-block px-3 py-2 rounded ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-100'}`}
+              className={`inline-block max-w-[90%] whitespace-pre-wrap break-words px-3 py-2 text-left text-sm leading-relaxed rounded ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-100'}`}
             >
               {m.text}
             </div>

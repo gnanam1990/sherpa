@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ChatThread } from './ChatThread';
+import { ChatThread, formatAssistantText } from './ChatThread';
 
 vi.mock('@coinbase/onchainkit/minikit', () => ({
   useMiniKit: () => ({
@@ -50,6 +50,24 @@ describe('ChatThread', () => {
     fireEvent.click(screen.getByText('Send'));
 
     expect(await screen.findByText('send 0.1 ETH')).toBeDefined();
+  });
+
+  test('formats identity lookup response for chat display', async () => {
+    expect(
+      formatAssistantText({
+        parsed: { intent: 'IDENTITY_LOOKUP', slots: { query: 'vitalik.eth' } },
+        card: {
+          recipient_display: '0xd8da6bf26964af9d7eed9e03e53415d37aa96045',
+          recipient_metadata: { query: 'vitalik.eth', source: 'ens' },
+        },
+      }),
+    ).toBe(
+      [
+        'Resolved vitalik.eth',
+        'Address: 0xd8da6bf26964af9d7eed9e03e53415d37aa96045',
+        'Source: ens',
+      ].join('\n'),
+    );
   });
 
   test('calls /api/parse with correct payload', async () => {
