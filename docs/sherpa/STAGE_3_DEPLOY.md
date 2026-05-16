@@ -10,31 +10,31 @@
 
 ## B. Deploy apps/miniapp to Vercel
 
-```bash
-cd ~/dev/serpha/sherpa
+Use a Vercel Git project, not a one-off `vercel --cwd apps/miniapp` upload. The app depends on workspace packages, so uploading only `apps/miniapp` makes Vercel run `npm install` against `workspace:*` dependencies and fail.
 
-# Link to Vercel project
-vercel link --cwd apps/miniapp  # project name: sherpa-miniapp
+Recommended Vercel project settings:
 
-# Set environment variables
-vercel env add NEXT_PUBLIC_URL production --cwd apps/miniapp
-# Value: https://sherpa-miniapp.vercel.app
-
-vercel env add NEXT_PUBLIC_SHERPA_API_BASE production --cwd apps/miniapp
-# Value: Railway URL of apps/api
-
-vercel env add SHERPA_API_BASE production --cwd apps/miniapp
-# Value: same Railway URL of apps/api, used by /.well-known/farcaster.json
-
-vercel env add NEXT_PUBLIC_ONCHAINKIT_API_KEY production --cwd apps/miniapp
-# Value: your CDP Client API Key (cdp_pk_...)
-
-vercel env add NEXT_PUBLIC_SHERPA_CHAIN production --cwd apps/miniapp
-# Value: base-sepolia
-
-# Deploy
-vercel --prod --cwd apps/miniapp
+```text
+Project name: sherpa-miniapp
+Git repository: gnanam1990/sherpa
+Root Directory: apps/miniapp
+Framework Preset: Next.js
+Install Command: cd ../.. && pnpm install --frozen-lockfile
+Build Command: pnpm build
+Output Directory: .next
 ```
+
+Set environment variables on that Vercel project:
+
+```text
+NEXT_PUBLIC_URL=https://sherpa-miniapp.vercel.app
+NEXT_PUBLIC_SHERPA_API_BASE=<Railway apps/api URL>
+SHERPA_API_BASE=<same Railway apps/api URL, used by /.well-known/farcaster.json>
+NEXT_PUBLIC_ONCHAINKIT_API_KEY=<your CDP Client API Key, cdp_pk_...>
+NEXT_PUBLIC_SHERPA_CHAIN=base-sepolia
+```
+
+Then deploy from Vercel's Git integration by pushing `main`, or click **Redeploy** in the Vercel dashboard after the env vars are saved.
 
 ## C. Generate Account Association
 
