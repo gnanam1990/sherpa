@@ -6,6 +6,7 @@ import { useAccount, useAccountEffect } from 'wagmi';
 import { toast } from 'sonner';
 import { ConnectButton } from '@sherpa/ui';
 import { Prompt } from './Prompt';
+import { FeatureRoadmap } from './FeatureRoadmap';
 
 function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -48,7 +49,7 @@ export function HomeContent() {
   return (
     <main
       id="main-content"
-      className="flex h-[100dvh] flex-col items-center gap-4 overflow-hidden bg-sherpa-bg px-4 py-4 text-sherpa-fg sm:px-6"
+      className="flex min-h-[100dvh] flex-col items-center gap-4 overflow-y-auto bg-sherpa-bg px-4 py-4 text-sherpa-fg sm:px-6"
     >
       <header className="flex w-full max-w-5xl items-center justify-between gap-4">
         <span className="inline-flex items-center gap-2 text-sm font-semibold tracking-[-0.02em] text-sherpa-blue">
@@ -100,6 +101,8 @@ export function HomeContent() {
       <footer className="text-xs text-sherpa-muted">
         Stage 1 · Base Sepolia · <span className="text-sherpa-success">sponsored gas</span>
       </footer>
+
+      <FeatureRoadmap />
     </main>
   );
 }
