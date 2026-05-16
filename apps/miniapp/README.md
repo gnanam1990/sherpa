@@ -22,3 +22,4 @@ See `.env.example` for required variables.
 - **ChatThread.tsx** — Chat UI using MiniKit hooks + `/api/parse`
 - **lib/farcaster-connect.ts** — Farcaster SDK context extraction
 - **.well-known/farcaster.json/** — Dynamic Farcaster manifest route
+- **next.config.ts** — Same-origin `/api/*` rewrites to `SHERPA_API_BASE`

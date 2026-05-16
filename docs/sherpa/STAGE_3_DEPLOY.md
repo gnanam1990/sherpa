@@ -28,11 +28,12 @@ Set environment variables on that Vercel project:
 
 ```text
 NEXT_PUBLIC_URL=https://sherpa-miniapp.vercel.app
-NEXT_PUBLIC_SHERPA_API_BASE=<Railway apps/api URL>
-SHERPA_API_BASE=<same Railway apps/api URL, used by /.well-known/farcaster.json>
+SHERPA_API_BASE=<apps/api URL, used by /.well-known/farcaster.json and /api/* rewrites>
 NEXT_PUBLIC_ONCHAINKIT_API_KEY=<your CDP Client API Key, cdp_pk_...>
 NEXT_PUBLIC_SHERPA_CHAIN=base-sepolia
 ```
+
+Do not set `NEXT_PUBLIC_SHERPA_API_BASE` for production unless the API host has browser CORS enabled. The Mini App should call same-origin `/api/*`, and `next.config.ts` rewrites those requests to `SHERPA_API_BASE`.
 
 Then deploy from Vercel's Git integration by pushing `main`, or click **Redeploy** in the Vercel dashboard after the env vars are saved.
 
