@@ -170,6 +170,21 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'AI_AGENT') return planAIAgent(parsed, deps);
   if (parsed.intent === 'COMPOSABLE') return planComposable(parsed, deps);
   if (parsed.intent === 'RISK') return planRisk(parsed, deps);
+  if (parsed.intent === 'POSITIONS') {
+    return {
+      ok: true,
+      card: {
+        intent: 'POSITIONS',
+        primary_action_label: 'Show positions',
+        primary_amount_display: 'Aave V3',
+        secondary_amount_display: 'Base mainnet',
+        steps: [],
+        gas_display: '$0.00 (read-only)',
+        warnings: [],
+        estimated_completion_ms: 500,
+      },
+    };
+  }
   if (parsed.intent === 'BALANCE') {
     return {
       ok: true,

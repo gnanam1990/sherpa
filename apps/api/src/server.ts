@@ -55,7 +55,9 @@ import {
   createBasescanIndexer,
   emptyIndexer,
   fetchBalance,
+  getUserAaveAccountData,
   getPublicClient,
+  type AavePosition,
   type HistoryItem,
   type HistoryIndexer,
 } from '@sherpa/tools';
@@ -86,8 +88,26 @@ const confirmBody = z.object({
 });
 
 const txHashPattern = /^0x[a-fA-F0-9]{64}$/;
+const addressPattern = /^0x[a-fA-F0-9]{40}$/;
 const adminRouteOptions = { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } };
 const publicReadRouteOptions = { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } };
+const stage2ComingSoonIntents = new Set(['SWAP', 'LEND', 'BORROW', 'REPAY', 'WITHDRAW']);
+
+type PositionsResponse = {
+  address: `0x${string}`;
+  chain: 'base';
+  pool: `0x${string}`;
+  totalCollateralBase: string;
+  totalDebtBase: string;
+  availableBorrowsBase: string;
+  currentLiquidationThreshold: string;
+  ltv: string;
+  healthFactor: string;
+  hasPosition: boolean;
+  fetchedAt: string;
+};
+
+type PositionReader = (address: `0x${string}`) => Promise<AavePosition>;
 
 function stringField(source: Record<string, unknown> | undefined, key: string): string | undefined {
   const value = source?.[key];
@@ -176,6 +196,8 @@ export type BuildServerOptions = {
   paymasterRateLimiter?: PaymasterRateLimiter;
   /** Override fetch for the paymaster proxy (tests assert request shape). */
   paymasterFetch?: typeof globalThis.fetch;
+  /** Override Base Aave positions reader (tests inject a deterministic mock). */
+  positionsReader?: PositionReader;
 };
 
 /**
@@ -270,6 +292,26 @@ function serializeCard(card: ConfirmationCardProps): Record<string, unknown> {
   };
 }
 
+function serializePosition(address: `0x${string}`, position: AavePosition): PositionsResponse {
+  return {
+    address,
+    chain: 'base',
+    pool: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',
+    totalCollateralBase: position.totalCollateralBase.toString(),
+    totalDebtBase: position.totalDebtBase.toString(),
+    availableBorrowsBase: position.availableBorrowsBase.toString(),
+    currentLiquidationThreshold: position.currentLiquidationThreshold.toString(),
+    ltv: position.ltv.toString(),
+    healthFactor: position.healthFactor.toString(),
+    hasPosition: position.hasPosition,
+    fetchedAt: position.fetchedAt.toISOString(),
+  };
+}
+
+function isStage2ComingSoonIntent(intent: string): boolean {
+  return stage2ComingSoonIntents.has(intent);
+}
+
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const app = Fastify({ logger: false });
   void app.register(rateLimit, {
@@ -314,6 +356,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const rateLimiter = options.rateLimiter ?? createInMemoryRateLimiter();
   const resolver = options.resolver ?? defaultResolver(config);
   const llmComplete = options.llmComplete ?? defaultLlmComplete(config);
+  const positionsReader =
+    options.positionsReader ??
+    ((address: `0x${string}`) =>
+      getUserAaveAccountData(address, process.env.BASE_MAINNET_RPC_URL || process.env.BASE_RPC_URL));
+  const positionsCache = new Map<string, { data: PositionsResponse; expires: number }>();
   // `userAddress` opt: thread the caller's address through to the router so
   // execute-path parse calls record `llm_usage.user_address` (and pre-auth
   // /api/parse calls record NULL). Wraps llmComplete with a stamper.
@@ -339,6 +386,12 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       typeof parsed.data.userKey === 'string' && /^0x[a-fA-F0-9]{40}$/.test(parsed.data.userKey)
         ? (parsed.data.userKey as `0x${string}`)
         : undefined;
+    if (isStage2ComingSoonIntent(parsedIntent.intent)) {
+      return reply.send({
+        parsed: parsedIntent,
+        stage2: { status: 'coming_soon', reason: 'pending_external_audit' },
+      });
+    }
     const planResult = await plan(parsedIntent, {
       userKey: parsed.data.userKey,
       userAddress,
@@ -359,6 +412,18 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
     }
     const parsedIntent = await parse(parsed.data.input, parsed.data.userAddress);
+    if (parsedIntent.intent === 'POSITIONS') {
+      return reply.code(400).send({
+        ok: false,
+        error: 'positions is read-only; use GET /api/positions/:address',
+      });
+    }
+    if (isStage2ComingSoonIntent(parsedIntent.intent)) {
+      return reply.code(400).send({
+        ok: false,
+        error: `Stage 2 ${parsedIntent.intent.toLowerCase()} is pending external audit.`,
+      });
+    }
     const planResult = await plan(parsedIntent, {
       userKey: parsed.data.userAddress,
       userAddress: parsed.data.userAddress,
@@ -450,6 +515,36 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       return reply.code(502).send({ error: 'rpc_error', message: (err as Error).message });
     }
   });
+
+  app.get<{ Params: { address: string } }>(
+    '/api/positions/:address',
+    publicReadRouteOptions,
+    async (req, reply) => {
+      if (!addressPattern.test(req.params.address)) {
+        return reply.code(400).send({ error: 'invalid_address' });
+      }
+      const address = req.params.address.toLowerCase() as `0x${string}`;
+      const cached = positionsCache.get(address);
+      if (cached && cached.expires > Date.now()) return reply.send(cached.data);
+
+      try {
+        const position = await positionsReader(address);
+        const data = serializePosition(address, position);
+        positionsCache.set(address, { data, expires: Date.now() + 60_000 });
+        return reply.send(data);
+      } catch (err) {
+        log.warn('positions fetch failed', {
+          err,
+          address,
+          route: '/api/positions/:address',
+        });
+        return reply.code(500).send({
+          error: 'aave_query_failed',
+          details: (err as Error).message || 'unknown error',
+        });
+      }
+    },
+  );
 
   // ---- Admin: LLM usage reporting -----------------------------------------
   // Both routes are gated by ADMIN_API_KEY (constant-time compared) and
@@ -650,9 +745,6 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   });
   app.post('/api/repay', { preHandler: requireStage2 }, async (_req, reply) => {
     return reply.code(501).send({ error: 'not_implemented', details: 'Repay handler pending implementation.' });
-  });
-  app.get<{ Params: { address: string } }>('/api/positions/:address', { preHandler: requireStage2 }, async (_req, reply) => {
-    return reply.code(501).send({ error: 'not_implemented', details: 'Positions handler pending implementation.' });
   });
 
   return app;

@@ -11,6 +11,7 @@ import {
 } from '@sherpa/ui';
 import { useSherpaCallsStatus, useSherpaSendCalls } from '../../lib/wagmi';
 import { useChatHistory } from '../../hooks/useChatHistory';
+import { stage2ComingSoonText, type Stage2Feature } from './Stage2ComingSoon';
 
 type ParseResponse = {
   parsed?: { intent: string; confidence: number; slots?: Record<string, unknown> };
@@ -37,6 +38,17 @@ type HistoryResponse = {
   }>;
 };
 
+type PositionsResponse = {
+  totalCollateralBase: string;
+  totalDebtBase: string;
+  availableBorrowsBase: string;
+  currentLiquidationThreshold: string;
+  ltv: string;
+  healthFactor: string;
+  hasPosition: boolean;
+  fetchedAt: string;
+};
+
 type ExecuteResponse =
   | {
       ok: true;
@@ -51,6 +63,14 @@ type FlowPhase = 'idle' | 'parsing' | 'executing' | 'confirming';
 type PendingConfirmation = {
   card: SerializedConfirmationCardProps;
   sourceInput: string;
+};
+
+const stage2FeatureByIntent: Record<string, Stage2Feature | undefined> = {
+  SWAP: 'swap',
+  LEND: 'lend',
+  BORROW: 'borrow',
+  REPAY: 'repay',
+  WITHDRAW: 'withdraw',
 };
 
 type ConfirmingAction = PendingConfirmation & { auditLogId: number; messageId: string };
@@ -198,6 +218,40 @@ function historySummary(data: HistoryResponse): string {
   return [`Recent transactions on ${data.chain}`, ...rows].join('\n\n');
 }
 
+function formatBaseUsd(value: string): string {
+  const raw = BigInt(value);
+  const whole = raw / 100_000_000n;
+  const cents = ((raw % 100_000_000n) / 1_000_000n).toString().padStart(2, '0');
+  return `$${whole}.${cents}`;
+}
+
+function formatHealthFactorText(value: string): string {
+  const hf = BigInt(value);
+  if (hf === 2n ** 256n - 1n) return '∞ (no debt)';
+  const whole = hf / 1_000_000_000_000_000_000n;
+  const decimals = ((hf % 1_000_000_000_000_000_000n) / 10_000_000_000_000_000n)
+    .toString()
+    .padStart(2, '0');
+  return `${whole}.${decimals}`;
+}
+
+function positionsSummary(data: PositionsResponse): string {
+  if (!data.hasPosition) {
+    return [
+      'No Aave V3 positions on Base.',
+      'Lend, borrow, withdraw, and repay through Sherpa are coming soon after audit.',
+    ].join('\n');
+  }
+  return [
+    'Aave V3 positions on Base',
+    `Health factor: ${formatHealthFactorText(data.healthFactor)}`,
+    `Collateral: ${formatBaseUsd(data.totalCollateralBase)}`,
+    `Debt: ${formatBaseUsd(data.totalDebtBase)}`,
+    `Available to borrow: ${formatBaseUsd(data.availableBorrowsBase)}`,
+    `Updated: ${new Date(data.fetchedAt).toLocaleTimeString()}`,
+  ].join('\n');
+}
+
 function identitySummary(card: SerializedConfirmationCardProps): string {
   const source = card.recipient_metadata?.source;
   const query = card.recipient_metadata?.query;
@@ -314,6 +368,27 @@ export function Prompt({
         );
         chat.updateMessage(thinkingMessage.id, {
           content: { kind: 'text', text: historySummary(history) },
+        });
+        return;
+      }
+      if (body.parsed?.intent === 'POSITIONS') {
+        const positions = await readJson<PositionsResponse>(
+          await fetch(`/api/positions/${userAddress}`),
+        );
+        chat.updateMessage(thinkingMessage.id, {
+          content: { kind: 'text', text: positionsSummary(positions) },
+        });
+        return;
+      }
+      const stage2Feature = body.parsed?.intent
+        ? stage2FeatureByIntent[body.parsed.intent]
+        : undefined;
+      if (stage2Feature) {
+        chat.updateMessage(thinkingMessage.id, {
+          content: {
+            kind: 'text',
+            text: stage2ComingSoonText(stage2Feature, body.parsed),
+          },
         });
         return;
       }

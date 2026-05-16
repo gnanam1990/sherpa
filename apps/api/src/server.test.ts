@@ -87,6 +87,40 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  it('POST /api/parse recognizes POSITIONS as a read-only card', async () => {
+    const app = buildServer({ config: offlineConfig });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse',
+      payload: { input: 'show my positions', userKey: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { parsed?: { intent: string }; card?: { intent: string; steps: unknown[] } };
+    expect(body.parsed?.intent).toBe('POSITIONS');
+    expect(body.card?.intent).toBe('POSITIONS');
+    expect(body.card?.steps).toEqual([]);
+    await app.close();
+  });
+
+  it('POST /api/parse recognizes Stage 2 write intents without returning executable cards', async () => {
+    const app = buildServer({ config: offlineConfig });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse',
+      payload: { input: 'swap 1 usdc for eth', userKey: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      parsed?: { intent: string };
+      card?: unknown;
+      stage2?: { status: string; reason: string };
+    };
+    expect(body.parsed?.intent).toBe('SWAP');
+    expect(body.card).toBeUndefined();
+    expect(body.stage2).toEqual({ status: 'coming_soon', reason: 'pending_external_audit' });
+    await app.close();
+  });
+
   it('POST /api/execute writes an audit log and returns the plan', async () => {
     const app = buildServer();
     const res = await app.inject({
@@ -102,6 +136,36 @@ describe('apps/api', () => {
     expect(body.ok).toBe(true);
     expect(body.auditLogId).toBeGreaterThan(0);
     expect(body.planHash).toMatch(/^0x[a-f0-9]{64}$/);
+    await app.close();
+  });
+
+  it('POST /api/execute blocks Stage 2 write intents while audit is pending', async () => {
+    const app = buildServer({ config: offlineConfig });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/execute',
+      payload: { input: 'swap 1 usdc for eth', userAddress: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('pending external audit'),
+    });
+    await app.close();
+  });
+
+  it('POST /api/execute blocks read-only positions execution', async () => {
+    const app = buildServer({ config: offlineConfig });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/execute',
+      payload: { input: 'show my positions', userAddress: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('read-only'),
+    });
     await app.close();
   });
 
@@ -318,6 +382,114 @@ describe('apps/api', () => {
       url: `/api/history/${USDC_RECIPIENT}?limit=abc`,
     });
     expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('GET /api/positions/:address returns serialized Aave account data', async () => {
+    const fetchedAt = new Date('2026-05-16T00:00:00.000Z');
+    const app = buildServer({
+      config: offlineConfig,
+      positionsReader: async () => ({
+        totalCollateralBase: 1_000_000_000n,
+        totalDebtBase: 250_000_000n,
+        availableBorrowsBase: 500_000_000n,
+        currentLiquidationThreshold: 8_250n,
+        ltv: 7_800n,
+        healthFactor: 3_300_000_000_000_000_000n,
+        hasPosition: true,
+        fetchedAt,
+      }),
+    });
+    const res = await app.inject({ method: 'GET', url: `/api/positions/${USDC_RECIPIENT}` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      address: USDC_RECIPIENT.toLowerCase(),
+      chain: 'base',
+      totalCollateralBase: '1000000000',
+      totalDebtBase: '250000000',
+      availableBorrowsBase: '500000000',
+      currentLiquidationThreshold: '8250',
+      ltv: '7800',
+      healthFactor: '3300000000000000000',
+      hasPosition: true,
+      fetchedAt: fetchedAt.toISOString(),
+    });
+    await app.close();
+  });
+
+  it('GET /api/positions/:address handles empty Aave positions', async () => {
+    const app = buildServer({
+      config: offlineConfig,
+      positionsReader: async () => ({
+        totalCollateralBase: 0n,
+        totalDebtBase: 0n,
+        availableBorrowsBase: 0n,
+        currentLiquidationThreshold: 0n,
+        ltv: 0n,
+        healthFactor: 2n ** 256n - 1n,
+        hasPosition: false,
+        fetchedAt: new Date('2026-05-16T00:00:00.000Z'),
+      }),
+    });
+    const res = await app.inject({ method: 'GET', url: `/api/positions/${USDC_RECIPIENT}` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      totalCollateralBase: '0',
+      totalDebtBase: '0',
+      hasPosition: false,
+    });
+    await app.close();
+  });
+
+  it('GET /api/positions/:address rejects malformed addresses', async () => {
+    const positionsReader = vi.fn();
+    const app = buildServer({ config: offlineConfig, positionsReader });
+    const res = await app.inject({ method: 'GET', url: '/api/positions/not-an-address' });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'invalid_address' });
+    expect(positionsReader).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('GET /api/positions/:address caches results for 60 seconds', async () => {
+    const positionsReader = vi.fn(async () => ({
+      totalCollateralBase: 1n,
+      totalDebtBase: 0n,
+      availableBorrowsBase: 0n,
+      currentLiquidationThreshold: 0n,
+      ltv: 0n,
+      healthFactor: 2n ** 256n - 1n,
+      hasPosition: true,
+      fetchedAt: new Date('2026-05-16T00:00:00.000Z'),
+    }));
+    const app = buildServer({ config: offlineConfig, positionsReader });
+    const first = await app.inject({ method: 'GET', url: `/api/positions/${USDC_RECIPIENT}` });
+    const second = await app.inject({ method: 'GET', url: `/api/positions/${USDC_RECIPIENT}` });
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    expect(positionsReader).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+
+  it('GET /api/positions/:address returns aave_query_failed on RPC failure', async () => {
+    const logger: Logger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      child: vi.fn(() => logger),
+    };
+    const app = buildServer({
+      config: offlineConfig,
+      logger,
+      positionsReader: async () => {
+        throw new Error('rpc unavailable');
+      },
+    });
+    const res = await app.inject({ method: 'GET', url: `/api/positions/${USDC_RECIPIENT}` });
+    expect(res.statusCode).toBe(500);
+    expect(res.json()).toMatchObject({ error: 'aave_query_failed', details: 'rpc unavailable' });
+    expect(logger.warn).toHaveBeenCalledWith('positions fetch failed', expect.any(Object));
     await app.close();
   });
 

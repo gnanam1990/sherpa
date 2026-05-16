@@ -61,11 +61,30 @@ export type {
   MorphoMarketParams,
   LendAction,
 } from './morpho.js';
-export { aave, createAave, AaveNotConfiguredError, getAavePool, getAaveDataProvider } from './aave/index.js';
+export {
+  aave,
+  createAave,
+  AaveNotConfiguredError,
+  getAavePool,
+  getAaveDataProvider,
+  AAVE_POOL_BASE,
+  AAVE_ORACLE_BASE,
+  MAX_HEALTH_FACTOR,
+  classifyHealthFactor,
+  getUserAaveAccountData,
+  isMaxHealthFactor,
+} from './aave/index.js';
 export type { AaveAdapter, AaveConfig, AaveLendParams, AaveLendQuote, AaveLendAction } from './aave/index.js';
 export { buildBorrowCall, buildRepayCall } from './aave/index.js';
 export { computeHealthFactor, computePostBorrowHealthFactor, healthFactorToBps, healthFactorRiskLevel } from './aave/index.js';
-export type { AaveBorrowParams, AaveBorrowQuote, BorrowSimulation, UserAccountData } from './aave/index.js';
+export type {
+  AaveBorrowParams,
+  AaveBorrowQuote,
+  AavePosition,
+  AavePositionsDeps,
+  BorrowSimulation,
+  UserAccountData,
+} from './aave/index.js';
 export { onramp, createOnramp } from './onramp.js';
 export type { OnrampParams, OnrampQuote, OnrampSession, OnrampConfig } from './onramp.js';
 export { getPublicClient, type ViemClientConfig } from './viem.js';

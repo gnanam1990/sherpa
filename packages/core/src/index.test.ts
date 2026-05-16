@@ -25,6 +25,12 @@ describe('core/parser', () => {
     expect(p.slots.limit).toBe(5);
   });
 
+  it('parses POSITIONS', () => {
+    const p = parseDeterministic('show my positions');
+    expect(p.intent).toBe('POSITIONS');
+    expect(p.slots.filter).toBe('all');
+  });
+
   it('parses IDENTITY_LOOKUP', () => {
     const p = parseDeterministic('who is jesse.base.eth');
     expect(p.intent).toBe('IDENTITY_LOOKUP');
@@ -257,6 +263,13 @@ describe('core/parser', () => {
     expect(p.slots.asset).toBe('USDC');
   });
 
+  it('parses "lend 100 usdc to aave"', () => {
+    const p = parseDeterministic('lend 100 usdc to aave');
+    expect(p.intent).toBe('LEND');
+    expect(p.slots.amount).toBe('100');
+    expect(p.slots.asset).toBe('USDC');
+  });
+
   it('parses "deposit 50 USDC to aave"', () => {
     const p = parseDeterministic('deposit 50 USDC to aave');
     expect(p.intent).toBe('LEND');
@@ -359,6 +372,61 @@ describe('core/parser', () => {
   it('returns UNKNOWN for ambiguous "borrow" without amount', () => {
     const p = parseDeterministic('borrow');
     expect(p.intent).toBe('UNKNOWN');
+  });
+
+  // ── REPAY / WITHDRAW parsing ─────────────────────────────────────────
+
+  it('parses "repay 50 USDC"', () => {
+    const p = parseDeterministic('repay 50 USDC');
+    expect(p.intent).toBe('REPAY');
+    expect(p.slots.amount).toBe('50');
+    expect(p.slots.asset).toBe('USDC');
+  });
+
+  it('parses "repay 50 USDC to aave"', () => {
+    const p = parseDeterministic('repay 50 USDC to aave');
+    expect(p.intent).toBe('REPAY');
+    expect(p.slots.amount).toBe('50');
+    expect(p.slots.asset).toBe('USDC');
+  });
+
+  it('parses "withdraw 25 USDC"', () => {
+    const p = parseDeterministic('withdraw 25 USDC');
+    expect(p.intent).toBe('WITHDRAW');
+    expect(p.slots.amount).toBe('25');
+    expect(p.slots.asset).toBe('USDC');
+  });
+
+  it('parses "withdraw 25 USDC from aave"', () => {
+    const p = parseDeterministic('withdraw 25 USDC from aave');
+    expect(p.intent).toBe('WITHDRAW');
+    expect(p.slots.amount).toBe('25');
+    expect(p.slots.asset).toBe('USDC');
+  });
+
+  // ── POSITIONS parsing ────────────────────────────────────────────────
+
+  it.each([
+    'show my positions',
+    'show positions',
+    'my positions',
+    'positions',
+    'position',
+    'show my aave positions',
+    'aave positions',
+    "what's my health factor",
+    'what is my health factor',
+    'my health factor',
+    'health factor',
+    'hf',
+    'show my hf',
+    'show my aave status',
+    'aave account',
+    'show my aave data',
+  ])('parses "%s" as POSITIONS', (input) => {
+    const p = parseDeterministic(input);
+    expect(p.intent).toBe('POSITIONS');
+    expect(p.slots.filter).toBe('all');
   });
 
   // ── STAKE parsing ───────────────────────────────────────────────────
@@ -1606,6 +1674,20 @@ describe('core/executor', () => {
       expect(out.card.intent).toBe('HISTORY');
       expect(out.card.primary_amount_display).toBe('last 5');
       expect(out.card.steps.length).toBe(0);
+    }
+  });
+
+  // ── POSITIONS executor ─────────────────────────────────────────────
+
+  it('POSITIONS returns a read-only card', async () => {
+    const p = parseDeterministic('show my positions');
+    const out = await plan(p);
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.card.intent).toBe('POSITIONS');
+      expect(out.card.primary_action_label).toBe('Show positions');
+      expect(out.card.steps.length).toBe(0);
+      expect(out.card.gas_display).toContain('read-only');
     }
   });
 

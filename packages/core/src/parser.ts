@@ -51,14 +51,23 @@ const BALANCE_RE =
   /^(?:(?:what(?:[’']s|\s+is)\s+my\s+)|(?:show(?:\s+me)?\s+my\s+))?balance\??\s*$/i;
 const HISTORY_RE =
   /^(?:show\s+)?(?:my\s+)?(?:last\s+(\d+)\s+)?(?:recent\s+)?(?:tx|txs|transactions|history)\s*$/i;
+const POSITIONS_RE =
+  /^(?:show\s+)?(?:my\s+)?(?:aave\s+)?positions?\??\s*$/i;
+const POSITIONS_HEALTH_RE =
+  /^(?:(?:what(?:[’']s|\s+is)\s+)|(?:show(?:\s+me)?\s+))?(?:my\s+)?(?:aave\s+)?(?:health\s+factor|hf)\??\s*$/i;
+const POSITIONS_AAVE_RE =
+  /^(?:show\s+)?(?:my\s+)?aave\s+(?:status|account|data)\??\s*$/i;
 const IDENTITY_LOOKUP_RE = /^(?:who\s+is|resolve|lookup|look\s+up)\s+([^?\s]+)\??\s*$/i;
 // SWAP: "swap 100 USDC for ETH", "convert 0.5 ETH to USDC", "trade 50 USDC to ETH"
 // Optional slippage suffix: "with 1% slippage"
 // LEND: "lend 100 USDC", "supply 200 USDC"
 const LEND_RE = /^(?:lend|supply)\s+([\d.]+)\s+(\w+)\s*$/i;
+const LEND_TO_AAVE_RE = /^(?:lend|supply)\s+([\d.]+)\s+(\w+)\s+(?:to|on|into|in)\s+aave\s*$/i;
 // LEND with explicit Aave target: "deposit 50 USDC to aave", "deposit 100 USDC into aave"
 const LEND_DEPOSIT_RE = /^deposit\s+([\d.]+)\s+(\w+)\s+(?:to|on|into|in)\s+aave\s*$/i;
 const BORROW_RE = /^borrow\s+([\d.]+)\s+(\w+)\s*$/i;
+const REPAY_RE = /^repay\s+([\d.]+)\s+(\w+)(?:\s+(?:to|on|into|in)\s+aave)?\s*$/i;
+const WITHDRAW_RE = /^withdraw\s+([\d.]+)\s+(\w+)(?:\s+from\s+aave)?\s*$/i;
 const BORROW_AGAINST_RE = /^borrow\s+([\d.]+)\s+(\w+)\s+against\s+(\w+)\s*$/i;
 const BORROW_LOAN_RE = /^take\s+out\s+([\d.]+)\s+(\w+)\s+loan\s*$/i;
 const BORROW_RATE_RE = /^borrow\s+([\d.]+)\s+(\w+)\s+(?:at\s+)?(variable|stable)\s+rate\s*$/i;
@@ -316,12 +325,27 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('DEPOSIT', raw, { usd: m[1], asset: 'USDC' }, 0.9);
   }
 
+  if (POSITIONS_RE.test(raw) || POSITIONS_HEALTH_RE.test(raw) || POSITIONS_AAVE_RE.test(raw)) {
+    return make('POSITIONS', raw, { filter: 'all' }, 0.92);
+  }
+
   // LEND patterns (must come after DEPOSIT_RE to avoid conflict)
+  if ((m = raw.match(LEND_TO_AAVE_RE))) {
+    return make('LEND', raw, { amount: m[1], asset: (m[2] ?? '').toUpperCase() }, 0.9);
+  }
   if ((m = raw.match(LEND_DEPOSIT_RE))) {
     return make('LEND', raw, { amount: m[1], asset: (m[2] ?? '').toUpperCase() }, 0.9);
   }
   if ((m = raw.match(LEND_RE))) {
     return make('LEND', raw, { amount: m[1], asset: (m[2] ?? '').toUpperCase() }, 0.9);
+  }
+
+  if ((m = raw.match(REPAY_RE))) {
+    return make('REPAY', raw, { amount: m[1], asset: (m[2] ?? '').toUpperCase() }, 0.9);
+  }
+
+  if ((m = raw.match(WITHDRAW_RE))) {
+    return make('WITHDRAW', raw, { amount: m[1], asset: (m[2] ?? '').toUpperCase() }, 0.9);
   }
 
   // BORROW patterns
@@ -1062,6 +1086,9 @@ const VALID_INTENTS: readonly Intent[] = [
   'SWAP',
   'LEND',
   'BORROW',
+  'REPAY',
+  'WITHDRAW',
+  'POSITIONS',
   'LP',
   'STAKE',
   'BRIDGE',
@@ -1096,7 +1123,7 @@ const VALID_INTENTS: readonly Intent[] = [
 const PARSE_SYSTEM = `You translate a user's natural-language Web3 instruction into a strict JSON object.
 
 Output ONLY a single JSON object, no prose, with this shape:
-{ "intent": "SEND|BUY|BET|SWAP|LEND|BORROW|DEPOSIT|BALANCE|HISTORY|BRIDGE|COLLECT|UNKNOWN", "slots": { ... }, "confidence": 0..1 }
+{ "intent": "SEND|BUY|BET|SWAP|LEND|BORROW|REPAY|WITHDRAW|POSITIONS|DEPOSIT|BALANCE|HISTORY|BRIDGE|COLLECT|UNKNOWN", "slots": { ... }, "confidence": 0..1 }
 
 Slot conventions:
 - SEND     { "amount": "5", "asset": "USDC", "to": "<address|handle|ens>" }
@@ -1105,6 +1132,9 @@ Slot conventions:
 - DEPOSIT  { "usd": "50", "asset": "USDC" }
 - LEND     { "amount": "100", "asset": "USDC" }
 - BORROW   { "borrowAmount": "100", "borrowAsset": "USDC", "interestMode": "variable|stable", "collateralAsset": "ETH", "targetHealthFactor": "1.5" }
+- REPAY    { "amount": "100", "asset": "USDC" }
+- WITHDRAW { "amount": "100", "asset": "USDC" }
+- POSITIONS {}
 - LP       { "asset1": "USDC", "amount1": "100", "asset2": "ETH", "amount2": "0.05" } or { "asset1": "USDC", "amount1": "100", "asset2": "ETH", "poolName": "USDC/ETH" }
 - BALANCE  {}
 - HISTORY  { "limit": 10 }

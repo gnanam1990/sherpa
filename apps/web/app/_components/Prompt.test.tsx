@@ -217,6 +217,107 @@ describe('Prompt', () => {
     expect(screen.queryByRole('button', { name: 'Proceed' })).toBeNull();
   });
 
+  it('renders POSITIONS results directly in the thread', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({ parsed: { intent: 'POSITIONS', confidence: 0.92 } });
+      }
+      if (url === `/api/positions/${USER_ADDRESS}`) {
+        return jsonResponse({
+          totalCollateralBase: '1234567890',
+          totalDebtBase: '250000000',
+          availableBorrowsBase: '500000000',
+          currentLiquidationThreshold: '8250',
+          ltv: '7800',
+          healthFactor: '3300000000000000000',
+          hasPosition: true,
+          fetchedAt: '2026-05-16T00:00:00.000Z',
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<Prompt isConnected userAddress={USER_ADDRESS} />);
+    fireEvent.change(screen.getByLabelText('Sherpa prompt'), {
+      target: { value: 'show my positions' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    const positions = await screen.findByText(/Aave V3 positions on Base/);
+    expect(positions.textContent).toContain('Health factor: 3.30');
+    expect(positions.textContent).toContain('Collateral: $12.34');
+    expect(positions.textContent).toContain('Debt: $2.50');
+    expect(screen.queryByRole('button', { name: 'Proceed' })).toBeNull();
+  });
+
+  it('renders empty POSITIONS state directly in the thread', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({ parsed: { intent: 'POSITIONS', confidence: 0.92 } });
+      }
+      if (url === `/api/positions/${USER_ADDRESS}`) {
+        return jsonResponse({
+          totalCollateralBase: '0',
+          totalDebtBase: '0',
+          availableBorrowsBase: '0',
+          currentLiquidationThreshold: '0',
+          ltv: '0',
+          healthFactor: `${2n ** 256n - 1n}`,
+          hasPosition: false,
+          fetchedAt: '2026-05-16T00:00:00.000Z',
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<Prompt isConnected userAddress={USER_ADDRESS} />);
+    fireEvent.change(screen.getByLabelText('Sherpa prompt'), {
+      target: { value: 'health factor' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    expect(await screen.findByText(/No Aave V3 positions on Base/)).toBeTruthy();
+    expect(screen.getByText(/coming soon after audit/)).toBeTruthy();
+  });
+
+  it('renders Stage 2 coming-soon results without a confirmation card', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({
+          parsed: {
+            intent: 'SWAP',
+            confidence: 0.9,
+            slots: { fromAmount: '1', fromAsset: 'USDC', toAsset: 'ETH' },
+          },
+          error: 'Stage 2 swap is pending audit.',
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<Prompt isConnected userAddress={USER_ADDRESS} />);
+    fireEvent.change(screen.getByLabelText('Sherpa prompt'), {
+      target: { value: 'swap 1 usdc for eth' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    expect(await screen.findByText(/Swap - Coming soon/)).toBeTruthy();
+    expect(screen.getByText(/pending external audit/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Proceed' })).toBeNull();
+  });
+
   it('renders IDENTITY_LOOKUP results directly in the thread', async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {

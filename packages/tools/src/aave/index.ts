@@ -6,6 +6,15 @@ export { STUB_SUPPLY_APY_BPS } from './stub-pricing.js';
 export { AAVE_POOL_ABI, SUPPLY_SELECTOR, WITHDRAW_SELECTOR, BORROW_SELECTOR, REPAY_SELECTOR } from './pool.js';
 export { computeHealthFactor, computePostBorrowHealthFactor, healthFactorToBps, healthFactorRiskLevel } from './health-factor.js';
 export { USER_ACCOUNT_DATA_ABI, encodeGetUserAccountData, parseUserAccountData } from './user-account.js';
+export {
+  AAVE_ORACLE_BASE,
+  AAVE_POOL_BASE,
+  MAX_HEALTH_FACTOR,
+  classifyHealthFactor,
+  getUserAaveAccountData,
+  isMaxHealthFactor,
+} from './positions.js';
+export type { AavePosition, AavePositionsDeps } from './positions.js';
 export type {
   AaveLendAction,
   AaveLendParams,

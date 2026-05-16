@@ -32,9 +32,6 @@ function buildTestApp(stage2Enabled: boolean) {
   app.post('/api/repay', { preHandler: requireStage2 }, async (_req, reply) => {
     return reply.send({ ok: true });
   });
-  app.get('/api/positions/:address', { preHandler: requireStage2 }, async (_req, reply) => {
-    return reply.send({ ok: true });
-  });
 
   return app;
 }
@@ -106,14 +103,6 @@ describe('requireStage2 middleware', () => {
     await app.close();
   });
 
-  it('returns 503 for GET /api/positions/:address when stage2 disabled', async () => {
-    const app = buildTestApp(false);
-    const res = await app.inject({ method: 'GET', url: '/api/positions/0x036CbD53842c5426634e7929541eC2318f3dCF7e' });
-    expect(res.statusCode).toBe(503);
-    expect(res.json()).toMatchObject({ error: 'feature_not_available' });
-    await app.close();
-  });
-
   it('passes through when stage2 enabled', async () => {
     const app = buildTestApp(true);
     const res = await app.inject({ method: 'GET', url: '/api/swap/quote' });
@@ -157,10 +146,10 @@ describe('requireStage2 middleware', () => {
     await app.close();
   });
 
-  it('passes through GET /api/positions/:address when stage2 enabled', async () => {
-    const app = buildTestApp(true);
+  it('does not model /api/positions as gated middleware surface', async () => {
+    const app = buildTestApp(false);
     const res = await app.inject({ method: 'GET', url: '/api/positions/0x036CbD53842c5426634e7929541eC2318f3dCF7e' });
-    expect(res.statusCode).toBe(200);
+    expect(res.statusCode).toBe(404);
     await app.close();
   });
 });
