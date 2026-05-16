@@ -202,6 +202,12 @@ function classifyError(
 const DEFAULT_TIMEOUT_MS = 5_000;
 const DEFAULT_BASE_URL = 'https://api.tenderly.co';
 
+function stripTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end -= 1;
+  return value.slice(0, end);
+}
+
 /**
  * Create a Tenderly simulation adapter.
  *
@@ -214,20 +220,14 @@ const DEFAULT_BASE_URL = 'https://api.tenderly.co';
  * const result = await sim.simulate([call], '0xSender');
  * ```
  */
-export function createSimulator(
-  config: TenderlyConfig,
-  options?: SimulatorOptions,
-): Simulator {
+export function createSimulator(config: TenderlyConfig, options?: SimulatorOptions): Simulator {
   const fetchImpl = options?.fetchImpl ?? fetch;
   const now = options?.now ?? (() => Date.now());
   const setTimeoutFn = options?.setTimeoutImpl ?? setTimeout;
-  const baseUrl = (config.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const baseUrl = stripTrailingSlashes(config.baseUrl ?? DEFAULT_BASE_URL);
   const cache = new SimulationCache({ now });
 
-  async function doFetch(
-    calls: SimulatorCall[],
-    sender: string,
-  ): Promise<SimulationResult> {
+  async function doFetch(calls: SimulatorCall[], sender: string): Promise<SimulationResult> {
     // Build a single-simulation request from the first call. For multi-step
     // plans (approve + swap), we simulate the full batch via the first call
     // — Tenderly will replay the full sequence. If the caller sends only

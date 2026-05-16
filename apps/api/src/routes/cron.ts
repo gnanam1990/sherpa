@@ -35,6 +35,7 @@ export type RegisterCronOptions = {
  * sentinel; the all-zeros address is unambiguously not a real user.
  */
 const CRON_SYSTEM_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
+const cronRouteOptions = { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } };
 
 function checkCronAuth(
   authHeader: string | undefined,
@@ -63,7 +64,7 @@ export function registerCronRoutes(app: FastifyInstance, opts: RegisterCronOptio
     error(_msg: string, _meta?: Record<string, unknown>) {},
   };
 
-  app.post('/api/cron/hourly', async (req, reply) => {
+  app.post('/api/cron/hourly', cronRouteOptions, async (req, reply) => {
     const authHeader = req.headers['authorization'];
     const header = Array.isArray(authHeader) ? authHeader[0] : authHeader;
     const guard = checkCronAuth(header, cronSecret);

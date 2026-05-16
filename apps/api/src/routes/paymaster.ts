@@ -30,7 +30,7 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import { verifyUserOpSignature, validateUserOpFields } from '@sherpa/safety';
+import { verifyUserOpSignature, validateUserOpFields, type UserOp } from '@sherpa/safety';
 import {
   createAuditLog,
   updateAuditLog,
@@ -53,6 +53,7 @@ const ALLOWED_METHODS = new Set(['pm_getPaymasterStubData', 'pm_getPaymasterData
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 const DEFAULT_TIMEOUT_MS = 15_000;
 const ZERO_PLAN_HASH = '0x' + '0'.repeat(64);
+const paymasterRouteOptions = { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } };
 
 type JsonRpcRequest = {
   jsonrpc?: string;
@@ -112,7 +113,7 @@ export function registerPaymasterRoutes(
   const fetchImpl = opts.fetch ?? globalThis.fetch;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-  app.post('/api/paymaster', async (req, reply) => {
+  app.post('/api/paymaster', paymasterRouteOptions, async (req, reply) => {
     if (!paymasterRpcUrl) {
       return reply.code(503).send({ error: 'paymaster_disabled' });
     }
@@ -124,16 +125,16 @@ export function registerPaymasterRoutes(
     const { method, sender } = validation;
 
     const rpcBody = req.body as JsonRpcRequest;
-    const userOp = (rpcBody.params as unknown[])[0] as Record<string, unknown>;
+    const userOp = (rpcBody.params as unknown[])[0] as UserOp;
 
     // Security: verify UserOp signature before rate limit to prevent
     // attackers from exhausting rate limits with invalid UserOps
-    const fieldValidation = validateUserOpFields(userOp as any);
+    const fieldValidation = validateUserOpFields(userOp);
     if (!fieldValidation.ok) {
       return reply.status(400).send({ error: fieldValidation.reason });
     }
 
-    const sigVerification = verifyUserOpSignature(userOp as any, sender as any);
+    const sigVerification = verifyUserOpSignature(userOp, sender as UserOp['sender']);
     if (!sigVerification.ok) {
       return reply.status(401).send({ error: sigVerification.reason });
     }
@@ -213,15 +214,8 @@ export function registerPaymasterRoutes(
       return reply.code(502).send({ error: 'paymaster_upstream_error' });
     }
 
-    await updateAuditLog(
-      auditLogId,
-      { status: 'success', confirmedAt: Date.now() },
-      auditStore,
-    );
-    reply.header(
-      'X-Sherpa-Paymaster-Remaining',
-      `${limit.remaining} of ${rateLimiter.limit()}`,
-    );
+    await updateAuditLog(auditLogId, { status: 'success', confirmedAt: Date.now() }, auditStore);
+    reply.header('X-Sherpa-Paymaster-Remaining', `${limit.remaining} of ${rateLimiter.limit()}`);
     reply.header('X-Sherpa-Paymaster-Resets-At', new Date(limit.resetAt).toISOString());
     return reply.code(upstreamRes.status).send(payload);
   });

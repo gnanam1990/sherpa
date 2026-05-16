@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import rateLimit from '@fastify/rate-limit';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
@@ -84,6 +85,8 @@ const confirmBody = z.object({
 });
 
 const txHashPattern = /^0x[a-fA-F0-9]{64}$/;
+const adminRouteOptions = { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } };
+const publicReadRouteOptions = { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } };
 
 function stringField(source: Record<string, unknown> | undefined, key: string): string | undefined {
   const value = source?.[key];
@@ -129,9 +132,7 @@ async function listAuditHistory(
   address: `0x${string}`,
 ): Promise<HistoryItem[]> {
   const rows = await auditStore.list(address);
-  return rows
-    .map(auditRowToHistoryItem)
-    .filter((item): item is HistoryItem => Boolean(item));
+  return rows.map(auditRowToHistoryItem).filter((item): item is HistoryItem => Boolean(item));
 }
 
 function mergeHistoryItems(
@@ -249,10 +250,10 @@ function validateMainnetConfig(config: SherpaConfig): void {
     { key: 'paymasterUrl' as const, name: 'SHERPA_PAYMASTER_URL' },
   ];
 
-  const missing = required.filter(r => !config[r.key]);
+  const missing = required.filter((r) => !config[r.key]);
 
   if (missing.length > 0) {
-    const names = missing.map(m => m.name).join(', ');
+    const names = missing.map((m) => m.name).join(', ');
     throw new Error(`Mainnet startup blocked: missing required env vars: ${names}`);
   }
 
@@ -270,6 +271,13 @@ function serializeCard(card: ConfirmationCardProps): Record<string, unknown> {
 
 export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   const app = Fastify({ logger: false });
+  void app.register(rateLimit, {
+    global: true,
+    max: 300,
+    timeWindow: '1 minute',
+    allowList: (req) => req.url === '/api/health',
+    errorResponseBuilder: () => ({ error: 'rate_limit' }),
+  });
 
   // Long-lived, per-server instances so Rings 3 (rate limit) and 5 (audit
   // log) share state across requests. Callers may inject their own (Redis /
@@ -466,7 +474,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     return true;
   };
 
-  app.get('/admin/llm-usage/today', async (req, reply) => {
+  app.get('/admin/llm-usage/today', adminRouteOptions, async (req, reply) => {
     if (!adminGuard(req, reply)) return;
     const pool = getPool(config);
     const report = await fetchTodayUsage(pool);
@@ -477,17 +485,21 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
-  app.get<{ Params: { address: string } }>('/admin/llm-usage/user/:address', async (req, reply) => {
-    if (!adminGuard(req, reply)) return;
-    if (!/^0x[a-fA-F0-9]{40}$/.test(req.params.address)) {
-      return reply.code(400).send({ error: 'address must be 0x-prefixed 20-byte hex' });
-    }
-    const pool = getPool(config);
-    const rows = await fetchUserUsage(pool, req.params.address);
-    return reply.send({ address: req.params.address, count: rows.length, rows });
-  });
+  app.get<{ Params: { address: string } }>(
+    '/admin/llm-usage/user/:address',
+    adminRouteOptions,
+    async (req, reply) => {
+      if (!adminGuard(req, reply)) return;
+      if (!/^0x[a-fA-F0-9]{40}$/.test(req.params.address)) {
+        return reply.code(400).send({ error: 'address must be 0x-prefixed 20-byte hex' });
+      }
+      const pool = getPool(config);
+      const rows = await fetchUserUsage(pool, req.params.address);
+      return reply.send({ address: req.params.address, count: rows.length, rows });
+    },
+  );
 
-  app.get('/admin/paymaster-usage/today', async (req, reply) => {
+  app.get('/admin/paymaster-usage/today', adminRouteOptions, async (req, reply) => {
     if (!adminGuard(req, reply)) return;
     const pool = getPool(config);
     const result = await query(
@@ -506,24 +518,28 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     });
   });
 
-  app.get<{ Params: { address: string } }>('/admin/paymaster-usage/user/:address', async (req, reply) => {
-    if (!adminGuard(req, reply)) return;
-    if (!/^0x[a-fA-F0-9]{40}$/.test(req.params.address)) {
-      return reply.code(400).send({ error: 'address must be 0x-prefixed 20-byte hex' });
-    }
-    const pool = getPool(config);
-    const result = await query(
-      pool,
-      'SELECT count, window_start FROM paymaster_ratelimit WHERE user_address = $1',
-      [req.params.address.toLowerCase()],
-    );
-    return reply.send({
-      address: req.params.address,
-      usage: result.rows[0] || { count: 0, window_start: null },
-    });
-  });
+  app.get<{ Params: { address: string } }>(
+    '/admin/paymaster-usage/user/:address',
+    adminRouteOptions,
+    async (req, reply) => {
+      if (!adminGuard(req, reply)) return;
+      if (!/^0x[a-fA-F0-9]{40}$/.test(req.params.address)) {
+        return reply.code(400).send({ error: 'address must be 0x-prefixed 20-byte hex' });
+      }
+      const pool = getPool(config);
+      const result = await query(
+        pool,
+        'SELECT count, window_start FROM paymaster_ratelimit WHERE user_address = $1',
+        [req.params.address.toLowerCase()],
+      );
+      return reply.send({
+        address: req.params.address,
+        usage: result.rows[0] || { count: 0, window_start: null },
+      });
+    },
+  );
 
-  app.get('/admin/audit-log/today', async (req, reply) => {
+  app.get('/admin/audit-log/today', adminRouteOptions, async (req, reply) => {
     if (!adminGuard(req, reply)) return;
     const pool = getPool(config);
     const result = await query(
@@ -545,6 +561,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   app.get<{ Params: { addr: string }; Querystring: { limit?: string } }>(
     '/api/history/:addr',
+    publicReadRouteOptions,
     async (req, reply) => {
       const resolved = await resolver(req.params.addr);
       if (!isResolved(resolved)) return reply.code(400).send({ error: resolved });

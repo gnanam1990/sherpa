@@ -15,6 +15,12 @@ import type { Address, ResolvedAddress, ResolverError } from './types.js';
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
+function stripTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end -= 1;
+  return value.slice(0, end);
+}
+
 export type FidSmartWalletLink = {
   fid: number;
   smartwalletAddress: `0x${string}`;
@@ -24,7 +30,10 @@ export type FidSmartWalletLink = {
 
 type SupabaseLike = {
   from(table: string): {
-    upsert(data: Record<string, unknown>, options?: Record<string, unknown>): Promise<{ error: unknown }>;
+    upsert(
+      data: Record<string, unknown>,
+      options?: Record<string, unknown>,
+    ): Promise<{ error: unknown }>;
     select(columns: string): {
       eq(column: string, value: unknown): Promise<{ data: unknown[] | null; error: unknown }>;
     };
@@ -118,7 +127,7 @@ type NeynarResponse = { user?: NeynarUser };
 export function createFarcasterBackend(
   config: FarcasterConfig,
 ): (username: string) => Promise<ResolvedAddress | ResolverError> {
-  const baseUrl = (config.baseUrl ?? 'https://api.neynar.com').replace(/\/+$/, '');
+  const baseUrl = stripTrailingSlashes(config.baseUrl ?? 'https://api.neynar.com');
   const fetchImpl = config.fetchImpl ?? fetch;
   return async function resolveFarcaster(username: string) {
     const url = `${baseUrl}/v2/farcaster/user/by_username?username=${encodeURIComponent(username)}`;

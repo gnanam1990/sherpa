@@ -38,11 +38,12 @@ const BUY_RE = /^buy\s+\$?([\d.]+)\s+(?:of\s+)?(\w+)\s*$/i;
 // Asset-first: "buy <asset> for $<amount>".
 const BUY_FOR_RE = /^buy\s+(\w+)\s+for\s+\$?([\d.]+)\s*$/i;
 // BET — specific patterns (checked before generic BET_RE)
-const BET_ON_RE = /^bet\s+\$?([\d.]+)\s+(\w+)\s+on\s+(YES|NO)\s+(?:for\s+)?['"]?(.+?)['"]?\s*$/i;
-const BET_AGAINST_RE = /^bet\s+\$?([\d.]+)\s+(\w+)\s+against\s+['"]?(.+?)['"]?\s*$/i;
-const BUY_BET_RE = /^buy\s+\$?([\d.]+)\s+(\w+)\s+of\s+(YES|NO)\s+on\s+(.+)\s*$/i;
+const BET_ON_RE =
+  /^bet\s+\$?([\d.]+)\s+(\w+)\s+on\s+(YES|NO)\s+(?:for\s+)?['"]?(.{1,300})['"]?\s*$/i;
+const BET_AGAINST_RE = /^bet\s+\$?([\d.]+)\s+(\w+)\s+against\s+['"]?(.{1,300})['"]?\s*$/i;
+const BUY_BET_RE = /^buy\s+\$?([\d.]+)\s+(\w+)\s+of\s+(YES|NO)\s+on\s+(.{1,300})\s*$/i;
 // Generic fallback — captures amount + raw predicate blob.
-const BET_RE = /^bet\s+\$?([\d.]+)\s+(.+?)\s*$/i;
+const BET_RE = /^bet\s+\$?([\d.]+)\s+(.{1,300})\s*$/i;
 const DEPOSIT_RE = /^(?:deposit|fund|add|top\s*up)\s+\$?([\d.]+)\s*(?:usdc|usd|dollars?)?\s*$/i;
 // Accepts: "balance", "what's my balance", "what is my balance",
 // "show my balance", "show me my balance", with optional "?".
@@ -66,62 +67,85 @@ const STAKE_RE = /^stake\s+([\d.]+)\s+(?:eth|steth)\s*$/i;
 const STAKE_FOR_RE = /^stake\s+([\d.]+)\s+eth\s+for\s+steth\s*$/i;
 const SWAP_RE =
   /^(?:swap|convert|trade)\s+([\d.]+)\s+(\w+)\s+(?:for|to|→|->)\s+(\w+)(?:\s+with\s+([\d.]+)%\s+slippage)?\s*$/i;
-const LP_RE = /^(?:provide|add)\s+([\d.]+)\s+(\w+)\s+and\s+([\d.]+)\s+(\w+)\s+(?:liquidity|lp)\s*$/i;
-const LP_POOL_RE = /^(?:provide|add)\s+([\d.]+)\s+(\w+)\s+(?:to|in)\s+(\w+)\/(\w+)\s+(?:pool|liquidity)\s*$/i;
+const LP_RE =
+  /^(?:provide|add)\s+([\d.]+)\s+(\w+)\s+and\s+([\d.]+)\s+(\w+)\s+(?:liquidity|lp)\s*$/i;
+const LP_POOL_RE =
+  /^(?:provide|add)\s+([\d.]+)\s+(\w+)\s+(?:to|in)\s+(\w+)\/(\w+)\s+(?:pool|liquidity)\s*$/i;
 const BRIDGE_RE = /^bridge\s+([\d.]+)\s+(\w+)\s+to\s+(\w+)\s*$/i;
 const BRIDGE_L2_RE = /^bridge\s+([\d.]+)\s+(\w+)\s+(?:from\s+)?(\w+)\s+to\s+(\w+)\s*$/i;
 const BRIDGE_FROM_RE = /^send\s+([\d.]+)\s+(\w+)\s+to\s+(\w+)\s+from\s+(\w+)\s*$/i;
-const DCA_RE = /^dca\s+\$?([\d.]+)\s+(?:into|of)\s+(\w+)\s+(daily|weekly|monthly)(?:\s+for\s+(\d+)\s+(\w+))?(?:\s+until\s+\$?([\d.]+))?\s*$/i;
+const DCA_RE =
+  /^dca\s+\$?([\d.]+)\s+(?:into|of)\s+(\w+)\s+(daily|weekly|monthly)(?:\s+for\s+(\d+)\s+(\w+))?(?:\s+until\s+\$?([\d.]+))?\s*$/i;
 const DCA_BUY_RE = /^buy\s+\$?([\d.]+)\s+(?:of|in)\s+(\w+)\s+(\w+)\s+(daily|weekly|monthly)\s*$/i;
 const ALERT_PRICE_RE = /^alert\s+me\s+when\s+(\w+)\s*(>|<|>=|<=|==)\s*\$?([\d.]+)\s*$/i;
-const ALERT_BALANCE_RE = /^notify\s+me\s+if\s+my\s+(\w+)\s+balance\s*(>|<|>=|<=|==)\s*([\d.]+)\s*$/i;
-const ALERT_HF_RE = /^warn\s+me\s+if\s+my\s+(?:aave\s+)?health\s+factor\s*(>|<|>=|<=|==)\s*([\d.]+)\s*$/i;
+const ALERT_BALANCE_RE =
+  /^notify\s+me\s+if\s+my\s+(\w+)\s+balance\s*(>|<|>=|<=|==)\s*([\d.]+)\s*$/i;
+const ALERT_HF_RE =
+  /^warn\s+me\s+if\s+my\s+(?:aave\s+)?health\s+factor\s*(>|<|>=|<=|==)\s*([\d.]+)\s*$/i;
 const ALERT_CROSS_RE = /^tell\s+me\s+when\s+(\w+)\s+crosses?\s+\$?([\d.]+)\s*$/i;
-const AUTO_REPAY_HF_RE = /^auto-repay\s+(?:if\s+my\s+health\s+factor|when\s+hf)\s*(<|<=)\s*([\d.]+)\s*$/i;
-const AUTO_REPAY_AMOUNT_RE = /^auto-repay\s+\$?([\d.]+)\s+(?:of\s+my\s+)?(\w+)?\s*(?:borrow\s+)?(?:if|when)\s+.*?([\d.]+)\s*$/i;
+const AUTO_REPAY_HF_RE =
+  /^auto-repay\s+(?:if\s+my\s+health\s+factor|when\s+hf)\s*(<|<=)\s*([\d.]+)\s*$/i;
+const AUTO_REPAY_AMOUNT_RE =
+  /^auto-repay\s+\$?([\d.]+)\s+(?:of\s+my\s+)?(\w+)?\s*(?:borrow\s+)?(?:if|when)\s+.{0,200}?([\d.]+)\s*$/i;
 const AUTO_REPAY_SETUP_RE = /^set\s+up\s+auto-repay\s+at\s+hf\s+([\d.]+)\s*$/i;
 const COLLECT_URL_RE = /^(?:collect|mint)\s+(\S+zora\S+)\s*$/i;
 const COLLECT_RE = /^(?:collect|mint)\s+(?:the\s+)?(?:post|nft|zora)\s+(?:at\s+)?(\S+)\s*$/i;
-const COLLECT_SIMPLE_RE = /^(?:collect|mint)\s+\$?([\d.]+)\s+(?:of\s+)?(?:the\s+)?(.+?)\s*$/i;
-const POLL_RE = /^(?:create|make|start)\s+(?:a\s+)?poll\s*[:"]?\s*(.+?)["']?\s*(?:with\s+options?\s+(.+))?\s*$/i;
-const POLL_SIMPLE_RE = /^poll\s*:\s*(.+?)\s*$/i;
+const COLLECT_SIMPLE_RE = /^(?:collect|mint)\s+\$?([\d.]+)\s+(?:of\s+)?(?:the\s+)?(.{1,300})\s*$/i;
+const POLL_RE =
+  /^(?:create|make|start)\s+(?:a\s+)?poll\s*[:"]?\s*(.{1,300})["']?\s*(?:with\s+options?\s+(.{1,300}))?\s*$/i;
+const POLL_SIMPLE_RE = /^poll\s*:\s*(.{1,300})\s*$/i;
 const TIP_RE = /^tip\s+\$?([\d.]+)\s+(?:to\s+)?@?(\w+)\s*$/i;
 const TIP_USER_RE = /^send\s+\$?([\d.]+)\s+(?:to\s+)?@?(\w+)\s+(?:on\s+)?farcaster\s*$/i;
 const TIP_USDC_RE = /^tip\s+([\d.]+)\s+(\w+)\s+(?:to\s+)?@?(\w+)\s*$/i;
-const TIMELOCK_RE = /^(?:schedule|time\s*lock|timelock)\s+(.+?)\s+(?:for|at|on|in)\s+(.+?)\s*$/i;
-const SCHEDULE_RE = /^(?:schedule)\s+(?:send|transfer)\s+\$?([\d.]+)\s+(\w+)\s+(?:to\s+)?(\S+)\s+(?:in|at|for)\s+(.+?)\s*$/i;
-const REBALANCE_RE = /^(?:rebalance|auto\s*rebalance)\s+(?:my\s+)?(?:portfolio|holdings|positions)\s*$/i;
-const REBALANCE_TARGET_RE = /^(?:rebalance|auto\s*rebalance)\s+(?:to|so\s+that)\s+(?:my\s+)?(\w+)\s+(?:is|equals?)\s+(\d+)%?\s*$/i;
-const SESSION_KEY_RE = /^(?:create|grant|enable)\s+session\s+key(?:\s+(?:for\s+)?(.+?))?\s*$/i;
-const SESSION_KEY_LIMIT_RE = /^(?:create|grant)\s+session\s+key\s+(?:with\s+)?(?:limit|cap)\s+\$?([\d.]+)\s*$/i;
+const TIMELOCK_RE =
+  /^(?:schedule|time\s*lock|timelock)\s+(.{1,300})\s+(?:for|at|on|in)\s+(.{1,120})\s*$/i;
+const SCHEDULE_RE =
+  /^(?:schedule)\s+(?:send|transfer)\s+\$?([\d.]+)\s+(\w+)\s+(?:to\s+)?(\S+)\s+(?:in|at|for)\s+(.{1,120})\s*$/i;
+const REBALANCE_RE =
+  /^(?:rebalance|auto\s*rebalance)\s+(?:my\s+)?(?:portfolio|holdings|positions)\s*$/i;
+const REBALANCE_TARGET_RE =
+  /^(?:rebalance|auto\s*rebalance)\s+(?:to|so\s+that)\s+(?:my\s+)?(\w+)\s+(?:is|equals?)\s+(\d+)%?\s*$/i;
+const SESSION_KEY_RE = /^(?:create|grant|enable)\s+session\s+key(?:\s+(?:for\s+)?(.{1,120}))?\s*$/i;
+const SESSION_KEY_LIMIT_RE =
+  /^(?:create|grant)\s+session\s+key\s+(?:with\s+)?(?:limit|cap)\s+\$?([\d.]+)\s*$/i;
 const SESSION_KEY_REVOKE_RE = /^(?:revoke|disable|remove)\s+session\s+key\s*$/i;
 
 // STRATEGY patterns (Stage 5 — Strategy Marketplace)
-const STRATEGY_CREATE_RE = /^(?:create|publish|share)\s+strategy\s+(?:called\s+)?['"]?(.+?)['"]?\s*$/i;
-const STRATEGY_FOLLOW_RE = /^(?:follow|subscribe|copy)\s+strategy\s+(.+?)\s*$/i;
+const STRATEGY_CREATE_RE =
+  /^(?:create|publish|share)\s+strategy\s+(?:called\s+)?['"]?(.{1,120})['"]?\s*$/i;
+const STRATEGY_FOLLOW_RE = /^(?:follow|subscribe|copy)\s+strategy\s+(.{1,120})\s*$/i;
 const STRATEGY_LIST_RE = /^(?:list|show|browse)\s+strateg(?:y|ies)\s*$/i;
-const STRATEGY_RUN_RE = /^(?:run|execute|apply)\s+strategy\s+(.+?)\s*$/i;
+const STRATEGY_RUN_RE = /^(?:run|execute|apply)\s+strategy\s+(.{1,120})\s*$/i;
 
 // PORTFOLIO patterns (Stage 6 — Portfolio Dashboard)
 const PORTFOLIO_RE = /^(?:show|display|view|check)\s+(?:my\s+)?portfolio\s*$/i;
-const PORTFOLIO_DETAIL_RE = /^(?:show|display|view|check)\s+(?:my\s+)?(?:portfolio|holdings)\s+(?:on|for|at)\s+(\w+)\s*$/i;
-const PORTFOLIO_PNL_RE = /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:pnl|profit|loss|gains)\s*$/i;
-const PORTFOLIO_HISTORY_RE = /^(?:show|display)\s+(?:my\s+)?(?:portfolio|value)\s+(?:history|over\s+time)\s*$/i;
+const PORTFOLIO_DETAIL_RE =
+  /^(?:show|display|view|check)\s+(?:my\s+)?(?:portfolio|holdings)\s+(?:on|for|at)\s+(\w+)\s*$/i;
+const PORTFOLIO_PNL_RE =
+  /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:pnl|profit|loss|gains)\s*$/i;
+const PORTFOLIO_HISTORY_RE =
+  /^(?:show|display)\s+(?:my\s+)?(?:portfolio|value)\s+(?:history|over\s+time)\s*$/i;
 
 // NOTIFICATION patterns (Stage 6 — Notification System)
-const NOTIFY_RE = /^(?:notify|alert|send)\s+me\s+(?:when|if)\s+(.+?)\s*(?:via|through|on)\s+(push|email|farcaster|telegram)\s*$/i;
-const NOTIFY_CHANNEL_RE = /^(?:set|change|update)\s+(?:my\s+)?notification\s+(?:channel|method)\s+(?:to\s+)?(push|email|farcaster|telegram)\s*$/i;
+const NOTIFY_RE =
+  /^(?:notify|alert|send)\s+me\s+(?:when|if)\s+(.{1,300})\s*(?:via|through|on)\s+(push|email|farcaster|telegram)\s*$/i;
+const NOTIFY_CHANNEL_RE =
+  /^(?:set|change|update)\s+(?:my\s+)?notification\s+(?:channel|method)\s+(?:to\s+)?(push|email|farcaster|telegram)\s*$/i;
 const NOTIFY_STATUS_RE = /^(?:show|check|list)\s+(?:my\s+)?notifications?\s*$/i;
 
 // GOVERNANCE patterns (Stage 7 — Governance)
-const VOTE_RE = /^(?:vote|cast)\s+(?:my\s+)?(?:vote\s+)?(yes|no|abstain|for|against)\s+(?:on\s+)?(?:proposal\s+)?#?(\d+)?\s*$/i;
-const PROPOSAL_CREATE_RE = /^(?:create|submit|propose)\s+(?:a\s+)?proposal\s+(.+?)\s*$/i;
+const VOTE_RE =
+  /^(?:vote|cast)\s+(?:my\s+)?(?:vote\s+)?(yes|no|abstain|for|against)\s+(?:on\s+)?(?:proposal\s+)?#?(\d+)?\s*$/i;
+const PROPOSAL_CREATE_RE = /^(?:create|submit|propose)\s+(?:a\s+)?proposal\s+(.{1,300})\s*$/i;
 const PROPOSAL_LIST_RE = /^(?:list|show|browse)\s+(?:active\s+)?proposals?\s*$/i;
-const DELEGATE_RE = /^(?:delegate|assign)\s+(?:my\s+)?(?:voting\s+)?(?:power|votes?)\s+(?:to\s+)?(\S+)\s*$/i;
+const DELEGATE_RE =
+  /^(?:delegate|assign)\s+(?:my\s+)?(?:voting\s+)?(?:power|votes?)\s+(?:to\s+)?(\S+)\s*$/i;
 
 // ANALYTICS patterns (Stage 7 — Analytics Dashboard)
-const ANALYTICS_VOLUME_RE = /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:total\s+)?(?:volume|trading\s+volume)\s*$/i;
-const ANALYTICS_FEES_RE = /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:total\s+)?fees?\s+(?:paid|spent)\s*$/i;
+const ANALYTICS_VOLUME_RE =
+  /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:total\s+)?(?:volume|trading\s+volume)\s*$/i;
+const ANALYTICS_FEES_RE =
+  /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:total\s+)?fees?\s+(?:paid|spent)\s*$/i;
 const ANALYTICS_STATS_RE = /^(?:show|display)\s+(?:my\s+)?(?:stats|statistics|analytics)\s*$/i;
 const ANALYTICS_USAGE_RE = /^(?:show|display)\s+(?:my\s+)?(?:usage|activity)\s*$/i;
 
@@ -132,10 +156,11 @@ const LEADERBOARD_RE = /^(?:show|display|view)\s+(?:the\s+)?leaderboard\s*$/i;
 const SOCIAL_PROFILE_RE = /^(?:show|view|display)\s+(?:my\s+)?(?:profile|social)\s*$/i;
 
 // AUTOMATION patterns (Stage 7 — Advanced Automation)
-const AUTOMATION_RE = /^(?:create|set\s+up)\s+(?:an?\s+)?(?:automation|rule|trigger)\s+(.+?)\s*$/i;
-const AUTOMATION_IF_RE = /^if\s+(.+?)\s+then\s+(.+?)\s*$/i;
+const AUTOMATION_RE =
+  /^(?:create|set\s+up)\s+(?:an?\s+)?(?:automation|rule|trigger)\s+(.{1,300})\s*$/i;
+const AUTOMATION_IF_RE = /^if\s+(.{1,300})\s+then\s+(.{1,300})\s*$/i;
 const AUTOMATION_LIST_RE = /^(?:list|show)\s+(?:my\s+)?automations?\s*$/i;
-const AUTOMATION_CANCEL_RE = /^(?:cancel|stop|disable)\s+(?:automation|rule)\s+(.+?)\s*$/i;
+const AUTOMATION_CANCEL_RE = /^(?:cancel|stop|disable)\s+(?:automation|rule)\s+(.{1,120})\s*$/i;
 
 // SECURITY patterns (Stage 8 — Security Hardening)
 const MULTISIG_RE = /^(?:create|setup|enable)\s+multi\s*sig\s*(?:wallet)?\s*$/i;
@@ -147,17 +172,19 @@ const WHITELIST_RE = /^(?:add|whitelist)\s+(\S+)\s+(?:to\s+)?(?:my\s+)?(?:whitel
 const API_KEY_RE = /^(?:create|generate|get)\s+(?:an?\s+)?api\s+key\s*$/i;
 const API_DOCS_RE = /^(?:show|open|view)\s+(?:api\s+)?docs?\s*$/i;
 const API_STATUS_RE = /^(?:check|show)\s+(?:my\s+)?api\s+(?:status|usage|limits?)\s*$/i;
-const WEBHOOK_RE = /^(?:create|add|setup)\s+(?:a\s+)?webhook\s+(?:for\s+)?(.+?)\s*$/i;
+const WEBHOOK_RE = /^(?:create|add|setup)\s+(?:a\s+)?webhook\s+(?:for\s+)?(.{1,120})\s*$/i;
 
 // COMPOSABLE patterns (Stage 9 — DeFi Composability)
-const COMPOSE_RE = /^(?:compose|combine|chain)\s+(.+?)\s+and\s+(.+?)\s*$/i;
+const COMPOSE_RE = /^(?:compose|combine|chain)\s+(.{1,300})\s+and\s+(.{1,300})\s*$/i;
 const FLASH_LOAN_RE = /^(?:flash\s*loan|borrow\s+flash)\s+([\d.]+)\s+(\w+)\s*$/i;
 const LEVERAGE_RE = /^(?:leverage|lever\s+up)\s+(?:my\s+)?(\w+)\s+(?:by\s+)?(\d+)x\s*$/i;
 const DELEVERAGE_RE = /^(?:deleverage|lever\s+down|unwind)\s+(?:my\s+)?(\w+)\s*$/i;
 
 // CROSS_CHAIN patterns (Stage 8 — Cross-chain Orchestration)
-const CROSS_CHAIN_RE = /^(?:bridge|send|move)\s+([\d.]+)\s+(\w+)\s+(?:from\s+)?(\w+)\s+to\s+(\w+)\s+and\s+(?:then\s+)?(.+?)\s*$/i;
-const CROSS_CHAIN_SWAP_RE = /^(?:swap|convert)\s+([\d.]+)\s+(\w+)\s+(?:on|at)\s+(\w+)\s+(?:for|to)\s+(\w+)\s*$/i;
+const CROSS_CHAIN_RE =
+  /^(?:bridge|send|move)\s+([\d.]+)\s+(\w+)\s+(?:from\s+)?(\w+)\s+to\s+(\w+)\s+and\s+(?:then\s+)?(.{1,300})\s*$/i;
+const CROSS_CHAIN_SWAP_RE =
+  /^(?:swap|convert)\s+([\d.]+)\s+(\w+)\s+(?:on|at)\s+(\w+)\s+(?:for|to)\s+(\w+)\s*$/i;
 
 function make(
   intent: Intent,
@@ -169,7 +196,9 @@ function make(
 }
 
 export function parseDeterministic(input: string): ParsedIntent {
-  const raw = input.trim();
+  const trimmed = input.trim();
+  if (trimmed.length > 500) return make('UNKNOWN', trimmed.slice(0, 500), {}, 0);
+  const raw = trimmed;
 
   let m: RegExpMatchArray | null;
 
@@ -188,12 +217,7 @@ export function parseDeterministic(input: string): ParsedIntent {
     // to UNKNOWN so the LLM (or future SWAP regex) can disambiguate.
     const to = m[3] ?? '';
     if (!/^(usdc|usd|eth|weth|btc|wbtc)$/i.test(to)) {
-      return make(
-        'SEND',
-        raw,
-        { amount: m[1], asset: (m[2] ?? 'USDC').toUpperCase(), to },
-        0.85,
-      );
+      return make('SEND', raw, { amount: m[1], asset: (m[2] ?? 'USDC').toUpperCase(), to }, 0.85);
     }
   }
 
@@ -257,7 +281,16 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('TIP', raw, { tipAmount: m[1], tipRecipient: (m[2] ?? '').toLowerCase() }, 0.88);
   }
   if ((m = raw.match(TIP_USDC_RE))) {
-    return make('TIP', raw, { tipAmount: m[1], tipAsset: (m[2] ?? '').toUpperCase(), tipRecipient: (m[3] ?? '').toLowerCase() }, 0.9);
+    return make(
+      'TIP',
+      raw,
+      {
+        tipAmount: m[1],
+        tipAsset: (m[2] ?? '').toUpperCase(),
+        tipRecipient: (m[3] ?? '').toLowerCase(),
+      },
+      0.9,
+    );
   }
 
   if ((m = raw.match(DEPOSIT_RE))) {
@@ -275,26 +308,70 @@ export function parseDeterministic(input: string): ParsedIntent {
   // BORROW patterns
   // STAKE patterns (Lido)
   if ((m = raw.match(STAKE_FOR_RE))) {
-    return make('STAKE', raw, { stakeAsset: 'ETH', stakeAmount: m[1], receiveAsset: 'stETH' }, 0.92);
+    return make(
+      'STAKE',
+      raw,
+      { stakeAsset: 'ETH', stakeAmount: m[1], receiveAsset: 'stETH' },
+      0.92,
+    );
   }
   if ((m = raw.match(STAKE_RE))) {
     return make('STAKE', raw, { stakeAsset: 'ETH', stakeAmount: m[1] }, 0.9);
   }
 
   if ((m = raw.match(BORROW_RE))) {
-    return make('BORROW', raw, { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], interestMode: 'variable' }, 0.9);
+    return make(
+      'BORROW',
+      raw,
+      { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], interestMode: 'variable' },
+      0.9,
+    );
   }
   if ((m = raw.match(BORROW_AGAINST_RE))) {
-    return make('BORROW', raw, { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], collateralAsset: (m[3] ?? '').toUpperCase(), interestMode: 'variable' }, 0.92);
+    return make(
+      'BORROW',
+      raw,
+      {
+        borrowAsset: (m[2] ?? '').toUpperCase(),
+        borrowAmount: m[1],
+        collateralAsset: (m[3] ?? '').toUpperCase(),
+        interestMode: 'variable',
+      },
+      0.92,
+    );
   }
   if ((m = raw.match(BORROW_LOAN_RE))) {
-    return make('BORROW', raw, { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], interestMode: 'variable' }, 0.85);
+    return make(
+      'BORROW',
+      raw,
+      { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], interestMode: 'variable' },
+      0.85,
+    );
   }
   if ((m = raw.match(BORROW_RATE_RE))) {
-    return make('BORROW', raw, { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], interestMode: (m[3] ?? 'variable').toLowerCase() }, 0.9);
+    return make(
+      'BORROW',
+      raw,
+      {
+        borrowAsset: (m[2] ?? '').toUpperCase(),
+        borrowAmount: m[1],
+        interestMode: (m[3] ?? 'variable').toLowerCase(),
+      },
+      0.9,
+    );
   }
   if ((m = raw.match(BORROW_HF_RE))) {
-    return make('BORROW', raw, { borrowAsset: (m[2] ?? '').toUpperCase(), borrowAmount: m[1], targetHealthFactor: m[3], interestMode: 'variable' }, 0.9);
+    return make(
+      'BORROW',
+      raw,
+      {
+        borrowAsset: (m[2] ?? '').toUpperCase(),
+        borrowAmount: m[1],
+        targetHealthFactor: m[3],
+        interestMode: 'variable',
+      },
+      0.9,
+    );
   }
 
   if (BALANCE_RE.test(raw)) {
@@ -355,15 +432,44 @@ export function parseDeterministic(input: string): ParsedIntent {
   }
 
   if ((m = raw.match(BRIDGE_L2_RE))) {
-    return make('BRIDGE', raw, { bridgeAsset: (m[2] ?? '').toUpperCase(), bridgeAmount: m[1], sourceChain: (m[3] ?? '').toLowerCase(), destinationChain: (m[4] ?? '').toLowerCase() }, 0.92);
+    return make(
+      'BRIDGE',
+      raw,
+      {
+        bridgeAsset: (m[2] ?? '').toUpperCase(),
+        bridgeAmount: m[1],
+        sourceChain: (m[3] ?? '').toLowerCase(),
+        destinationChain: (m[4] ?? '').toLowerCase(),
+      },
+      0.92,
+    );
   }
 
   if ((m = raw.match(BRIDGE_RE))) {
-    return make('BRIDGE', raw, { bridgeAsset: (m[2] ?? '').toUpperCase(), bridgeAmount: m[1], destinationChain: (m[3] ?? '').toLowerCase() }, 0.9);
+    return make(
+      'BRIDGE',
+      raw,
+      {
+        bridgeAsset: (m[2] ?? '').toUpperCase(),
+        bridgeAmount: m[1],
+        destinationChain: (m[3] ?? '').toLowerCase(),
+      },
+      0.9,
+    );
   }
 
   if ((m = raw.match(BRIDGE_FROM_RE))) {
-    return make('BRIDGE', raw, { bridgeAsset: (m[2] ?? '').toUpperCase(), bridgeAmount: m[1], destinationChain: (m[3] ?? '').toLowerCase(), sourceChain: (m[4] ?? '').toLowerCase() }, 0.88);
+    return make(
+      'BRIDGE',
+      raw,
+      {
+        bridgeAsset: (m[2] ?? '').toUpperCase(),
+        bridgeAmount: m[1],
+        destinationChain: (m[3] ?? '').toLowerCase(),
+        sourceChain: (m[4] ?? '').toLowerCase(),
+      },
+      0.88,
+    );
   }
 
   // DCA patterns
@@ -397,16 +503,51 @@ export function parseDeterministic(input: string): ParsedIntent {
 
   // ALERT patterns
   if ((m = raw.match(ALERT_PRICE_RE))) {
-    return make('ALERT', raw, { conditionType: 'price', asset: (m[1] ?? '').toUpperCase(), comparison: m[2], threshold: m[3] }, 0.9);
+    return make(
+      'ALERT',
+      raw,
+      {
+        conditionType: 'price',
+        asset: (m[1] ?? '').toUpperCase(),
+        comparison: m[2],
+        threshold: m[3],
+      },
+      0.9,
+    );
   }
   if ((m = raw.match(ALERT_BALANCE_RE))) {
-    return make('ALERT', raw, { conditionType: 'balance', asset: (m[1] ?? '').toUpperCase(), comparison: m[2], threshold: m[3] }, 0.9);
+    return make(
+      'ALERT',
+      raw,
+      {
+        conditionType: 'balance',
+        asset: (m[1] ?? '').toUpperCase(),
+        comparison: m[2],
+        threshold: m[3],
+      },
+      0.9,
+    );
   }
   if ((m = raw.match(ALERT_HF_RE))) {
-    return make('ALERT', raw, { conditionType: 'health-factor', comparison: m[1], threshold: m[2] }, 0.9);
+    return make(
+      'ALERT',
+      raw,
+      { conditionType: 'health-factor', comparison: m[1], threshold: m[2] },
+      0.9,
+    );
   }
   if ((m = raw.match(ALERT_CROSS_RE))) {
-    return make('ALERT', raw, { conditionType: 'price', asset: (m[1] ?? '').toUpperCase(), comparison: 'cross', threshold: m[2] }, 0.85);
+    return make(
+      'ALERT',
+      raw,
+      {
+        conditionType: 'price',
+        asset: (m[1] ?? '').toUpperCase(),
+        comparison: 'cross',
+        threshold: m[2],
+      },
+      0.85,
+    );
   }
 
   // AUTO_REPAY patterns
@@ -417,7 +558,12 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('AUTO_REPAY', raw, { comparison: m[1], triggerHF: m[2] }, 0.92);
   }
   if ((m = raw.match(AUTO_REPAY_AMOUNT_RE))) {
-    return make('AUTO_REPAY', raw, { maxRepay: m[1], repayAsset: (m[2] ?? '').toUpperCase(), triggerHF: m[3] }, 0.88);
+    return make(
+      'AUTO_REPAY',
+      raw,
+      { maxRepay: m[1], repayAsset: (m[2] ?? '').toUpperCase(), triggerHF: m[3] },
+      0.88,
+    );
   }
 
   // COLLECT patterns (Zora NFTs)
@@ -445,15 +591,36 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('AUTO_REBALANCE', raw, {}, 0.85);
   }
   if ((m = raw.match(REBALANCE_TARGET_RE))) {
-    return make('AUTO_REBALANCE', raw, { rebalanceTarget: (m[1] ?? '').toUpperCase(), rebalancePercent: m[2] }, 0.9);
+    return make(
+      'AUTO_REBALANCE',
+      raw,
+      { rebalanceTarget: (m[1] ?? '').toUpperCase(), rebalancePercent: m[2] },
+      0.9,
+    );
   }
 
   // TIME_LOCK patterns
   if ((m = raw.match(SCHEDULE_RE))) {
-    return make('TIME_LOCK', raw, { scheduledAction: 'send', scheduledAmount: m[1], scheduledAsset: (m[2] ?? '').toUpperCase(), scheduledRecipient: m[3], scheduledTime: m[4] }, 0.9);
+    return make(
+      'TIME_LOCK',
+      raw,
+      {
+        scheduledAction: 'send',
+        scheduledAmount: m[1],
+        scheduledAsset: (m[2] ?? '').toUpperCase(),
+        scheduledRecipient: m[3],
+        scheduledTime: m[4],
+      },
+      0.9,
+    );
   }
   if ((m = raw.match(TIMELOCK_RE))) {
-    return make('TIME_LOCK', raw, { scheduledAction: (m[1] ?? '').trim(), scheduledTime: (m[2] ?? '').trim() }, 0.85);
+    return make(
+      'TIME_LOCK',
+      raw,
+      { scheduledAction: (m[1] ?? '').trim(), scheduledTime: (m[2] ?? '').trim() },
+      0.85,
+    );
   }
 
   // SESSION_KEY patterns
@@ -461,7 +628,12 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('SESSION_KEY', raw, { sessionAction: 'create', sessionLimit: m[1] }, 0.9);
   }
   if ((m = raw.match(SESSION_KEY_RE))) {
-    return make('SESSION_KEY', raw, { sessionAction: 'create', sessionPurpose: (m[1] ?? '').trim() }, 0.85);
+    return make(
+      'SESSION_KEY',
+      raw,
+      { sessionAction: 'create', sessionPurpose: (m[1] ?? '').trim() },
+      0.85,
+    );
   }
   if ((m = raw.match(SESSION_KEY_REVOKE_RE))) {
     return make('SESSION_KEY', raw, { sessionAction: 'revoke' }, 0.9);
@@ -469,10 +641,20 @@ export function parseDeterministic(input: string): ParsedIntent {
 
   // STRATEGY patterns (Stage 5 — Strategy Marketplace)
   if ((m = raw.match(STRATEGY_CREATE_RE))) {
-    return make('STRATEGY', raw, { strategyAction: 'create', strategyName: (m[1] ?? '').trim() }, 0.85);
+    return make(
+      'STRATEGY',
+      raw,
+      { strategyAction: 'create', strategyName: (m[1] ?? '').trim() },
+      0.85,
+    );
   }
   if ((m = raw.match(STRATEGY_FOLLOW_RE))) {
-    return make('STRATEGY', raw, { strategyAction: 'follow', strategyName: (m[1] ?? '').trim() }, 0.85);
+    return make(
+      'STRATEGY',
+      raw,
+      { strategyAction: 'follow', strategyName: (m[1] ?? '').trim() },
+      0.85,
+    );
   }
   if ((m = raw.match(STRATEGY_LIST_RE))) {
     return make('STRATEGY', raw, { strategyAction: 'list' }, 0.8);
@@ -489,7 +671,12 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('PORTFOLIO', raw, { portfolioAction: 'history' }, 0.85);
   }
   if ((m = raw.match(PORTFOLIO_DETAIL_RE))) {
-    return make('PORTFOLIO', raw, { portfolioAction: 'show', portfolioChain: (m[1] ?? '').toLowerCase() }, 0.9);
+    return make(
+      'PORTFOLIO',
+      raw,
+      { portfolioAction: 'show', portfolioChain: (m[1] ?? '').toLowerCase() },
+      0.9,
+    );
   }
   if ((m = raw.match(PORTFOLIO_RE))) {
     return make('PORTFOLIO', raw, { portfolioAction: 'show' }, 0.85);
@@ -497,10 +684,24 @@ export function parseDeterministic(input: string): ParsedIntent {
 
   // NOTIFICATION patterns
   if ((m = raw.match(NOTIFY_RE))) {
-    return make('NOTIFICATION', raw, { notificationAction: 'subscribe', notificationCondition: m[1]!.trim(), notificationChannel: m[2]!.toLowerCase() }, 0.9);
+    return make(
+      'NOTIFICATION',
+      raw,
+      {
+        notificationAction: 'subscribe',
+        notificationCondition: m[1]!.trim(),
+        notificationChannel: m[2]!.toLowerCase(),
+      },
+      0.9,
+    );
   }
   if ((m = raw.match(NOTIFY_CHANNEL_RE))) {
-    return make('NOTIFICATION', raw, { notificationAction: 'set_channel', notificationChannel: m[1]!.toLowerCase() }, 0.85);
+    return make(
+      'NOTIFICATION',
+      raw,
+      { notificationAction: 'set_channel', notificationChannel: m[1]!.toLowerCase() },
+      0.85,
+    );
   }
   if ((m = raw.match(NOTIFY_STATUS_RE))) {
     return make('NOTIFICATION', raw, { notificationAction: 'list' }, 0.8);
@@ -510,10 +711,20 @@ export function parseDeterministic(input: string): ParsedIntent {
   if ((m = raw.match(VOTE_RE))) {
     const vote = (m[1] ?? '').toLowerCase();
     const voteChoice = vote === 'for' ? 'yes' : vote === 'against' ? 'no' : vote;
-    return make('GOVERNANCE', raw, { govAction: 'vote', govVote: voteChoice, govProposalId: m[2] }, 0.9);
+    return make(
+      'GOVERNANCE',
+      raw,
+      { govAction: 'vote', govVote: voteChoice, govProposalId: m[2] },
+      0.9,
+    );
   }
   if ((m = raw.match(PROPOSAL_CREATE_RE))) {
-    return make('GOVERNANCE', raw, { govAction: 'propose', govProposalText: (m[1] ?? '').trim() }, 0.85);
+    return make(
+      'GOVERNANCE',
+      raw,
+      { govAction: 'propose', govProposalText: (m[1] ?? '').trim() },
+      0.85,
+    );
   }
   if ((m = raw.match(PROPOSAL_LIST_RE))) {
     return make('GOVERNANCE', raw, { govAction: 'list' }, 0.8);
@@ -552,16 +763,35 @@ export function parseDeterministic(input: string): ParsedIntent {
 
   // AUTOMATION patterns (Stage 7 — Advanced Automation)
   if ((m = raw.match(AUTOMATION_IF_RE))) {
-    return make('AUTOMATION', raw, { automationAction: 'create', automationCondition: m[1]!.trim(), automationAction2: m[2]!.trim() }, 0.9);
+    return make(
+      'AUTOMATION',
+      raw,
+      {
+        automationAction: 'create',
+        automationCondition: m[1]!.trim(),
+        automationAction2: m[2]!.trim(),
+      },
+      0.9,
+    );
   }
   if ((m = raw.match(AUTOMATION_RE))) {
-    return make('AUTOMATION', raw, { automationAction: 'create', automationDescription: m[1]!.trim() }, 0.85);
+    return make(
+      'AUTOMATION',
+      raw,
+      { automationAction: 'create', automationDescription: m[1]!.trim() },
+      0.85,
+    );
   }
   if ((m = raw.match(AUTOMATION_LIST_RE))) {
     return make('AUTOMATION', raw, { automationAction: 'list' }, 0.8);
   }
   if ((m = raw.match(AUTOMATION_CANCEL_RE))) {
-    return make('AUTOMATION', raw, { automationAction: 'cancel', automationName: m[1]!.trim() }, 0.85);
+    return make(
+      'AUTOMATION',
+      raw,
+      { automationAction: 'cancel', automationName: m[1]!.trim() },
+      0.85,
+    );
   }
 
   // SECURITY patterns (Stage 8 — Security Hardening)
@@ -578,19 +808,41 @@ export function parseDeterministic(input: string): ParsedIntent {
     return make('SECURITY', raw, { securityAction: 'whitelist', securityTarget: m[1] }, 0.85);
   }
 
-// AI_AGENT patterns (Stage 9 — AI Agent)
-const AI_REMEMBER_RE = /^(?:remember|save|note)\s+(?:that\s+)?(.+?)\s*$/i;
-const AI_FORGET_RE = /^(?:forget|delete|remove)\s+(?:that\s+)?(.+?)\s*$/i;
-const AI_CONTEXT_RE = /^(?:what\s+do\s+you\s+know|show\s+context|what(?:'s|is)\s+(?:my|the)\s+context)(?:\s+about\s+(?:me|my\s+\w+))?\s*$/i;
-const AI_PLAN_RE = /^(?:plan|create\s+plan|make\s+plan)\s+(?:for\s+)?(.+?)\s*$/i;
-const AI_EXPLAIN_RE = /^(?:explain|describe|tell\s+me\s+about)\s+(.+?)(?:\s+to\s+me)?\s*$/i;
+  // AI_AGENT patterns (Stage 9 — AI Agent)
+  const AI_REMEMBER_RE = /^(?:remember|save|note)\s+(?:that\s+)?(.{1,300})\s*$/i;
+  const AI_FORGET_RE = /^(?:forget|delete|remove)\s+(?:that\s+)?(.{1,300})\s*$/i;
+  const AI_CONTEXT_RE =
+    /^(?:what\s+do\s+you\s+know|show\s+context|what(?:'s|is)\s+(?:my|the)\s+context)(?:\s+about\s+(?:me|my\s+\w+))?\s*$/i;
+  const AI_PLAN_RE = /^(?:plan|create\s+plan|make\s+plan)\s+(?:for\s+)?(.{1,300})\s*$/i;
+  const AI_EXPLAIN_RE = /^(?:explain|describe|tell\s+me\s+about)\s+(.{1,300}?)(?:\s+to\s+me)?\s*$/i;
 
-// CROSS_CHAIN patterns (Stage 8 — Cross-chain Orchestration)
+  // CROSS_CHAIN patterns (Stage 8 — Cross-chain Orchestration)
   if ((m = raw.match(CROSS_CHAIN_RE))) {
-    return make('CROSS_CHAIN', raw, { crossAmount: m[1], crossAsset: (m[2] ?? '').toUpperCase(), crossSource: (m[3] ?? '').toLowerCase(), crossDest: (m[4] ?? '').toLowerCase(), crossAction: (m[5] ?? '').trim() }, 0.9);
+    return make(
+      'CROSS_CHAIN',
+      raw,
+      {
+        crossAmount: m[1],
+        crossAsset: (m[2] ?? '').toUpperCase(),
+        crossSource: (m[3] ?? '').toLowerCase(),
+        crossDest: (m[4] ?? '').toLowerCase(),
+        crossAction: (m[5] ?? '').trim(),
+      },
+      0.9,
+    );
   }
   if ((m = raw.match(CROSS_CHAIN_SWAP_RE))) {
-    return make('CROSS_CHAIN', raw, { crossAmount: m[1], crossAsset: (m[2] ?? '').toUpperCase(), crossChain: (m[3] ?? '').toLowerCase(), crossTarget: (m[4] ?? '').toUpperCase() }, 0.88);
+    return make(
+      'CROSS_CHAIN',
+      raw,
+      {
+        crossAmount: m[1],
+        crossAsset: (m[2] ?? '').toUpperCase(),
+        crossChain: (m[3] ?? '').toLowerCase(),
+        crossTarget: (m[4] ?? '').toUpperCase(),
+      },
+      0.88,
+    );
   }
 
   // DEVELOPER patterns (Stage 8 — Developer API)
@@ -607,24 +859,56 @@ const AI_EXPLAIN_RE = /^(?:explain|describe|tell\s+me\s+about)\s+(.+?)(?:\s+to\s
     return make('DEVELOPER', raw, { devAction: 'webhook', devEvent: m[1]!.trim() }, 0.85);
   }
 
-// RISK patterns (Stage 9 — Risk Management)
-const RISK_CHECK_RE = /^(?:check|assess|analyze)\s+(?:my\s+)?(?:portfolio\s+)?risk\s*$/i;
-const RISK_EXPOSURE_RE = /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:risk\s+)?exposure\s*$/i;
-const RISK_HEDGE_RE = /^(?:hedge|protect|reduce\s+risk)\s+(?:my\s+)?(?:portfolio|position)\s*$/i;
-const RISK_ALERT_RE = /^(?:set|create)\s+(?:a\s+)?risk\s+alert\s+(?:if|when)\s+(.+?)\s*$/i;
+  // RISK patterns (Stage 9 — Risk Management)
+  const RISK_CHECK_RE = /^(?:check|assess|analyze)\s+(?:my\s+)?(?:portfolio\s+)?risk\s*$/i;
+  const RISK_EXPOSURE_RE = /^(?:show|display|what(?:'s|is))\s+(?:my\s+)?(?:risk\s+)?exposure\s*$/i;
+  const RISK_HEDGE_RE = /^(?:hedge|protect|reduce\s+risk)\s+(?:my\s+)?(?:portfolio|position)\s*$/i;
+  const RISK_ALERT_RE = /^(?:set|create)\s+(?:a\s+)?risk\s+alert\s+(?:if|when)\s+(.{1,300})\s*$/i;
 
-// COMPOSABLE patterns (Stage 9 — DeFi Composability)
+  // COMPOSABLE patterns (Stage 9 — DeFi Composability)
   if ((m = raw.match(FLASH_LOAN_RE))) {
-    return make('COMPOSABLE', raw, { composableAction: 'flash_loan', composableAmount: m[1], composableAsset: (m[2] ?? '').toUpperCase() }, 0.9);
+    return make(
+      'COMPOSABLE',
+      raw,
+      {
+        composableAction: 'flash_loan',
+        composableAmount: m[1],
+        composableAsset: (m[2] ?? '').toUpperCase(),
+      },
+      0.9,
+    );
   }
   if ((m = raw.match(LEVERAGE_RE))) {
-    return make('COMPOSABLE', raw, { composableAction: 'leverage', composableAsset: (m[1] ?? '').toUpperCase(), composableLeverage: m[2] }, 0.9);
+    return make(
+      'COMPOSABLE',
+      raw,
+      {
+        composableAction: 'leverage',
+        composableAsset: (m[1] ?? '').toUpperCase(),
+        composableLeverage: m[2],
+      },
+      0.9,
+    );
   }
   if ((m = raw.match(DELEVERAGE_RE))) {
-    return make('COMPOSABLE', raw, { composableAction: 'deleverage', composableAsset: (m[1] ?? '').toUpperCase() }, 0.9);
+    return make(
+      'COMPOSABLE',
+      raw,
+      { composableAction: 'deleverage', composableAsset: (m[1] ?? '').toUpperCase() },
+      0.9,
+    );
   }
   if ((m = raw.match(COMPOSE_RE))) {
-    return make('COMPOSABLE', raw, { composableAction: 'compose', composableStep1: (m[1] ?? '').trim(), composableStep2: (m[2] ?? '').trim() }, 0.85);
+    return make(
+      'COMPOSABLE',
+      raw,
+      {
+        composableAction: 'compose',
+        composableStep1: (m[1] ?? '').trim(),
+        composableStep2: (m[2] ?? '').trim(),
+      },
+      0.85,
+    );
   }
 
   // RISK patterns (Stage 9 — Risk Management)
@@ -755,8 +1039,10 @@ export async function parseWithLLM(input: string, complete: LLMComplete): Promis
   const intent = (VALID_INTENTS as readonly string[]).includes(intentRaw)
     ? (intentRaw as Intent)
     : 'UNKNOWN';
-  const slots = obj.slots && typeof obj.slots === 'object' ? (obj.slots as Record<string, unknown>) : {};
-  const confidence = typeof obj.confidence === 'number' ? Math.max(0, Math.min(1, obj.confidence)) : 0.5;
+  const slots =
+    obj.slots && typeof obj.slots === 'object' ? (obj.slots as Record<string, unknown>) : {};
+  const confidence =
+    typeof obj.confidence === 'number' ? Math.max(0, Math.min(1, obj.confidence)) : 0.5;
 
   return make(intent, raw, slots, confidence);
 }

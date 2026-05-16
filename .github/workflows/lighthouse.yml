@@ -13,6 +13,9 @@ on:
       - 'pnpm-lock.yaml'
       - '.github/workflows/lighthouse.yml'
 
+permissions:
+  contents: read
+
 concurrency:
   group: lighthouse-${{ github.ref }}
   cancel-in-progress: true

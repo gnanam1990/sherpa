@@ -33,6 +33,9 @@ const ConsumeBody = z.object({
   txHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
 });
 
+const surfaceWriteRouteOptions = { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } };
+const surfaceReadRouteOptions = { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } };
+
 export async function surfacesRoutes(app: FastifyInstance, config: SherpaConfig): Promise<void> {
   const requirePool = () => {
     if (!config.useRealDb) {
@@ -41,7 +44,7 @@ export async function surfacesRoutes(app: FastifyInstance, config: SherpaConfig)
     return getPool(config);
   };
 
-  app.post('/api/surfaces/farcaster/link', async (req, reply) => {
+  app.post('/api/surfaces/farcaster/link', surfaceWriteRouteOptions, async (req, reply) => {
     const parsed = LinkBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.message });
@@ -70,18 +73,22 @@ export async function surfacesRoutes(app: FastifyInstance, config: SherpaConfig)
     return reply.send({ ok: true, fid, address });
   });
 
-  app.get<{ Params: { fid: string } }>('/api/surfaces/farcaster/:fid', async (req, reply) => {
-    const fid = Number(req.params.fid);
-    if (!Number.isInteger(fid) || fid <= 0) {
-      return reply.code(400).send({ error: 'invalid fid' });
-    }
-    const pool = requirePool();
-    const link = await getFarcasterLink(pool, BigInt(fid));
-    if (!link) return reply.code(404).send({ error: 'not found' });
-    return reply.send(link);
-  });
+  app.get<{ Params: { fid: string } }>(
+    '/api/surfaces/farcaster/:fid',
+    surfaceReadRouteOptions,
+    async (req, reply) => {
+      const fid = Number(req.params.fid);
+      if (!Number.isInteger(fid) || fid <= 0) {
+        return reply.code(400).send({ error: 'invalid fid' });
+      }
+      const pool = requirePool();
+      const link = await getFarcasterLink(pool, BigInt(fid));
+      if (!link) return reply.code(404).send({ error: 'not found' });
+      return reply.send(link);
+    },
+  );
 
-  app.post('/api/surfaces/telegram/link', async (req, reply) => {
+  app.post('/api/surfaces/telegram/link', surfaceWriteRouteOptions, async (req, reply) => {
     const parsed = LinkBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.message });
@@ -112,6 +119,7 @@ export async function surfacesRoutes(app: FastifyInstance, config: SherpaConfig)
 
   app.get<{ Params: { tgUserId: string } }>(
     '/api/surfaces/telegram/:tgUserId',
+    surfaceReadRouteOptions,
     async (req, reply) => {
       const tgUserId = Number(req.params.tgUserId);
       if (!Number.isInteger(tgUserId) || tgUserId <= 0) {
@@ -124,7 +132,7 @@ export async function surfacesRoutes(app: FastifyInstance, config: SherpaConfig)
     },
   );
 
-  app.post('/api/surfaces/sign-intent', async (req, reply) => {
+  app.post('/api/surfaces/sign-intent', surfaceWriteRouteOptions, async (req, reply) => {
     const parsed = SignIntentBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.message });
@@ -144,17 +152,22 @@ export async function surfacesRoutes(app: FastifyInstance, config: SherpaConfig)
     });
   });
 
-  app.get<{ Params: { token: string } }>('/api/surfaces/sign-token/:token', async (req, reply) => {
-    const pool = requirePool();
-    const tokenData = await getSigningToken(pool, req.params.token);
-    if (!tokenData) return reply.code(404).send({ error: 'token not found' });
-    if (tokenData.consumed) return reply.code(410).send({ error: 'token already consumed' });
-    if (tokenData.expiresAt < new Date()) return reply.code(410).send({ error: 'token expired' });
-    return reply.send(tokenData);
-  });
+  app.get<{ Params: { token: string } }>(
+    '/api/surfaces/sign-token/:token',
+    surfaceReadRouteOptions,
+    async (req, reply) => {
+      const pool = requirePool();
+      const tokenData = await getSigningToken(pool, req.params.token);
+      if (!tokenData) return reply.code(404).send({ error: 'token not found' });
+      if (tokenData.consumed) return reply.code(410).send({ error: 'token already consumed' });
+      if (tokenData.expiresAt < new Date()) return reply.code(410).send({ error: 'token expired' });
+      return reply.send(tokenData);
+    },
+  );
 
   app.post<{ Params: { token: string } }>(
     '/api/surfaces/sign-intent/:token/consume',
+    surfaceWriteRouteOptions,
     async (req, reply) => {
       const parsed = ConsumeBody.safeParse(req.body);
       if (!parsed.success) {

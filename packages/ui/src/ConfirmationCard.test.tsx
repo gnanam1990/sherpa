@@ -140,14 +140,18 @@ describe('ConfirmationCard', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('matches the compact 375px mobile card snapshot', () => {
+  it('renders the compact 375px mobile card essentials', () => {
     const { container } = render(
       <div style={{ width: 375 }}>
         <ConfirmationCard card={makeCard('BET')} onConfirm={vi.fn()} onCancel={vi.fn()} />
       </div>,
     );
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstChild).toHaveStyle({ width: '375px' });
+    expect(screen.getByTestId('confirmation-card')).toHaveTextContent('BET');
+    expect(screen.getByTestId('confirmation-card')).toHaveTextContent('Sponsored');
+    expect(screen.getByTestId('confirmation-card')).toHaveTextContent('2-step plan');
+    expect(screen.getByRole('button', { name: 'Proceed' })).toBeTruthy();
   });
 });
 

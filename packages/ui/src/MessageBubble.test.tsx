@@ -148,13 +148,18 @@ describe('MessageBubble', () => {
     expect(screen.getByTestId('message-bubble-surface').className).toContain('min-h-10');
   });
 
-  it('matches the mobile action summary snapshot at 375px', () => {
+  it('renders the mobile action summary essentials at 375px', () => {
     const { container } = render(
       <div className="w-[375px]">
         <MessageBubble message={actionMessage()} now={now} />
       </div>,
     );
 
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstChild).toHaveClass('w-[375px]');
+    expect(screen.getByTestId('message-bubble-surface')).toHaveTextContent('Sent 5 USDC');
+    expect(screen.getByRole('button', { name: /Sent 5 USDC/i })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
   });
 });
