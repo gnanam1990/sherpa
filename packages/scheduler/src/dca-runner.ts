@@ -1,13 +1,21 @@
 import type { TaskContext } from './hourly-tasks.js';
 import type { DCAStore, DCAScheduleRow } from '@sherpa/memory';
 import { validateBalance } from './dca-validation.js';
-import { executeDCA, MAX_CONSECUTIVE_FAILURES } from './dca-execution.js';
+import { executeDCA, MAX_CONSECUTIVE_FAILURES, type ExecutionResult, type SwapParams } from './dca-execution.js';
 
 export type { DCAScheduleRow };
+
+async function sessionKeyNotConfigured(_params: SwapParams): Promise<ExecutionResult> {
+  return {
+    ok: false,
+    error: 'session_key_executor_not_configured: Stage 7 required for on-chain DCA execution',
+  };
+}
 
 export async function runDCATasks(
   ctx: TaskContext,
   store?: DCAStore,
+  executeSwap: (params: SwapParams) => Promise<ExecutionResult> = sessionKeyNotConfigured,
 ): Promise<{ ok: boolean; detail?: string }> {
   try {
     const now = new Date().toISOString();
@@ -42,7 +50,7 @@ export async function runDCATasks(
 
         const result = await executeDCA(schedule, {
           store: store!,
-          executeSwap: undefined,
+          executeSwap,
           notify: async (addr, msg) => {
             ctx.log.error(`[DCA notification] ${addr}: ${msg}`);
           },

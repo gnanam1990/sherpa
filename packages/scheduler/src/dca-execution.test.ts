@@ -23,18 +23,34 @@ describe('DCA execution', () => {
   });
 
   describe('buildSwapTransaction', () => {
-    test('returns ok with txHash', async () => {
-      const result = await buildSwapTransaction({
+    test('throws — no fake on-chain success', async () => {
+      await expect(
+        buildSwapTransaction({
+          fromAsset: { symbol: 'USDC' },
+          toAsset: { symbol: 'ETH' },
+          amountIn: '100',
+          userAddress: '0x1234567890123456789012345678901234567890',
+          builderCode: BUILDER_CODE,
+        }),
+      ).rejects.toThrow('scaffold placeholder');
+    });
+  });
+
+  describe('executeDCA without executeSwap', () => {
+    test('throws — refusing to fake success', async () => {
+      const store = new InMemoryDCAStore();
+      const schedule = await store.createSchedule({
+        userAddress: '0x1234567890123456789012345678901234567890',
         fromAsset: { symbol: 'USDC' },
         toAsset: { symbol: 'ETH' },
-        amountIn: '100',
-        userAddress: '0x1234567890123456789012345678901234567890',
-        builderCode: BUILDER_CODE,
+        amountPerTick: '100',
+        frequency: 'daily',
+        nextExecutionAt: new Date().toISOString(),
       });
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.txHash).toMatch(/^0x[0-9a-f]{64}$/);
-      }
+
+      await expect(
+        executeDCA(schedule, { store }),
+      ).rejects.toThrow('executeSwap function required');
     });
   });
 

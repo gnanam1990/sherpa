@@ -6,6 +6,13 @@ import {
   type DCAScheduleRow,
 } from './dca-runner.js';
 import { InMemoryDCAStore, type DCAStore } from '@sherpa/memory';
+import type { ExecutionResult } from './dca-execution.js';
+
+const mockSuccessSwap = vi.fn(async (): Promise<ExecutionResult> => ({
+  ok: true,
+  txHash: '0xabc123def456abc123def456abc123def456abc123def456abc123def456abc123',
+  amountOut: '0.05',
+}));
 
 function makeSchedule(overrides: Partial<DCAScheduleRow> = {}): DCAScheduleRow {
   return {
@@ -149,7 +156,7 @@ describe('DCA runner', () => {
       expect(result.detail).toContain('0 executed');
     });
 
-    test('executes due schedule', async () => {
+    test('executes due schedule with injected executeSwap', async () => {
       const store = new InMemoryDCAStore();
       const created = await store.createSchedule({
         userAddress: '0x1234567890123456789012345678901234567890',
@@ -161,13 +168,32 @@ describe('DCA runner', () => {
       });
 
       const log = { error: vi.fn() };
-      const result = await runDCATasks({ log }, store);
+      const result = await runDCATasks({ log }, store, mockSuccessSwap);
       expect(result.ok).toBe(true);
       expect(result.detail).toContain('1 executed');
 
       const updated = await store.getScheduleById(created.id);
       expect(updated!.total_executions).toBe(1);
       expect(updated!.consecutive_failures).toBe(0);
+    });
+
+    test('without executeSwap defaults to session_key_not_configured error', async () => {
+      const store = new InMemoryDCAStore();
+      await store.createSchedule({
+        userAddress: '0x1234567890123456789012345678901234567890',
+        fromAsset: { symbol: 'USDC' },
+        toAsset: { symbol: 'ETH' },
+        amountPerTick: '100',
+        frequency: 'daily',
+        nextExecutionAt: new Date(Date.now() - 60000).toISOString(),
+      });
+
+      const log = { error: vi.fn() };
+      const result = await runDCATasks({ log }, store);
+      expect(result.ok).toBe(true);
+      // No fake success: the schedule fails because session key not configured
+      expect(result.detail).toContain('1 failed');
+      expect(result.detail).not.toContain('1 executed');
     });
 
     test('skips schedules with max failures', async () => {
@@ -255,7 +281,7 @@ describe('DCA runner', () => {
       });
 
       const log = { error: vi.fn() };
-      const result = await runDCATasks({ log }, store);
+      const result = await runDCATasks({ log }, store, mockSuccessSwap);
       expect(result.ok).toBe(true);
       expect(result.detail).toContain('2 executed');
     });
@@ -272,7 +298,7 @@ describe('DCA runner', () => {
       });
 
       const log = { error: vi.fn() };
-      await runDCATasks({ log }, store);
+      await runDCATasks({ log }, store, mockSuccessSwap);
 
       const updated = await store.getScheduleById(created.id);
       expect(new Date(updated!.next_execution_at).getTime()).toBeGreaterThan(Date.now());
