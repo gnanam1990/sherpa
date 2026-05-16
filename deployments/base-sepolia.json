@@ -1,0 +1,92 @@
+{
+  "chainId": 84532,
+  "network": "base-sepolia",
+  "deployment_date": "2026-05-16T15:21:22Z",
+  "deployer": "0xdd8FA0CD3BB2fB1D1964C6E5d168081C21973D8c",
+  "status": "testnet-deployed-pending-audit",
+  "external_dependencies": {
+    "aave_pool": {
+      "address": "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27",
+      "verified_code": true,
+      "addresses_provider": "0xE4C23309117Aa30342BFaae6c95c6478e0A4Ad00"
+    },
+    "aerodrome_router": {
+      "address": "0x135Ea0F5422fB1D4aDeaC8A205735498ffA5B933",
+      "type": "mock",
+      "reason": "Aerodrome does not have an official Base Sepolia router. This mock is only for testnet swap-path audit and smoke testing.",
+      "deploy_tx": "0xf8fcbfd55b508bfbebd6dc83d438e10d5dae4538e2c2bfd41a2f91f3f7b07ab6",
+      "block": 41588095,
+      "gas_used": 309984,
+      "verified": true,
+      "basescan_url": "https://sepolia.basescan.org/address/0x135Ea0F5422fB1D4aDeaC8A205735498ffA5B933"
+    }
+  },
+  "treasury": {
+    "address": "0x70A58169BF96587E55F500c4b5cb9d956Ef826ee",
+    "deploy_tx": "0x0dd79acf75d55dcf8c3db9f49811f10bf71aed6b3b0018ebbcf988037d0f00de",
+    "block": 41588193,
+    "gas_used": 456445,
+    "owner": "0xdd8FA0CD3BB2fB1D1964C6E5d168081C21973D8c",
+    "verified": true,
+    "basescan_url": "https://sepolia.basescan.org/address/0x70A58169BF96587E55F500c4b5cb9d956Ef826ee"
+  },
+  "router": {
+    "address": "0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032",
+    "deploy_tx": "0x9f53e8dce4204ae67ad36cd114cdd4e1814873fa8f88014c399830f6aa14b232",
+    "block": 41588233,
+    "gas_used": 1351030,
+    "constructor_args": {
+      "owner": "0xdd8FA0CD3BB2fB1D1964C6E5d168081C21973D8c",
+      "aerodrome": "0x135Ea0F5422fB1D4aDeaC8A205735498ffA5B933",
+      "aave_pool": "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27",
+      "treasury": "0x70A58169BF96587E55F500c4b5cb9d956Ef826ee"
+    },
+    "verified": true,
+    "basescan_url": "https://sepolia.basescan.org/address/0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032",
+    "post_deploy_checks": {
+      "fee_bps": 10,
+      "min_health_factor": "1200000000000000000",
+      "builder_code": "bc_97ju6eu2"
+    }
+  },
+  "allowlist_setup": {
+    "tx_hashes": [
+      "0x757c2bae9043eefa4e31d3444b0393244f6dcdaec91b3b6cbd292887222f6a0a"
+    ],
+    "gas_used": 74098,
+    "swap_tokens": [
+      {
+        "symbol": "USDC",
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "allowed": true
+      },
+      {
+        "symbol": "WETH",
+        "address": "0x4200000000000000000000000000000000000006",
+        "allowed": true
+      }
+    ],
+    "aave_assets": [
+      {
+        "symbol": "USDC",
+        "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "allowed": true
+      },
+      {
+        "symbol": "WETH",
+        "address": "0x4200000000000000000000000000000000000006",
+        "allowed": true
+      }
+    ]
+  },
+  "gas_summary": {
+    "total_gas_used": 2191557,
+    "total_eth_spent": "0.000013149342055895",
+    "remaining_deployer_balance": "0.089986850657944105"
+  },
+  "notes": [
+    "This is a Base Sepolia audit target only.",
+    "Stage 2 production feature flags remain false by default.",
+    "Do not use the mock Aerodrome router on Base mainnet."
+  ]
+}

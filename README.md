@@ -18,7 +18,7 @@ Sherpa is a natural-language operating system for the Base L2 blockchain. Users 
 | Stage | Description | Status | Details |
 |---|---|---|---|
 | **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP | ✅ Live (Base Sepolia) | [Stage Status](docs/sherpa/STAGE_STATUS.md) |
-| **Stage 2** | DeFi (SWAP, LEND, BORROW, STAKE, BRIDGE, LP) | 🟡 Code Complete | Gated behind audit + mainnet deploy |
+| **Stage 2** | DeFi (SWAP, LEND, BORROW, STAKE, BRIDGE, LP) | 🟡 Base Sepolia Deployed | Testnet audit target deployed 2026-05-16; gated behind audit + mainnet deploy |
 | **Stage 3** | Multi-surface (Farcaster Mini App, Telegram bot) | 🟡 Code Complete | Pending platform account setup |
 | **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY) | 🔵 In Progress | Scheduler code present, not in production |
 | **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace | ⚪ Planned | Scaffolded |
@@ -33,8 +33,10 @@ Sherpa is a natural-language operating system for the Base L2 blockchain. Users 
 
 | Network | Contracts | Status |
 |---|---|---|
-| Base Sepolia | SherpaRouter, SherpaTreasury | Deployed (testnet) |
+| Base Sepolia | [SherpaRouter](https://sepolia.basescan.org/address/0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032), [SherpaTreasury](https://sepolia.basescan.org/address/0x70A58169BF96587E55F500c4b5cb9d956Ef826ee) | Deployed 2026-05-16, verified, pending Code4rena audit |
 | Base Mainnet | SherpaRouter, SherpaTreasury | Pending audit |
+
+Base Sepolia uses a verified mock Aerodrome router for swap-path testing because Aerodrome does not provide an official Base Sepolia router. Deployment details are recorded in `deployments/base-sepolia.json`.
 
 See `docs/sherpa/audit/05_mainnet_deployment.md` for deployment guide.
 
