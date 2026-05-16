@@ -1,11 +1,12 @@
 import type { TaskContext } from './hourly-tasks.js';
 import type { DCAStore, DCAScheduleRow } from '@sherpa/memory';
-import { validateBalance } from './dca-validation.js';
+import { validateBalance, type ValidateBalanceParams, type ValidationResult } from './dca-validation.js';
 import { executeDCA, MAX_CONSECUTIVE_FAILURES, type ExecutionResult, type SwapParams } from './dca-execution.js';
 
 export type { DCAScheduleRow };
+export type BalanceChecker = (params: ValidateBalanceParams) => Promise<ValidationResult>;
 
-async function sessionKeyNotConfigured(_params: SwapParams): Promise<ExecutionResult> {
+export async function sessionKeyNotConfigured(_params: SwapParams): Promise<ExecutionResult> {
   return {
     ok: false,
     error: 'session_key_executor_not_configured: Stage 7 required for on-chain DCA execution',
@@ -16,6 +17,7 @@ export async function runDCATasks(
   ctx: TaskContext,
   store?: DCAStore,
   executeSwap: (params: SwapParams) => Promise<ExecutionResult> = sessionKeyNotConfigured,
+  checkBalance: BalanceChecker = validateBalance,
 ): Promise<{ ok: boolean; detail?: string }> {
   try {
     const now = new Date().toISOString();
@@ -41,7 +43,15 @@ export async function runDCATasks(
         }
 
         if (store) {
-          const balanceCheck = await validateBalance(schedule.user_address, schedule.amount_per_tick);
+          const fromAsset = schedule.from_asset as { address?: string; decimals?: number };
+          const tokenAddress = fromAsset.address;
+          if (!tokenAddress) {
+            skipped++;
+            continue;
+          }
+          const decimals = fromAsset.decimals ?? 18;
+          const amountBigint = BigInt(Math.round(Number(schedule.amount_per_tick) * 10 ** decimals));
+          const balanceCheck = await checkBalance({ userAddress: schedule.user_address, token: tokenAddress, amount: amountBigint });
           if (!balanceCheck.ok) {
             skipped++;
             continue;

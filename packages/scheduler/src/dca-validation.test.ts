@@ -176,17 +176,77 @@ describe('DCA validation', () => {
     });
   });
 
-  describe('validateBalance', () => {
-    test('returns ok (stub)', async () => {
-      const result = await validateBalance('0x1234', '100');
+  describe('validateBalance (P1-9)', () => {
+    const params = {
+      userAddress: '0x1111111111111111111111111111111111111111',
+      token: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      amount: 100n * 10n ** 6n,
+      rpcUrl: 'https://rpc.example.com',
+    };
+
+    test('returns ok when balance >= amount', async () => {
+      const mockFetch = async () => 200n * 10n ** 6n;
+      const result = await validateBalance(params, mockFetch);
       expect(result.ok).toBe(true);
+    });
+
+    test('returns ok when balance equals amount exactly', async () => {
+      const mockFetch = async () => params.amount;
+      const result = await validateBalance(params, mockFetch);
+      expect(result.ok).toBe(true);
+    });
+
+    test('returns insufficient_balance when balance < amount', async () => {
+      const mockFetch = async () => 50n * 10n ** 6n;
+      const result = await validateBalance(params, mockFetch);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toBe('insufficient_balance');
+    });
+
+    test('returns insufficient_balance when balance is zero', async () => {
+      const mockFetch = async () => 0n;
+      const result = await validateBalance(params, mockFetch);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toBe('insufficient_balance');
+    });
+
+    test('propagates RPC errors — does not swallow', async () => {
+      const mockFetch = async () => { throw new Error('rpc_http_429'); };
+      await expect(validateBalance(params, mockFetch)).rejects.toThrow('rpc_http_429');
     });
   });
 
-  describe('validateAllowance', () => {
-    test('returns ok (stub)', async () => {
-      const result = await validateAllowance('0x1234', '0x5678', '100');
+  describe('validateAllowance (P1-9)', () => {
+    const params = {
+      userAddress: '0x1111111111111111111111111111111111111111',
+      token: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      spender: '0x2222222222222222222222222222222222222222',
+      amount: 100n * 10n ** 6n,
+      rpcUrl: 'https://rpc.example.com',
+    };
+
+    test('returns ok when allowance >= amount', async () => {
+      const mockFetch = async () => 200n * 10n ** 6n;
+      const result = await validateAllowance(params, mockFetch);
       expect(result.ok).toBe(true);
+    });
+
+    test('returns ok when allowance equals amount exactly', async () => {
+      const mockFetch = async () => params.amount;
+      const result = await validateAllowance(params, mockFetch);
+      expect(result.ok).toBe(true);
+    });
+
+    test('returns insufficient_allowance when allowance < amount', async () => {
+      const mockFetch = async () => 0n;
+      const result = await validateAllowance(params, mockFetch);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toBe('insufficient_allowance');
+    });
+
+    test('propagates RPC errors — does not swallow', async () => {
+      const mockFetch = async () => { throw new Error('rpc_error: execution reverted'); };
+      await expect(validateAllowance(params, mockFetch)).rejects.toThrow('rpc_error');
     });
   });
 

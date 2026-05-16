@@ -3,6 +3,7 @@ import {
   calculateNextExecution,
   runDCATasks,
   checkEndCondition,
+  sessionKeyNotConfigured,
   type DCAScheduleRow,
 } from './dca-runner.js';
 import { InMemoryDCAStore, type DCAStore } from '@sherpa/memory';
@@ -14,11 +15,14 @@ const mockSuccessSwap = vi.fn(async (): Promise<ExecutionResult> => ({
   amountOut: '0.05',
 }));
 
+// Injected balance checker for tests — simulates sufficient on-chain balance.
+const mockBalanceOk = vi.fn(async () => ({ ok: true as const }));
+
 function makeSchedule(overrides: Partial<DCAScheduleRow> = {}): DCAScheduleRow {
   return {
     id: 'test-schedule-id',
     user_address: '0x1234567890123456789012345678901234567890',
-    from_asset: { symbol: 'USDC' },
+    from_asset: { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },
     to_asset: { symbol: 'ETH' },
     amount_per_tick: '100',
     frequency: 'daily',
@@ -160,7 +164,7 @@ describe('DCA runner', () => {
       const store = new InMemoryDCAStore();
       const created = await store.createSchedule({
         userAddress: '0x1234567890123456789012345678901234567890',
-        fromAsset: { symbol: 'USDC' },
+        fromAsset: { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },
         toAsset: { symbol: 'ETH' },
         amountPerTick: '100',
         frequency: 'daily',
@@ -168,7 +172,7 @@ describe('DCA runner', () => {
       });
 
       const log = { error: vi.fn() };
-      const result = await runDCATasks({ log }, store, mockSuccessSwap);
+      const result = await runDCATasks({ log }, store, mockSuccessSwap, mockBalanceOk);
       expect(result.ok).toBe(true);
       expect(result.detail).toContain('1 executed');
 
@@ -181,7 +185,7 @@ describe('DCA runner', () => {
       const store = new InMemoryDCAStore();
       await store.createSchedule({
         userAddress: '0x1234567890123456789012345678901234567890',
-        fromAsset: { symbol: 'USDC' },
+        fromAsset: { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },
         toAsset: { symbol: 'ETH' },
         amountPerTick: '100',
         frequency: 'daily',
@@ -189,7 +193,7 @@ describe('DCA runner', () => {
       });
 
       const log = { error: vi.fn() };
-      const result = await runDCATasks({ log }, store);
+      const result = await runDCATasks({ log }, store, sessionKeyNotConfigured, mockBalanceOk);
       expect(result.ok).toBe(true);
       // No fake success: the schedule fails because session key not configured
       expect(result.detail).toContain('1 failed');
@@ -200,7 +204,7 @@ describe('DCA runner', () => {
       const store = new InMemoryDCAStore();
       const created = await store.createSchedule({
         userAddress: '0x1234567890123456789012345678901234567890',
-        fromAsset: { symbol: 'USDC' },
+        fromAsset: { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },
         toAsset: { symbol: 'ETH' },
         amountPerTick: '100',
         frequency: 'daily',
@@ -219,7 +223,7 @@ describe('DCA runner', () => {
       const store = new InMemoryDCAStore();
       await store.createSchedule({
         userAddress: '0x1234567890123456789012345678901234567890',
-        fromAsset: { symbol: 'USDC' },
+        fromAsset: { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },
         toAsset: { symbol: 'ETH' },
         amountPerTick: '100',
         frequency: 'daily',
@@ -242,7 +246,7 @@ describe('DCA runner', () => {
       const store = new InMemoryDCAStore();
       await store.createSchedule({
         userAddress: '0x1234567890123456789012345678901234567890',
-        fromAsset: { symbol: 'USDC' },
+        fromAsset: { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },
         toAsset: { symbol: 'ETH' },
         amountPerTick: '100',
         frequency: 'daily',
@@ -265,7 +269,7 @@ describe('DCA runner', () => {
       const store = new InMemoryDCAStore();
       await store.createSchedule({
         userAddress: '0x1234567890123456789012345678901234567890',
-        fromAsset: { symbol: 'USDC' },
+        fromAsset: { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },
         toAsset: { symbol: 'ETH' },
         amountPerTick: '100',
         frequency: 'daily',
@@ -273,7 +277,7 @@ describe('DCA runner', () => {
       });
       await store.createSchedule({
         userAddress: '0x1234567890123456789012345678901234567890',
-        fromAsset: { symbol: 'USDC' },
+        fromAsset: { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },
         toAsset: { symbol: 'AERO' },
         amountPerTick: '50',
         frequency: 'weekly',
@@ -281,7 +285,7 @@ describe('DCA runner', () => {
       });
 
       const log = { error: vi.fn() };
-      const result = await runDCATasks({ log }, store, mockSuccessSwap);
+      const result = await runDCATasks({ log }, store, mockSuccessSwap, mockBalanceOk);
       expect(result.ok).toBe(true);
       expect(result.detail).toContain('2 executed');
     });
@@ -290,7 +294,7 @@ describe('DCA runner', () => {
       const store = new InMemoryDCAStore();
       const created = await store.createSchedule({
         userAddress: '0x1234567890123456789012345678901234567890',
-        fromAsset: { symbol: 'USDC' },
+        fromAsset: { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 },
         toAsset: { symbol: 'ETH' },
         amountPerTick: '100',
         frequency: 'daily',
@@ -298,7 +302,7 @@ describe('DCA runner', () => {
       });
 
       const log = { error: vi.fn() };
-      await runDCATasks({ log }, store, mockSuccessSwap);
+      await runDCATasks({ log }, store, mockSuccessSwap, mockBalanceOk);
 
       const updated = await store.getScheduleById(created.id);
       expect(new Date(updated!.next_execution_at).getTime()).toBeGreaterThan(Date.now());
