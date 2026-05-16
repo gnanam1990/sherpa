@@ -75,4 +75,9 @@ interface IAavePool {
             uint256 ltv,
             uint256 healthFactor
         );
+
+    /// @notice Returns the aToken address for a given underlying asset
+    /// @param asset The underlying asset address
+    /// @return The aToken address
+    function getReserveAToken(address asset) external view returns (address);
 }

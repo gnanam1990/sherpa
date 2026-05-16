@@ -15,6 +15,7 @@ contract SherpaRouterTest is Test {
     MockAavePool public mockAave;
     MockERC20 public tokenA;
     MockERC20 public tokenB;
+    MockERC20 public aTokenA;
 
     address public owner = address(0x1);
     address public nonOwner = address(0x2);
@@ -27,6 +28,7 @@ contract SherpaRouterTest is Test {
         mockAave = new MockAavePool();
         tokenA = new MockERC20("Token A", "TKA", 18);
         tokenB = new MockERC20("Token B", "TKB", 18);
+        aTokenA = new MockERC20("aToken A", "aTKA", 18);
 
         router = new SherpaRouter(
             owner,
@@ -34,7 +36,17 @@ contract SherpaRouterTest is Test {
             address(mockAave),
             treasury
         );
+
+        // Allow both tokens
+        router.setSwapTokenAllowed(address(tokenA), true);
+        router.setSwapTokenAllowed(address(tokenB), true);
         vm.stopPrank();
+
+        // Wire aToken for tokenA in the mock pool
+        mockAave.setReserveAToken(address(tokenA), address(aTokenA));
+
+        // Pre-fund Aerodrome mock with tokenB so it can transfer on swaps
+        tokenB.mint(address(mockAerodrome), 1_000_000e18);
     }
 
     // ─── Constructor Tests ──────────────────────────────────────────────
@@ -54,6 +66,8 @@ contract SherpaRouterTest is Test {
         assertEq(router.MAX_SLIPPAGE_BPS(), 500);
         assertEq(router.MIN_SLIPPAGE_BPS(), 10);
         assertEq(router.MIN_HEALTH_FACTOR(), 1.2e18);
+        assertEq(router.MIN_WITHDRAW_HEALTH_FACTOR(), 1.5e18);
+        assertEq(router.BUILDER_CODE(), bytes32("bc_97ju6eu2"));
     }
 
     function test_constructor_revertsZeroAerodrome() public {
@@ -177,7 +191,7 @@ contract SherpaRouterTest is Test {
 
     // ─── getUserPositions Tests ─────────────────────────────────────────
 
-    function test_getUserPositions_returnsMockData() public {
+    function test_getUserPositions_returnsMockData() public view {
         (
             uint256 totalCollateral,
             uint256 totalDebt,
@@ -211,37 +225,321 @@ contract SherpaRouterTest is Test {
         assertEq(availableBorrows, 3000e8);
     }
 
-    // ─── Placeholder Function Tests ─────────────────────────────────────
+    // ─── Swap Tests ─────────────────────────────────────────────────────
 
-    function test_swap_revertsNotImplemented() public {
-        IAerodromeRouter.Route[] memory routes = new IAerodromeRouter.Route[](0);
-        vm.prank(user);
-        vm.expectRevert("not implemented");
-        router.swap(address(tokenA), address(tokenB), 100, 90, routes, block.timestamp);
+    function _swapRoutes() internal view returns (IAerodromeRouter.Route[] memory routes) {
+        routes = new IAerodromeRouter.Route[](1);
+        routes[0] = IAerodromeRouter.Route({
+            from: address(tokenA),
+            to: address(tokenB),
+            stable: false,
+            factory: address(0)
+        });
     }
 
-    function test_supply_revertsNotImplemented() public {
-        vm.prank(user);
-        vm.expectRevert("not implemented");
-        router.supply(address(tokenA), 100);
+    function test_swap_happyPath() public {
+        uint256 amountIn = 1000e18;
+        tokenA.mint(user, amountIn);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amountIn);
+        uint256 amountOut = router.swap(
+            address(tokenA),
+            address(tokenB),
+            amountIn,
+            0,
+            _swapRoutes(),
+            block.timestamp + 100
+        );
+        vm.stopPrank();
+
+        uint256 expectedFee = (amountIn * 10) / 10_000;
+        assertGt(amountOut, 0);
+        assertEq(tokenA.balanceOf(treasury), expectedFee);
+        assertEq(tokenB.balanceOf(user), amountOut);
     }
 
-    function test_withdraw_revertsNotImplemented() public {
-        vm.prank(user);
-        vm.expectRevert("not implemented");
-        router.withdraw(address(tokenA), 100);
+    function test_swap_feeGoesToTreasury() public {
+        uint256 amountIn = 10_000e18;
+        tokenA.mint(user, amountIn);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amountIn);
+        router.swap(address(tokenA), address(tokenB), amountIn, 0, _swapRoutes(), block.timestamp + 100);
+        vm.stopPrank();
+
+        uint256 expectedFee = (amountIn * 10) / 10_000;
+        assertEq(tokenA.balanceOf(treasury), expectedFee);
     }
 
-    function test_borrow_revertsNotImplemented() public {
-        vm.prank(user);
-        vm.expectRevert("not implemented");
-        router.borrow(address(tokenA), 100, 2);
+    function test_swap_emitsSwapExecuted() public {
+        uint256 amountIn = 1000e18;
+        tokenA.mint(user, amountIn);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amountIn);
+        vm.expectEmit(true, true, true, false);
+        emit ISherpaRouter.SwapExecuted(user, address(tokenA), address(tokenB), amountIn, 0, 0, bytes32("bc_97ju6eu2"));
+        router.swap(address(tokenA), address(tokenB), amountIn, 0, _swapRoutes(), block.timestamp + 100);
+        vm.stopPrank();
     }
 
-    function test_repay_revertsNotImplemented() public {
+    function test_swap_revertsZeroAmount() public {
         vm.prank(user);
-        vm.expectRevert("not implemented");
-        router.repay(address(tokenA), 100, 2);
+        vm.expectRevert(SherpaRouter.ZeroAmount.selector);
+        router.swap(address(tokenA), address(tokenB), 0, 0, _swapRoutes(), block.timestamp + 100);
+    }
+
+    function test_swap_revertsTokenInNotAllowed() public {
+        MockERC20 unknownToken = new MockERC20("Unknown", "UNK", 18);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.TokenNotAllowed.selector, address(unknownToken)));
+        router.swap(address(unknownToken), address(tokenB), 100, 0, _swapRoutes(), block.timestamp + 100);
+    }
+
+    function test_swap_revertsTokenOutNotAllowed() public {
+        MockERC20 unknownToken = new MockERC20("Unknown", "UNK", 18);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.TokenNotAllowed.selector, address(unknownToken)));
+        router.swap(address(tokenA), address(unknownToken), 100, 0, _swapRoutes(), block.timestamp + 100);
+    }
+
+    function test_swap_revertsExpiredDeadline() public {
+        uint256 amountIn = 1000e18;
+        tokenA.mint(user, amountIn);
+        vm.startPrank(user);
+        tokenA.approve(address(router), amountIn);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.InvalidDeadline.selector, block.timestamp - 1));
+        router.swap(address(tokenA), address(tokenB), amountIn, 0, _swapRoutes(), block.timestamp - 1);
+        vm.stopPrank();
+    }
+
+    // ─── Supply Tests ───────────────────────────────────────────────────
+
+    function test_supply_happyPath() public {
+        uint256 amount = 500e18;
+        tokenA.mint(user, amount);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amount);
+        router.supply(address(tokenA), amount);
+        vm.stopPrank();
+
+        assertEq(mockAave.supplied(address(tokenA)), amount);
+    }
+
+    function test_supply_emitsSupplyExecuted() public {
+        uint256 amount = 500e18;
+        tokenA.mint(user, amount);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amount);
+        vm.expectEmit(true, true, false, true);
+        emit ISherpaRouter.SupplyExecuted(user, address(tokenA), amount, bytes32("bc_97ju6eu2"));
+        router.supply(address(tokenA), amount);
+        vm.stopPrank();
+    }
+
+    function test_supply_revertsZeroAmount() public {
+        vm.prank(user);
+        vm.expectRevert(SherpaRouter.ZeroAmount.selector);
+        router.supply(address(tokenA), 0);
+    }
+
+    function test_supply_revertsTokenNotAllowed() public {
+        MockERC20 unknownToken = new MockERC20("Unknown", "UNK", 18);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.TokenNotAllowed.selector, address(unknownToken)));
+        router.supply(address(unknownToken), 100);
+    }
+
+    // ─── Withdraw Tests ─────────────────────────────────────────────────
+
+    function test_withdraw_happyPath_noDebt() public {
+        uint256 amount = 200e18;
+        // User holds aTokens (representing their Aave position)
+        aTokenA.mint(user, amount);
+        // Mock: supply so the pool has the asset to return
+        mockAave.setMockAccountData(1000e8, 0, 500e8); // no debt
+        mockAave.setMockHealthFactor(2e18);
+
+        vm.startPrank(user);
+        aTokenA.approve(address(router), amount);
+        router.withdraw(address(tokenA), amount);
+        vm.stopPrank();
+    }
+
+    function test_withdraw_happyPath_withDebt_hfOk() public {
+        uint256 amount = 100e18;
+        aTokenA.mint(user, amount);
+        // Has debt but HF is safely above 1.5
+        mockAave.setMockAccountData(1000e8, 200e8, 300e8);
+        mockAave.setMockHealthFactor(2e18);
+
+        vm.startPrank(user);
+        aTokenA.approve(address(router), amount);
+        router.withdraw(address(tokenA), amount);
+        vm.stopPrank();
+    }
+
+    function test_withdraw_revertsUnhealthyPosition() public {
+        uint256 amount = 100e18;
+        aTokenA.mint(user, amount);
+        // Has debt and HF drops below 1.5 after withdraw
+        mockAave.setMockAccountData(500e8, 200e8, 100e8);
+        mockAave.setMockHealthFactor(1.3e18); // below 1.5
+
+        vm.startPrank(user);
+        aTokenA.approve(address(router), amount);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.UnhealthyPosition.selector, 1.3e18));
+        router.withdraw(address(tokenA), amount);
+        vm.stopPrank();
+    }
+
+    function test_withdraw_revertsZeroAmount() public {
+        vm.prank(user);
+        vm.expectRevert(SherpaRouter.ZeroAmount.selector);
+        router.withdraw(address(tokenA), 0);
+    }
+
+    function test_withdraw_revertsTokenNotAllowed() public {
+        MockERC20 unknownToken = new MockERC20("Unknown", "UNK", 18);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.TokenNotAllowed.selector, address(unknownToken)));
+        router.withdraw(address(unknownToken), 100);
+    }
+
+    function test_withdraw_emitsWithdrawExecuted() public {
+        uint256 amount = 200e18;
+        aTokenA.mint(user, amount);
+        mockAave.setMockAccountData(1000e8, 0, 500e8);
+        mockAave.setMockHealthFactor(2e18);
+
+        vm.startPrank(user);
+        aTokenA.approve(address(router), amount);
+        vm.expectEmit(true, true, false, true);
+        emit ISherpaRouter.WithdrawExecuted(user, address(tokenA), amount, bytes32("bc_97ju6eu2"));
+        router.withdraw(address(tokenA), amount);
+        vm.stopPrank();
+    }
+
+    // ─── Borrow Tests ───────────────────────────────────────────────────
+
+    function test_borrow_happyPath_variable() public {
+        // HF stays above 1.2 after borrow
+        mockAave.setMockHealthFactor(1.5e18);
+
+        vm.prank(user);
+        router.borrow(address(tokenA), 100e18, 2);
+
+        assertEq(mockAave.borrowed(address(tokenA)), 100e18);
+    }
+
+    function test_borrow_happyPath_stable() public {
+        mockAave.setMockHealthFactor(1.5e18);
+
+        vm.prank(user);
+        router.borrow(address(tokenA), 50e18, 1);
+
+        assertEq(mockAave.borrowed(address(tokenA)), 50e18);
+    }
+
+    function test_borrow_revertsUnhealthyPosition() public {
+        // HF drops below 1.2 after borrow
+        mockAave.setMockHealthFactor(1.1e18);
+
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.UnhealthyPosition.selector, 1.1e18));
+        router.borrow(address(tokenA), 100e18, 2);
+    }
+
+    function test_borrow_revertsZeroAmount() public {
+        vm.prank(user);
+        vm.expectRevert(SherpaRouter.ZeroAmount.selector);
+        router.borrow(address(tokenA), 0, 2);
+    }
+
+    function test_borrow_revertsTokenNotAllowed() public {
+        MockERC20 unknownToken = new MockERC20("Unknown", "UNK", 18);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.TokenNotAllowed.selector, address(unknownToken)));
+        router.borrow(address(unknownToken), 100, 2);
+    }
+
+    function test_borrow_revertsInvalidRateMode_zero() public {
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.InvalidInterestRateMode.selector, 0));
+        router.borrow(address(tokenA), 100, 0);
+    }
+
+    function test_borrow_revertsInvalidRateMode_three() public {
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.InvalidInterestRateMode.selector, 3));
+        router.borrow(address(tokenA), 100, 3);
+    }
+
+    function test_borrow_emitsBorrowExecuted() public {
+        mockAave.setMockHealthFactor(1.5e18);
+
+        vm.prank(user);
+        vm.expectEmit(true, true, false, true);
+        emit ISherpaRouter.BorrowExecuted(user, address(tokenA), 100e18, 2, bytes32("bc_97ju6eu2"));
+        router.borrow(address(tokenA), 100e18, 2);
+    }
+
+    // ─── Repay Tests ────────────────────────────────────────────────────
+
+    function test_repay_happyPath_variable() public {
+        uint256 amount = 100e18;
+        tokenA.mint(user, amount);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amount);
+        router.repay(address(tokenA), amount, 2);
+        vm.stopPrank();
+    }
+
+    function test_repay_happyPath_stable() public {
+        uint256 amount = 50e18;
+        tokenA.mint(user, amount);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amount);
+        router.repay(address(tokenA), amount, 1);
+        vm.stopPrank();
+    }
+
+    function test_repay_revertsZeroAmount() public {
+        vm.prank(user);
+        vm.expectRevert(SherpaRouter.ZeroAmount.selector);
+        router.repay(address(tokenA), 0, 2);
+    }
+
+    function test_repay_revertsTokenNotAllowed() public {
+        MockERC20 unknownToken = new MockERC20("Unknown", "UNK", 18);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.TokenNotAllowed.selector, address(unknownToken)));
+        router.repay(address(unknownToken), 100, 2);
+    }
+
+    function test_repay_revertsInvalidRateMode() public {
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.InvalidInterestRateMode.selector, 0));
+        router.repay(address(tokenA), 100, 0);
+    }
+
+    function test_repay_emitsRepayExecuted() public {
+        uint256 amount = 100e18;
+        tokenA.mint(user, amount);
+        // Pre-set borrowed state so the mock returns the full amount
+        mockAave.setBorrowed(address(tokenA), amount);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amount);
+        vm.expectEmit(true, true, false, true);
+        emit ISherpaRouter.RepayExecuted(user, address(tokenA), amount, 2, bytes32("bc_97ju6eu2"));
+        router.repay(address(tokenA), amount, 2);
+        vm.stopPrank();
     }
 
     // ─── Ownership Tests ────────────────────────────────────────────────

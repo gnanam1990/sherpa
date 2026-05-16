@@ -32,6 +32,12 @@ contract SherpaRouter is Ownable, ReentrancyGuard, ISherpaRouter {
     /// @notice Minimum health factor for Aave positions (1.2e18 = 1.2)
     uint256 public constant MIN_HEALTH_FACTOR = 1.2e18;
 
+    /// @notice Minimum health factor after a withdrawal when debt exists (1.5e18 = 1.5)
+    uint256 public constant MIN_WITHDRAW_HEALTH_FACTOR = 1.5e18;
+
+    /// @notice Builder attribution code for Sherpa protocol
+    bytes32 public constant BUILDER_CODE = "bc_97ju6eu2";
+
     // ─── Immutables ─────────────────────────────────────────────────────
 
     /// @notice The Aerodrome V2 router address
@@ -156,37 +162,97 @@ contract SherpaRouter is Ownable, ReentrancyGuard, ISherpaRouter {
         return AAVE_POOL.getUserAccountData(user);
     }
 
-    // ─── Placeholder Functions ──────────────────────────────────────────
+    // ─── Core DeFi Functions ────────────────────────────────────────────
 
-    /// @notice Swaps tokens via Aerodrome (placeholder)
+    /// @notice Swaps tokens via Aerodrome with 0.1% fee to treasury
     function swap(
-        address,
-        address,
-        uint256,
-        uint256,
-        IAerodromeRouter.Route[] calldata,
-        uint256
-    ) external nonReentrant returns (uint256) {
-        revert("not implemented");
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        IAerodromeRouter.Route[] calldata routes,
+        uint256 deadline
+    ) external nonReentrant returns (uint256 amountOut) {
+        if (amountIn == 0) revert ZeroAmount();
+        if (!swapTokenAllowlist[tokenIn]) revert TokenNotAllowed(tokenIn);
+        if (!swapTokenAllowlist[tokenOut]) revert TokenNotAllowed(tokenOut);
+        if (block.timestamp > deadline) revert InvalidDeadline(deadline);
+
+        uint256 fee = amountIn.calculateFee(FEE_BPS);
+        uint256 amountInAfterFee = amountIn - fee;
+
+        IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+        IERC20(tokenIn).safeTransfer(SHERPA_TREASURY, fee);
+        IERC20(tokenIn).forceApprove(address(AERODROME_ROUTER), amountInAfterFee);
+
+        uint256[] memory amounts = AERODROME_ROUTER.swapExactTokensForTokens(
+            amountInAfterFee,
+            amountOutMin,
+            routes,
+            msg.sender,
+            deadline
+        );
+        amountOut = amounts[amounts.length - 1];
+
+        emit SwapExecuted(msg.sender, tokenIn, tokenOut, amountIn, amountOut, fee, BUILDER_CODE);
+        emit FeeCollected(msg.sender, tokenIn, fee);
     }
 
-    /// @notice Supplies an asset to Aave (placeholder)
-    function supply(address, uint256) external nonReentrant {
-        revert("not implemented");
+    /// @notice Supplies an asset to Aave on behalf of the caller
+    function supply(address asset, uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        if (!swapTokenAllowlist[asset]) revert TokenNotAllowed(asset);
+
+        IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(asset).forceApprove(address(AAVE_POOL), amount);
+        AAVE_POOL.supply(asset, amount, msg.sender, 0);
+
+        emit SupplyExecuted(msg.sender, asset, amount, BUILDER_CODE);
     }
 
-    /// @notice Withdraws an asset from Aave (placeholder)
-    function withdraw(address, uint256) external nonReentrant {
-        revert("not implemented");
+    /// @notice Withdraws an asset from Aave back to the caller.
+    /// @dev Caller must have approved the corresponding aToken to this router.
+    function withdraw(address asset, uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        if (!swapTokenAllowlist[asset]) revert TokenNotAllowed(asset);
+
+        address aToken = AAVE_POOL.getReserveAToken(asset);
+        IERC20(aToken).safeTransferFrom(msg.sender, address(this), amount);
+        AAVE_POOL.withdraw(asset, amount, msg.sender);
+
+        (, uint256 totalDebt, , , , uint256 postHf) = AAVE_POOL.getUserAccountData(msg.sender);
+        if (totalDebt > 0 && postHf < MIN_WITHDRAW_HEALTH_FACTOR) {
+            revert UnhealthyPosition(postHf);
+        }
+
+        emit WithdrawExecuted(msg.sender, asset, amount, BUILDER_CODE);
     }
 
-    /// @notice Borrows an asset from Aave (placeholder)
-    function borrow(address, uint256, uint256) external nonReentrant {
-        revert("not implemented");
+    /// @notice Borrows an asset from Aave on behalf of the caller.
+    /// @dev Caller must have delegated credit to this router via Aave's approveDelegation.
+    function borrow(address asset, uint256 amount, uint256 interestRateMode) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        if (!swapTokenAllowlist[asset]) revert TokenNotAllowed(asset);
+        if (interestRateMode != 1 && interestRateMode != 2) revert InvalidInterestRateMode(interestRateMode);
+
+        AAVE_POOL.borrow(asset, amount, interestRateMode, 0, msg.sender);
+
+        (, , , , , uint256 postHf) = AAVE_POOL.getUserAccountData(msg.sender);
+        if (postHf < MIN_HEALTH_FACTOR) revert UnhealthyPosition(postHf);
+
+        emit BorrowExecuted(msg.sender, asset, amount, interestRateMode, BUILDER_CODE);
     }
 
-    /// @notice Repays a borrowed asset to Aave (placeholder)
-    function repay(address, uint256, uint256) external nonReentrant {
-        revert("not implemented");
+    /// @notice Repays a borrowed asset to Aave on behalf of the caller
+    function repay(address asset, uint256 amount, uint256 interestRateMode) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        if (!swapTokenAllowlist[asset]) revert TokenNotAllowed(asset);
+        if (interestRateMode != 1 && interestRateMode != 2) revert InvalidInterestRateMode(interestRateMode);
+
+        IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(asset).forceApprove(address(AAVE_POOL), amount);
+        uint256 repaid = AAVE_POOL.repay(asset, amount, interestRateMode, msg.sender);
+
+        emit RepayExecuted(msg.sender, asset, repaid, interestRateMode, BUILDER_CODE);
     }
 }
