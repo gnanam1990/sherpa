@@ -4,10 +4,12 @@ import { createConfig, createStorage, http, noopStorage, useSendCalls, useWaitFo
 import type { UseSendCallsParameters, UseWaitForCallsStatusParameters } from 'wagmi';
 import { coinbaseWallet } from 'wagmi/connectors';
 import { baseSepolia } from 'wagmi/chains';
+import { Attribution } from 'ox/erc8021';
 
 export const walletEnv = {
   walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID ?? 'sherpa-dev-walletconnect',
   coinbaseProjectId: process.env.NEXT_PUBLIC_CDP_PROJECT_ID ?? '',
+  builderCode: process.env.NEXT_PUBLIC_BUILDER_CODE ?? '',
 } as const;
 
 // Paymaster proxy in apps/api keeps the real URL server-side. See docs/sherpa/devlog/2026-05-15-m2-week-1-priority-1.md
@@ -31,6 +33,12 @@ export const wagmiConfig = createConfig({
 });
 
 type PaymasterLocation = Pick<Location, 'origin' | 'hostname'>;
+type SendCallsVariables = { capabilities?: Record<string, unknown> };
+type SherpaCapabilityOptions = {
+  builderCode?: string;
+  location?: PaymasterLocation;
+  paymasterUrl?: string;
+};
 
 export function getPaymasterCapabilities(
   url = PAYMASTER_PROXY_URL,
@@ -49,7 +57,7 @@ export function getPaymasterCapabilities(
 }
 
 export function withPaymasterCapabilities<
-  Variables extends { capabilities?: Record<string, unknown> },
+  Variables extends SendCallsVariables,
 >(
   variables: Variables,
   paymasterUrl = PAYMASTER_PROXY_URL,
@@ -65,6 +73,48 @@ export function withPaymasterCapabilities<
   };
 }
 
+export function getBuilderCodeDataSuffix(
+  builderCode = process.env.NEXT_PUBLIC_BUILDER_CODE,
+): `0x${string}` | undefined {
+  const code = builderCode?.trim();
+  if (!code) return undefined;
+  return Attribution.toDataSuffix({ codes: [code] }) as `0x${string}`;
+}
+
+export function getBuilderCodeCapabilities(builderCode = process.env.NEXT_PUBLIC_BUILDER_CODE) {
+  const dataSuffix = getBuilderCodeDataSuffix(builderCode);
+  if (!dataSuffix) return undefined;
+
+  return {
+    dataSuffix: {
+      value: dataSuffix,
+      optional: true,
+    },
+  };
+}
+
+export function withBuilderCodeCapabilities<
+  Variables extends SendCallsVariables,
+>(variables: Variables, builderCode = process.env.NEXT_PUBLIC_BUILDER_CODE): Variables {
+  const builderCodeCapabilities = getBuilderCodeCapabilities(builderCode);
+  if (!builderCodeCapabilities) return variables;
+
+  return {
+    ...variables,
+    capabilities: {
+      ...(variables.capabilities ?? {}),
+      ...builderCodeCapabilities,
+    },
+  };
+}
+
+export function withSherpaSendCapabilities<
+  Variables extends SendCallsVariables,
+>(variables: Variables, options: SherpaCapabilityOptions = {}): Variables {
+  const withBuilderCode = withBuilderCodeCapabilities(variables, options.builderCode);
+  return withPaymasterCapabilities(withBuilderCode, options.paymasterUrl, options.location);
+}
+
 export function useSherpaSendCalls(parameters?: UseSendCallsParameters<typeof wagmiConfig>) {
   const mutation = useSendCalls(parameters);
 
@@ -73,11 +123,11 @@ export function useSherpaSendCalls(parameters?: UseSendCallsParameters<typeof wa
     sendSponsoredCalls: (
       variables: Parameters<typeof mutation.sendCalls>[0],
       options?: Parameters<typeof mutation.sendCalls>[1],
-    ) => mutation.sendCalls(withPaymasterCapabilities(variables), options),
+    ) => mutation.sendCalls(withSherpaSendCapabilities(variables), options),
     sendSponsoredCallsAsync: (
       variables: Parameters<typeof mutation.sendCallsAsync>[0],
       options?: Parameters<typeof mutation.sendCallsAsync>[1],
-    ) => mutation.sendCallsAsync(withPaymasterCapabilities(variables), options),
+    ) => mutation.sendCallsAsync(withSherpaSendCapabilities(variables), options),
   };
 }
 

@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getPaymasterCapabilities, walletEnv, withPaymasterCapabilities } from './wagmi';
+import {
+  getBuilderCodeCapabilities,
+  getBuilderCodeDataSuffix,
+  getPaymasterCapabilities,
+  walletEnv,
+  withPaymasterCapabilities,
+  withSherpaSendCapabilities,
+} from './wagmi';
 
 const PUBLIC_ORIGIN = 'https://sherpa.example';
 const PUBLIC_LOCATION = { origin: PUBLIC_ORIGIN, hostname: 'sherpa.example' } as Location;
@@ -15,6 +22,7 @@ describe('wagmi wallet config', () => {
       expect.objectContaining({
         walletConnectProjectId: expect.any(String),
         coinbaseProjectId: expect.any(String),
+        builderCode: expect.any(String),
       }),
     );
     expect(walletEnv).not.toHaveProperty('paymasterRpc');
@@ -62,6 +70,47 @@ describe('wagmi wallet config', () => {
       }, '/api/paymaster', PUBLIC_LOCATION),
     ).toEqual({
       capabilities: { paymasterService: { url: `${PUBLIC_ORIGIN}/api/paymaster` } },
+    });
+  });
+
+  it('builds ERC-8021 dataSuffix capabilities from the public builder code', () => {
+    const dataSuffix = getBuilderCodeDataSuffix('bc_test');
+
+    expect(dataSuffix).toBe('0x62635f74657374070080218021802180218021802180218021');
+    expect(getBuilderCodeCapabilities('bc_test')).toEqual({
+      dataSuffix: {
+        value: dataSuffix,
+        optional: true,
+      },
+    });
+  });
+
+  it('omits builder code attribution when no code is configured', () => {
+    expect(getBuilderCodeDataSuffix('')).toBeUndefined();
+    expect(getBuilderCodeCapabilities('   ')).toBeUndefined();
+  });
+
+  it('combines builder code attribution with the proxy paymaster capability', () => {
+    const dataSuffix = getBuilderCodeDataSuffix('bc_test');
+
+    expect(
+      withSherpaSendCapabilities(
+        { capabilities: { atomic: { status: 'supported' } } },
+        {
+          builderCode: 'bc_test',
+          location: PUBLIC_LOCATION,
+          paymasterUrl: '/api/paymaster',
+        },
+      ),
+    ).toEqual({
+      capabilities: {
+        atomic: { status: 'supported' },
+        dataSuffix: {
+          value: dataSuffix,
+          optional: true,
+        },
+        paymasterService: { url: `${PUBLIC_ORIGIN}/api/paymaster` },
+      },
     });
   });
 });
