@@ -487,12 +487,23 @@ export async function runAutoRepayCycle(deps: AutoRepayDeps): Promise<AutoRepayC
       let postHF: number;
       try {
         postHF = await deps.fetchHealthFactor(rule.user_address);
-      } catch {
-        postHF = -1;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        await deps.store.incrementFailures(rule.id);
+        await deps.store.logExecution({
+          ruleId: rule.id,
+          status: 'failed',
+          hfBefore: currentHF,
+          txHash,
+          errorMessage: `post_hf_fetch_failed: ${msg}`,
+        });
+        result.failed++;
+        result.errors.push(`[${rule.id}] post_hf_fetch_failed: ${msg}`);
+        continue;
       }
 
-      if (postHF > 0 && postHF <= currentHF) {
-        await deps.store.incrementFailures(rule.id);
+      if (postHF <= currentHF) {
+        await deps.store.updateRule(rule.id, { status: 'paused' });
         await deps.store.logExecution({
           ruleId: rule.id,
           status: 'failed_sanity',
@@ -500,10 +511,14 @@ export async function runAutoRepayCycle(deps: AutoRepayDeps): Promise<AutoRepayC
           hfAfter: postHF,
           amountRepaid: repayAmount.toString(),
           txHash,
-          errorMessage: 'post-repay HF did not improve',
+          errorMessage: 'hf_did_not_improve: rule disabled',
         });
         result.failed++;
-        result.errors.push(`[${rule.id}] sanity check failed: HF ${currentHF} -> ${postHF}`);
+        result.errors.push(`[${rule.id}] hf_did_not_improve: ${currentHF} -> ${postHF} — rule disabled`);
+        await deps.notify(
+          rule.user_address,
+          `Auto-repay anomaly: HF did not improve after repay (${currentHF.toFixed(4)} -> ${postHF.toFixed(4)}). Rule has been paused.`,
+        );
         continue;
       }
 

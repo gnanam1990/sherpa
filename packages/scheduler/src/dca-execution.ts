@@ -25,7 +25,11 @@ export async function executeDCA(
   schedule: DCAScheduleRow,
   options: ExecuteDCAOptions,
 ): Promise<ExecutionResult> {
-  const { store, executeSwap = buildSwapTransaction, notify } = options;
+  const { store, executeSwap, notify } = options;
+
+  if (!executeSwap) {
+    throw new Error('executeSwap function required — refusing to fake success');
+  }
 
   try {
     const result = await executeSwap({
@@ -106,18 +110,12 @@ async function handleFailure(
   }
 }
 
-export async function buildSwapTransaction(_params: SwapParams): Promise<ExecutionResult> {
-  // Stub: in production, this would:
-  // 1. Query Aerodrome router for best route
-  // 2. Calculate expected output with slippage
-  // 3. Build approve + swap calldata
-  // 4. Submit via smart wallet with builder code attribution
-  // For now, return a mock success
-  return {
-    ok: true,
-    txHash: `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
-    amountOut: '0',
-  };
+export async function buildSwapTransaction(_params: SwapParams): Promise<never> {
+  // Requires Stage 7 (session key executor) to submit on-chain.
+  // Providing executeSwap via ExecuteDCAOptions is mandatory until then.
+  throw new Error(
+    'buildSwapTransaction is a scaffold placeholder — provide a real executeSwap via ExecuteDCAOptions',
+  );
 }
 
 export async function recordExecution(

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAerodromeRouter} from "../../src/interfaces/IAerodromeRouter.sol";
 
 /// @title MockAerodromeRouter
@@ -14,21 +15,22 @@ contract MockAerodromeRouter {
         fixedOutputAmount = amount;
     }
 
-    /// @notice Mock swap implementation
+    /// @notice Mock swap implementation — pulls tokenIn from caller, sends tokenOut to recipient
     function swapExactTokensForTokens(
         uint256 amountIn,
         uint256,
-        IAerodromeRouter.Route[] calldata,
+        IAerodromeRouter.Route[] calldata routes,
         address to,
         uint256
     ) external returns (uint256[] memory amounts) {
         amounts = new uint256[](2);
         amounts[0] = amountIn;
-        amounts[1] = fixedOutputAmount > 0 ? fixedOutputAmount : amountIn;
+        uint256 output = fixedOutputAmount > 0 ? fixedOutputAmount : amountIn;
+        amounts[1] = output;
 
-        if (to != address(0)) {
-            // In a real mock we'd transfer tokens, but for unit tests
-            // the caller manages token balances
+        if (routes.length > 0) {
+            IERC20(routes[0].from).transferFrom(msg.sender, address(this), amountIn);
+            IERC20(routes[routes.length - 1].to).transfer(to, output);
         }
     }
 

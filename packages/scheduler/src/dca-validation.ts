@@ -77,21 +77,82 @@ export function validateDCASchedule(params: DCAValidationParams): ValidationResu
   return { ok: true };
 }
 
+export interface ValidateBalanceParams {
+  userAddress: string;
+  token: string;
+  amount: bigint;
+  rpcUrl?: string;
+}
+
+export interface ValidateAllowanceParams {
+  userAddress: string;
+  token: string;
+  spender: string;
+  amount: bigint;
+  rpcUrl?: string;
+}
+
+function defaultRpcUrl(): string {
+  const url = process.env['RPC_URL'] ?? process.env['NEXT_PUBLIC_RPC_URL'];
+  if (!url) throw new Error('RPC_URL env var required for on-chain validation');
+  return url;
+}
+
+async function ethCall(rpcUrl: string, to: string, data: string): Promise<string> {
+  const resp = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!resp.ok) throw new Error(`rpc_http_${resp.status}`);
+  const json = await resp.json() as { result?: string; error?: { message: string } };
+  if (json.error) throw new Error(`rpc_error: ${json.error.message}`);
+  return json.result ?? '0x';
+}
+
+function pad32(address: string): string {
+  return address.toLowerCase().replace('0x', '').padStart(64, '0');
+}
+
+function decodeUint256(hex: string): bigint {
+  const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
+  if (!clean || clean.length < 64) return 0n;
+  return BigInt('0x' + clean.slice(0, 64));
+}
+
 export async function validateBalance(
-  _userAddress: string,
-  _requiredAmount: string,
+  params: ValidateBalanceParams,
+  _fetchBalance?: (token: string, user: string, rpcUrl: string) => Promise<bigint>,
 ): Promise<ValidationResult> {
-  // Stub: in production, query on-chain balance via RPC
-  // For now, always pass validation
+  const rpcUrl = params.rpcUrl ?? defaultRpcUrl();
+  const fetchBalance = _fetchBalance ?? (async (token, user, url) => {
+    // balanceOf(address)
+    const data = '0x70a08231' + pad32(user);
+    const result = await ethCall(url, token, data);
+    return decodeUint256(result);
+  });
+  const balance = await fetchBalance(params.token, params.userAddress, rpcUrl);
+  if (balance < params.amount) {
+    return { ok: false, error: 'insufficient_balance' };
+  }
   return { ok: true };
 }
 
 export async function validateAllowance(
-  _userAddress: string,
-  _spender: string,
-  _requiredAmount: string,
+  params: ValidateAllowanceParams,
+  _fetchAllowance?: (token: string, owner: string, spender: string, rpcUrl: string) => Promise<bigint>,
 ): Promise<ValidationResult> {
-  // Stub: in production, query on-chain allowance via RPC
-  // For now, always pass validation
+  const rpcUrl = params.rpcUrl ?? defaultRpcUrl();
+  const fetchAllowance = _fetchAllowance ?? (async (token, owner, spender, url) => {
+    // allowance(address,address)
+    const data = '0xdd62ed3e' + pad32(owner) + pad32(spender);
+    const result = await ethCall(url, token, data);
+    return decodeUint256(result);
+  });
+  const allowance = await fetchAllowance(params.token, params.userAddress, params.spender, rpcUrl);
+  if (allowance < params.amount) {
+    return { ok: false, error: 'insufficient_allowance' };
+  }
   return { ok: true };
 }

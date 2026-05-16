@@ -13,37 +13,43 @@ interface ISherpaRouter {
     /// @param amountIn The amount of input tokens
     /// @param amountOut The amount of output tokens received
     /// @param fee The fee amount collected
+    /// @param builderCode The Sherpa builder attribution code
     event SwapExecuted(
         address indexed user,
         address indexed tokenIn,
         address indexed tokenOut,
         uint256 amountIn,
         uint256 amountOut,
-        uint256 fee
+        uint256 fee,
+        bytes32 builderCode
     );
 
     /// @notice Emitted when a supply to Aave is executed
     /// @param user The address of the user
     /// @param asset The address of the supplied asset
     /// @param amount The amount supplied
-    event SupplyExecuted(address indexed user, address indexed asset, uint256 amount);
+    /// @param builderCode The Sherpa builder attribution code
+    event SupplyExecuted(address indexed user, address indexed asset, uint256 amount, bytes32 builderCode);
 
     /// @notice Emitted when a withdrawal from Aave is executed
     /// @param user The address of the user
     /// @param asset The address of the withdrawn asset
     /// @param amount The amount withdrawn
-    event WithdrawExecuted(address indexed user, address indexed asset, uint256 amount);
+    /// @param builderCode The Sherpa builder attribution code
+    event WithdrawExecuted(address indexed user, address indexed asset, uint256 amount, bytes32 builderCode);
 
     /// @notice Emitted when a borrow from Aave is executed
     /// @param user The address of the user
     /// @param asset The address of the borrowed asset
     /// @param amount The amount borrowed
     /// @param interestRateMode The interest rate mode (1 = stable, 2 = variable)
+    /// @param builderCode The Sherpa builder attribution code
     event BorrowExecuted(
         address indexed user,
         address indexed asset,
         uint256 amount,
-        uint256 interestRateMode
+        uint256 interestRateMode,
+        bytes32 builderCode
     );
 
     /// @notice Emitted when a repay to Aave is executed
@@ -51,11 +57,13 @@ interface ISherpaRouter {
     /// @param asset The address of the repaid asset
     /// @param amount The amount repaid
     /// @param interestRateMode The interest rate mode (1 = stable, 2 = variable)
+    /// @param builderCode The Sherpa builder attribution code
     event RepayExecuted(
         address indexed user,
         address indexed asset,
         uint256 amount,
-        uint256 interestRateMode
+        uint256 interestRateMode,
+        bytes32 builderCode
     );
 
     /// @notice Emitted when a fee is collected

@@ -16,12 +16,7 @@ export async function securityRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/security/multisig', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = CreateMultisigBody.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
-    return reply.send({
-      id: 'stub-multisig-id',
-      address: '0x' + '00'.repeat(20),
-      ...parsed.data,
-      createdAt: new Date().toISOString(),
-    });
+    return reply.code(501).send({ error: 'not_implemented', details: 'Multisig creation pending Stage 8.' });
   });
 
   app.get('/api/security/multisig/:address', async (req: FastifyRequest, reply: FastifyReply) => {

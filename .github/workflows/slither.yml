@@ -1,0 +1,43 @@
+name: Slither
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/contracts/src/**'
+  pull_request:
+    paths:
+      - 'packages/contracts/src/**'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  slither:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install Foundry dependencies
+        working-directory: packages/contracts
+        run: forge install --no-git
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.4.0
+        with:
+          target: packages/contracts
+          slither-args: >
+            --filter-paths "lib/,test/"
+            --exclude-dependencies
+          fail-on: high
+          sarif: results.sarif
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif

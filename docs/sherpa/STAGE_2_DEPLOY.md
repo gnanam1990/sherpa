@@ -58,4 +58,16 @@ To disable Stage 2 features immediately:
 | `/api/repay` | POST | Execute repay |
 | `/api/positions/:address` | GET | Get positions |
 
-Stage 1 routes (`/api/parse`, `/api/execute`, `/api/balance`, `/api/history`, `/admin/*`, `/api/health`, `/api/paymaster`, `/api/surfaces/*`) are **never** affected by this flag.
+Stage 1 routes are **never** affected by this flag:
+
+| Route | Method | Description |
+|---|---|---|
+| `/api/health` | GET | Health check |
+| `/api/parse` | POST | Parse natural-language input |
+| `/api/execute` | POST | Execute a parsed intent |
+| `/api/execute/:id/confirm` | POST | Confirm a pending execution |
+| `/api/balance/:addr` | GET | Fetch on-chain balance for address |
+| `/api/history/:addr` | GET | Fetch transaction history for address |
+| `/admin/*` | GET | Admin endpoints (LLM usage, audit log) |
+| `/api/paymaster` | POST | Coinbase Paymaster sponsorship |
+| `/api/surfaces/*` | GET | Telegram, web, Farcaster surface configs |

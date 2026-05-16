@@ -13,6 +13,7 @@ contract MockAavePool {
 
     mapping(address => uint256) public supplied;
     mapping(address => uint256) public borrowed;
+    mapping(address => address) public reserveAToken;
 
     /// @notice Sets mock health factor for testing
     /// @param healthFactor The health factor value
@@ -32,6 +33,26 @@ contract MockAavePool {
         mockTotalCollateral = totalCollateral;
         mockTotalDebt = totalDebt;
         mockAvailableBorrows = availableBorrows;
+    }
+
+    /// @notice Sets mock borrowed amount for an asset (for testing repay)
+    /// @param asset The asset address
+    /// @param amount The borrowed amount to preset
+    function setBorrowed(address asset, uint256 amount) external {
+        borrowed[asset] = amount;
+    }
+
+    /// @notice Sets mock aToken address for an asset
+    /// @param asset The underlying asset address
+    /// @param aToken The aToken address
+    function setReserveAToken(address asset, address aToken) external {
+        reserveAToken[asset] = aToken;
+    }
+
+    /// @notice Returns the aToken address for an asset
+    /// @param asset The underlying asset
+    function getReserveAToken(address asset) external view returns (address) {
+        return reserveAToken[asset];
     }
 
     /// @notice Mock supply implementation

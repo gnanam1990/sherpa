@@ -18,33 +18,22 @@ export async function strategyRoutes(app: FastifyInstance): Promise<void> {
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.message });
     }
-    return reply.send({
-      id: 'stub-strategy-id',
-      ...parsed.data,
-      version: 1,
-      followers: 0,
-      totalVolume: '0',
-      successRate: 100,
-      createdAt: new Date().toISOString(),
-    });
+    return reply.code(501).send({ error: 'not_implemented', details: 'Strategy creation pending Stage 9.' });
   });
 
   app.get('/api/strategies', async (req: FastifyRequest, reply: FastifyReply) => {
     return reply.send({ strategies: [] });
   });
 
-  app.get('/api/strategies/:id', async (req: FastifyRequest, reply: FastifyReply) => {
-    const { id } = req.params as { id: string };
-    return reply.send({ id, name: 'Stub Strategy' });
+  app.get('/api/strategies/:id', async (_req: FastifyRequest, reply: FastifyReply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Strategy lookup pending Stage 9.' });
   });
 
-  app.post('/api/strategies/:id/follow', async (req: FastifyRequest, reply: FastifyReply) => {
-    const { id } = req.params as { id: string };
-    return reply.send({ strategyId: id, status: 'following' });
+  app.post('/api/strategies/:id/follow', async (_req: FastifyRequest, reply: FastifyReply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Strategy follow pending Stage 9.' });
   });
 
-  app.post('/api/strategies/:id/run', async (req: FastifyRequest, reply: FastifyReply) => {
-    const { id } = req.params as { id: string };
-    return reply.send({ strategyId: id, executionId: 'stub-exec-id', status: 'pending' });
+  app.post('/api/strategies/:id/run', async (_req: FastifyRequest, reply: FastifyReply) => {
+    return reply.code(501).send({ error: 'not_implemented', details: 'Strategy execution pending Stage 9.' });
   });
 }

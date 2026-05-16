@@ -19,26 +19,13 @@ export async function composableRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/composable/flash-loan', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = FlashLoanBody.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
-
-    return reply.send({
-      id: 'stub-flash-loan-id',
-      ...parsed.data,
-      fee: '0.09%',
-      status: 'ready',
-    });
+    return reply.code(501).send({ error: 'not_implemented', details: 'Flash loan execution pending Stage 6.' });
   });
 
   app.post('/api/composable/leverage', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = LeverageBody.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
-
-    return reply.send({
-      id: 'stub-leverage-id',
-      ...parsed.data,
-      riskLevel: parsed.data.leverageRatio <= 2 ? 'low' : parsed.data.leverageRatio <= 3 ? 'medium' : 'high',
-      liquidationPrice: '0',
-      status: 'ready',
-    });
+    return reply.code(501).send({ error: 'not_implemented', details: 'Leverage strategy execution pending Stage 6.' });
   });
 
   app.get('/api/composable/strategies', async (req: FastifyRequest, reply: FastifyReply) => {

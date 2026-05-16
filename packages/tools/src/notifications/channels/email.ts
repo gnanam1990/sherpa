@@ -5,5 +5,7 @@ export async function sendEmailNotification(
   _payload: NotificationPayload,
   _config: { postmarkApiKey?: string; fromAddress?: string },
 ): Promise<NotificationResult> {
-  return { success: true, messageId: 'stub-email-id' };
+  // Email channel not yet implemented — explicit failure, not fake success.
+  // Track in: https://github.com/sherpa-protocol/sherpa/issues (email_channel)
+  return { success: false, error: 'email_channel_not_implemented' };
 }
