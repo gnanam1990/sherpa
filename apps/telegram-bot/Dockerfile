@@ -1,8 +1,8 @@
 FROM node:20-alpine AS base
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@9.15.1 --activate
 WORKDIR /app
 
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.json tsconfig.base.json ./
 COPY apps/telegram-bot ./apps/telegram-bot
 COPY packages ./packages
 

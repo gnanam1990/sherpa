@@ -26,6 +26,20 @@ type HistoryResponse = {
   }>;
 };
 
+type PositionsResponse = {
+  address: `0x${string}`;
+  chain: 'base';
+  pool: `0x${string}`;
+  totalCollateralBase: string;
+  totalDebtBase: string;
+  availableBorrowsBase: string;
+  currentLiquidationThreshold: string;
+  ltv: string;
+  healthFactor: string;
+  hasPosition: boolean;
+  fetchedAt: string;
+};
+
 export async function handleStart(ctx: Context): Promise<void> {
   await ctx.reply(
     '🏔️ Welcome to Sherpa!\n\n' +
@@ -168,6 +182,45 @@ function formatHistory(data: HistoryResponse): string {
   return [`Recent transactions on ${data.chain}`, ...rows].join('\n\n');
 }
 
+function formatBaseUsd(value: string): string {
+  const raw = BigInt(value);
+  const whole = raw / 100_000_000n;
+  const cents = ((raw % 100_000_000n) / 1_000_000n).toString().padStart(2, '0');
+  return `$${whole}.${cents}`;
+}
+
+function formatHealthFactor(value: string): string {
+  const hf = BigInt(value);
+  if (hf === 2n ** 256n - 1n) return '∞ (no debt)';
+  const whole = hf / 1_000_000_000_000_000_000n;
+  const decimals = ((hf % 1_000_000_000_000_000_000n) / 10_000_000_000_000_000n)
+    .toString()
+    .padStart(2, '0');
+  return `${whole}.${decimals}`;
+}
+
+function formatPositions(address: string, positions: PositionsResponse): string {
+  if (!positions.hasPosition) {
+    return [
+      `🔗 Linked wallet: ${address}`,
+      '',
+      'No active Aave V3 positions on Base.',
+      'Lend, borrow, withdraw, and repay through Sherpa are testnet-only until audit.',
+    ].join('\n');
+  }
+
+  return [
+    `📊 Aave V3 Positions for ${address}`,
+    '',
+    `Health factor: ${formatHealthFactor(positions.healthFactor)}`,
+    `Collateral: ${formatBaseUsd(positions.totalCollateralBase)}`,
+    `Debt: ${formatBaseUsd(positions.totalDebtBase)}`,
+    `Available to borrow: ${formatBaseUsd(positions.availableBorrowsBase)}`,
+    '',
+    `Updated: ${new Date(positions.fetchedAt).toLocaleString()}`,
+  ].join('\n');
+}
+
 export async function handlePositions(ctx: Context): Promise<void> {
   const apiBase = process.env.SHERPA_API_BASE;
   if (!apiBase || !ctx.from?.id) {
@@ -182,7 +235,7 @@ export async function handlePositions(ctx: Context): Promise<void> {
       return;
     }
 
-    const positionsRes = await fetch(`${apiBase}/api/lending/positions/${link.address}`);
+    const positionsRes = await fetch(`${apiBase}/api/positions/${link.address}`);
     if (!positionsRes.ok) {
       await ctx.reply(
         `🔗 Linked wallet: \`${link.address}\`\n\nAave positions are temporarily unavailable.`,
@@ -190,31 +243,8 @@ export async function handlePositions(ctx: Context): Promise<void> {
       return;
     }
 
-    const positions = (await positionsRes.json()) as {
-      supplied: Array<{ asset: string; amount: string; apy: string }>;
-      borrowed: Array<{ asset: string; amount: string; apy: string }>;
-    };
-
-    if (positions.supplied.length === 0 && positions.borrowed.length === 0) {
-      await ctx.reply(`🔗 Linked wallet: \`${link.address}\`\n\nNo active Aave positions.`);
-      return;
-    }
-
-    const lines = [`📊 Aave Positions for \`${link.address}\``];
-    if (positions.supplied.length > 0) {
-      lines.push('', '*Supplied:*');
-      for (const s of positions.supplied) {
-        lines.push(`  ${s.amount} ${s.asset} (APY: ${s.apy}%)`);
-      }
-    }
-    if (positions.borrowed.length > 0) {
-      lines.push('', '*Borrowed:*');
-      for (const b of positions.borrowed) {
-        lines.push(`  ${b.amount} ${b.asset} (APY: ${b.apy}%)`);
-      }
-    }
-
-    await ctx.reply(lines.join('\n'), { parse_mode: 'Markdown' });
+    const positions = (await positionsRes.json()) as PositionsResponse;
+    await ctx.reply(formatPositions(link.address, positions));
   } catch {
     await ctx.reply('Failed to fetch positions. Please try again.');
   }

@@ -238,7 +238,7 @@ describe('Telegram bot commands', () => {
     expect(msg).toContain('Failed to generate link');
   });
 
-  test('handlePositions shows supplied and borrowed', async () => {
+  test('handlePositions shows Base Aave account data', async () => {
     fetchMock
       .mockResolvedValueOnce({
         ok: true,
@@ -247,17 +247,29 @@ describe('Telegram bot commands', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          supplied: [{ asset: 'USDC', amount: '100', apy: '3.5' }],
-          borrowed: [{ asset: 'ETH', amount: '0.5', apy: '2.1' }],
+          address: '0x1234',
+          chain: 'base',
+          pool: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',
+          totalCollateralBase: '1234000000',
+          totalDebtBase: '250000000',
+          availableBorrowsBase: '900000000',
+          currentLiquidationThreshold: '8000',
+          ltv: '7500',
+          healthFactor: '3300000000000000000',
+          hasPosition: true,
+          fetchedAt: '2026-05-17T00:00:00.000Z',
         }),
       });
 
     const ctx = { reply: vi.fn(), from: { id: 12345 } };
     await handlePositions(ctx as any);
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'https://api.sherpa.example/api/positions/0x1234');
     const msg = ctx.reply.mock.calls[0]![0] as string;
-    expect(msg).toContain('Aave Positions');
-    expect(msg).toContain('100 USDC');
-    expect(msg).toContain('0.5 ETH');
+    expect(msg).toContain('Aave V3 Positions');
+    expect(msg).toContain('Health factor: 3.30');
+    expect(msg).toContain('Collateral: $12.34');
+    expect(msg).toContain('Debt: $2.50');
+    expect(msg).toContain('Available to borrow: $9.00');
   });
 
   test('handlePositions shows empty state', async () => {
@@ -268,13 +280,25 @@ describe('Telegram bot commands', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ supplied: [], borrowed: [] }),
+        json: async () => ({
+          address: '0x1234',
+          chain: 'base',
+          pool: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',
+          totalCollateralBase: '0',
+          totalDebtBase: '0',
+          availableBorrowsBase: '0',
+          currentLiquidationThreshold: '0',
+          ltv: '0',
+          healthFactor: `${2n ** 256n - 1n}`,
+          hasPosition: false,
+          fetchedAt: '2026-05-17T00:00:00.000Z',
+        }),
       });
 
     const ctx = { reply: vi.fn(), from: { id: 12345 } };
     await handlePositions(ctx as any);
     const msg = ctx.reply.mock.calls[0]![0] as string;
-    expect(msg).toContain('No active Aave positions');
+    expect(msg).toContain('No active Aave V3 positions');
   });
 
   test('handlePositions prompts link when not linked', async () => {

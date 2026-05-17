@@ -24,7 +24,14 @@ type PendingIntent = {
 const pendingIntents = new Map<string, PendingIntent>();
 
 const STAGE_2_INTENTS = new Set(['SWAP', 'LEND', 'BORROW', 'REPAY', 'WITHDRAW']);
-const STAGE_2_ENABLED = process.env.NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED === 'true';
+
+function stage2Enabled(): boolean {
+  return (
+    process.env.SHERPA_STAGE_2_TESTNET_ENABLED === 'true' ||
+    process.env.SHERPA_STAGE_2_ENABLED === 'true' ||
+    process.env.NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED === 'true'
+  );
+}
 
 export async function handleMessage(ctx: Context): Promise<void> {
   if (!ctx.message?.text) return;
@@ -66,7 +73,7 @@ export async function handleMessage(ctx: Context): Promise<void> {
       return;
     }
 
-    if (!STAGE_2_ENABLED && STAGE_2_INTENTS.has(intent)) {
+    if (!stage2Enabled() && STAGE_2_INTENTS.has(intent)) {
       await ctx.reply('Stage 2 features (swap, lend, borrow, repay, withdraw) are pending audit and not yet available.');
       return;
     }

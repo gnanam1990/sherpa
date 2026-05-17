@@ -78,10 +78,15 @@ railway up --name sherpa-bot
 
 # Set env vars in Railway dashboard:
 # TELEGRAM_BOT_TOKEN (from @BotFather)
-# SHERPA_API_BASE (existing apps/api URL)
+# SHERPA_API_BASE (https://sherpaapi-production.up.railway.app)
 # SHERPA_WEB_BASE (https://sherpa-web.vercel.app)
 # ADMIN_TG_USER_IDS (your TG user ID for beta)
+# SHERPA_STAGE_2_TESTNET_ENABLED=false
 ```
+
+Linking and signing require the API service to have real database backing
+(`SHERPA_USE_REAL_DB=true` plus the surface-link migrations). If `/link`
+returns an error, fix API database configuration before debugging the bot.
 
 ## H. Smoke test the bot
 

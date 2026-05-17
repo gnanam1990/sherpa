@@ -510,6 +510,11 @@ export function TelegramPanel() {
           <span className="font-mono text-sherpa-fg"> apps/telegram-bot</span> as its own Railway service,
           then this card can flip to live.
         </p>
+        <p className="mt-2 text-sm leading-6 text-sherpa-muted">
+          Required bot env: <span className="font-mono text-sherpa-fg">SHERPA_API_BASE=https://sherpaapi-production.up.railway.app</span>,
+          <span className="font-mono text-sherpa-fg"> SHERPA_WEB_BASE=https://sherpa-web.vercel.app</span>, and your numeric
+          <span className="font-mono text-sherpa-fg"> ADMIN_TG_USER_IDS</span>. Linking also requires the API service database to be enabled.
+        </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <a className={ghostButtonClass} href="https://sherpa-miniapp.vercel.app" rel="noopener noreferrer" target="_blank">
             Open Mini App
