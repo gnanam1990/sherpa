@@ -4,11 +4,11 @@ Date: 2026-05-17
 
 ## Decision
 
-**Status: NO-GO for broadcast.**
+**Status: GO for guarded Stage 2 contract broadcast after explicit operator approval.**
 
-Sherpa Stage 2 is technically prepared for a guarded Base mainnet deployment,
-but mainnet broadcasting remains blocked until the operational gates below are
-complete.
+Sherpa Stage 2 contracts are prepared for guarded Base mainnet deployment.
+Production app write-flags remain blocked until post-deployment smoke tests,
+monitoring, and rollback procedures are complete.
 
 ## What is ready
 
@@ -20,6 +20,18 @@ complete.
 | Mainnet deployment script | Prepared | `packages/contracts/script/DeployMainnet.s.sol` |
 | Mainnet env template | Prepared | `packages/contracts/.env.example` |
 | Mainnet deployment guide | Prepared | `docs/sherpa/audit/05_mainnet_deployment.md` |
+| Final reviewer acknowledgement | Recorded | Screenshot provided 2026-05-17 |
+
+## Final reviewer acknowledgement
+
+Reviewer response:
+
+> Reviewed. No blocker to guarded Base mainnet deployment.
+
+Verification summary in the acknowledgement confirms all listed Stage 2 review
+findings are fixed, with 113 tests passing, Slither reporting 0 high / 0
+critical findings, Router coverage at 96.94% lines, Treasury/Libraries at
+100%, emergency pause added, and single-hop routing enforced.
 
 ## Local verification
 
@@ -38,26 +50,28 @@ Latest mainnet dry-run:
 
 | Item | Result |
 |---|---|
-| Dry-run command | `MAINNET_MIN_DEPLOYER_BALANCE_WEI=1000000000000000 forge script script/DeployMainnet.s.sol --rpc-url "$BASE_MAINNET_RPC_URL" -vvvv` |
+| Dry-run command | `forge script script/DeployMainnet.s.sol --rpc-url "$BASE_MAINNET_RPC_URL" -vvvv` |
 | Deployer | `0xFf525D6940Ad0e308ed6eda443c792694353F9Da` |
 | Safe owner | `0x53918b7635d2d2c2882b213E3321c03887C98D73` |
 | Predicted SherpaTreasury | `0xF4e72beAA559E1815f4671e39EDb1295aD975918` |
 | Predicted SherpaRouter | `0x00bfef87DD352D48F8572BcfA52E57870B35DE8b` |
 | Estimated gas used | `2,986,515` |
-| Estimated gas price | `0.01027 gwei` |
-| Estimated required ETH | `0.00003067150905 ETH` |
+| Estimated gas price | `0.010000063 gwei` |
+| Estimated required ETH | `0.000029865338150445 ETH` |
 | Result | Simulation complete, no broadcast |
 
-## Mainnet blockers
+## Broadcast Gates
 
 | Gate | Status | Required action |
 |---|---|---|
-| Final reviewer acknowledgement | Blocked | Send patched Sepolia deployment + remediation summary to reviewers and record acknowledgement. |
-| Fresh mainnet deployer | Blocked | Create a new wallet. Do not reuse any private key that appeared in chat, terminal history, screenshots, logs, or support tools. |
-| Safe multisig | Blocked | Create a 2-of-3 Safe on Base mainnet and record `MAINNET_SAFE_OWNER_ADDRESS`. |
-| Deployer funding | Blocked | Fund fresh deployer with enough Base ETH for deployment and verification retries. |
-| Production simulation/monitoring | Blocked | Confirm Tenderly, Sentry, Railway logs, and rollback ownership procedures. |
-| Production app env | Blocked | Railway/Vercel must keep mainnet write flags disabled until smoke tests pass. |
+| Final reviewer acknowledgement | Ready | Recorded above. |
+| Fresh mainnet deployer | Ready | `0xFf525D6940Ad0e308ed6eda443c792694353F9Da`. Do not reuse any private key that appeared in chat, terminal history, screenshots, logs, or support tools. |
+| Safe multisig | Ready | `0x53918b7635d2d2c2882b213E3321c03887C98D73` has code on Base mainnet. |
+| Deployer funding | Ready | `0.011 ETH` observed before final dry-run. |
+| Mainnet dry-run | Ready | Normal dry-run completed with no override and no broadcast. |
+| Explicit operator approval | Pending | Required exact phrase: `yes broadcast Stage 2 mainnet`. |
+| Production simulation/monitoring | Blocked for app flip | Confirm Tenderly, Sentry, Railway logs, and rollback ownership procedures before enabling production write traffic. |
+| Production app env | Blocked for app flip | Railway/Vercel must keep mainnet write flags disabled until post-deployment smoke tests pass. |
 
 ## Verified mainnet external addresses
 
