@@ -63,3 +63,9 @@ Railway health endpoint:
 It returns active alert count, due DCA schedule count, active auto-repay rule
 count, uptime, and whether the worker is using `postgres` or `process-memory`
 persistence.
+
+Production:
+
+```text
+https://sherpa-worker-production.up.railway.app/health
+```
