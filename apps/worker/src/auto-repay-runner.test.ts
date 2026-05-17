@@ -20,6 +20,30 @@ describe('auto-repay-runner (worker)', () => {
     expect(result).toHaveProperty('errors');
   });
 
+  test('default transaction dependencies fail closed instead of faking a tx', async () => {
+    const store = new InMemoryAutoRepayStore();
+    const rule = await store.createRule({
+      userAddress: '0x1111111111111111111111111111111111111111',
+      triggerHf: 13000,
+      targetHf: 15000,
+      maxRepayPerExecution: '1000000000',
+    });
+    const runner = createAutoRepayRunner({
+      store,
+      fetchHealthFactor: async () => 1.0,
+    });
+
+    const result = await runner.runOnce();
+
+    expect(result.triggered).toBe(1);
+    expect(result.repaid).toBe(0);
+    expect(result.failed).toBe(1);
+    expect(result.errors.join('\n')).toContain('auto_repay_executor_not_configured');
+    const executions = await store.getExecutionHistory(rule.id);
+    expect(executions[0]?.status).toBe('failed');
+    expect(executions[0]?.tx_hash).toBeNull();
+  });
+
   test('runOnce processes rules from store', async () => {
     const store = new InMemoryAutoRepayStore();
     await store.createRule({

@@ -1,10 +1,18 @@
 import type { AlertRow } from '../types.js';
 import type { NotifyResult, NotifyPayload } from './telegram.js';
 
-let notificationStore: { logNotification(n: Record<string, unknown>): Promise<void> } | null = null;
+let notificationStore: {
+  logNotification(n: {
+    userAddress: string;
+    channel: 'push';
+    payload: NotifyPayload;
+    status: 'sent' | 'failed';
+    sentAt?: string;
+  }): Promise<unknown>;
+} | null = null;
 
 export function setNotificationStore(
-  store: { logNotification(n: Record<string, unknown>): Promise<void> },
+  store: NonNullable<typeof notificationStore>,
 ): void {
   notificationStore = store;
 }
@@ -21,11 +29,9 @@ export async function notifyInApp(
     await notificationStore.logNotification({
       userAddress: alert.user_address,
       channel: 'push',
-      title: payload.title,
-      body: payload.body,
-      data: payload.data,
+      payload,
       status: 'sent',
-      createdAt: Date.now(),
+      sentAt: new Date().toISOString(),
     });
     return { success: true };
   } catch (err) {

@@ -47,10 +47,12 @@ const UpdateDCABody = z
   .strict();
 
 const defaultStore: DCAStore = new InMemoryDCAStore();
+type PersistenceMode = 'process-memory' | 'postgres';
 
 export async function dcaRoutes(
   app: FastifyInstance,
   store: DCAStore = defaultStore,
+  persistence: PersistenceMode = 'process-memory',
 ): Promise<void> {
   app.post('/api/dca', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = CreateDCABody.safeParse(req.body);
@@ -147,6 +149,7 @@ export async function dcaRoutes(
         createdAt: s.created_at,
         lastExecutedAt: s.last_executed_at,
       })),
+      persistence,
     });
   });
 

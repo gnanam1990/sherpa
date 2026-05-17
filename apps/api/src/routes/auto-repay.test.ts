@@ -41,6 +41,8 @@ describe('auto-repay routes', () => {
       const body = JSON.parse(res.payload);
       expect(body.id).toBeDefined();
       expect(body.status).toBe('active');
+      expect(body.triggerHF).toBe(1.3);
+      expect(body.targetHF).toBe(1.5);
     });
 
     test('rejects invalid address', async () => {

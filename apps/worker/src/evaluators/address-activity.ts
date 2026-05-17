@@ -5,23 +5,29 @@ export async function evaluateAddressActivity(alert: AlertRow): Promise<Evaluate
   const address = alert.params?.address as string | undefined;
   if (!address) return { value: 0, triggered: false, error: 'missing address param' };
 
-  const txCount = await fetchRecentTxCount(address);
+  let txCount: number;
+  try {
+    txCount = await fetchRecentTxCount(address);
+  } catch (err) {
+    return {
+      value: 0,
+      triggered: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
   const triggered = checkCondition(txCount, alert.comparison, Number(alert.threshold));
   return { value: txCount, triggered };
 }
 
 export async function fetchRecentTxCount(address: string): Promise<number> {
   const apiKey = process.env.ETHERSCAN_API_KEY ?? process.env.BASESCAN_API_KEY;
-  if (!apiKey) return 0;
+  if (!apiKey) throw new Error('basescan_api_key_required');
 
-  try {
-    const resp = await fetch(
-      `https://api.basescan.org/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=desc&page=1&offset=10&apikey=${apiKey}`,
-    );
-    const data = (await resp.json()) as { status: string; result: unknown[] };
-    if (data.status !== '1') return 0;
-    return data.result.length;
-  } catch {
-    return 0;
-  }
+  const resp = await fetch(
+    `https://api.basescan.org/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=desc&page=1&offset=10&apikey=${apiKey}`,
+  );
+  if (!resp.ok) throw new Error(`basescan_http_${resp.status}`);
+  const data = (await resp.json()) as { status: string; message?: string; result: unknown[] };
+  if (data.status !== '1') throw new Error(`basescan_error: ${data.message ?? 'unknown'}`);
+  return data.result.length;
 }

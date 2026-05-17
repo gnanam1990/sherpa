@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import {
   InMemoryAutoRepayStore,
+  normalizeHealthFactor,
   type CreateAutoRepayRuleInput,
 } from './auto-repay.js';
 
@@ -15,6 +16,11 @@ function makeInput(overrides: Partial<CreateAutoRepayRuleInput> = {}): CreateAut
 }
 
 describe('InMemoryAutoRepayStore', () => {
+  test('normalizes stored health factors from bps to decimal form', () => {
+    expect(normalizeHealthFactor(13000)).toBe(1.3);
+    expect(normalizeHealthFactor(1.3)).toBe(1.3);
+  });
+
   describe('createRule', () => {
     test('creates rule with defaults', async () => {
       const store = new InMemoryAutoRepayStore();

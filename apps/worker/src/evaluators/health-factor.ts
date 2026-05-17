@@ -24,8 +24,10 @@ export async function evaluateHealthFactor(alert: AlertRow): Promise<EvaluateRes
 //   [3] currentLiquidationThreshold
 //   [4] ltv
 //   [5] healthFactor  ← read from word 5, not word 7 (P2-7)
-export async function fetchAaveHealthFactor(address: string): Promise<number> {
-  const rpcUrl = process.env.BASE_RPC_URL ?? 'https://mainnet.base.org';
+export async function fetchAaveHealthFactor(
+  address: string,
+  rpcUrl = process.env.BASE_RPC_URL ?? 'https://mainnet.base.org',
+): Promise<number> {
   const poolAddress = '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5';
 
   const data =

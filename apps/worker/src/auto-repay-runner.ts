@@ -11,11 +11,19 @@ export interface AutoRepayRunnerDeps {
   notify?: AutoRepayDeps['notify'];
 }
 
+export async function autoRepayExecutorNotConfigured(): ReturnType<AutoRepayDeps['buildRepayTx']> {
+  throw new Error('auto_repay_executor_not_configured: Stage 7 session-key executor required');
+}
+
+export async function autoRepaySignerNotConfigured(): ReturnType<AutoRepayDeps['signAndBroadcast']> {
+  throw new Error('auto_repay_signer_not_configured: no production broadcaster configured');
+}
+
 export function createAutoRepayRunner(overrides: AutoRepayRunnerDeps = {}) {
   const store = overrides.store ?? new InMemoryAutoRepayStore();
   const fetchHF = overrides.fetchHealthFactor ?? fetchAaveHealthFactor;
-  const buildTx = overrides.buildRepayTx ?? (async () => ({ to: '', data: '', value: '0' }));
-  const sign = overrides.signAndBroadcast ?? (async () => '');
+  const buildTx = overrides.buildRepayTx ?? autoRepayExecutorNotConfigured;
+  const sign = overrides.signAndBroadcast ?? autoRepaySignerNotConfigured;
   const notify = overrides.notify ?? (async () => {});
 
   const deps: AutoRepayDeps = {
@@ -42,8 +50,8 @@ export async function runAutoRepayWorkerCycle(
   const deps: AutoRepayDeps = {
     store,
     fetchHealthFactor: overrides.fetchHealthFactor ?? fetchAaveHealthFactor,
-    buildRepayTx: overrides.buildRepayTx ?? (async () => ({ to: '', data: '', value: '0' })),
-    signAndBroadcast: overrides.signAndBroadcast ?? (async () => ''),
+    buildRepayTx: overrides.buildRepayTx ?? autoRepayExecutorNotConfigured,
+    signAndBroadcast: overrides.signAndBroadcast ?? autoRepaySignerNotConfigured,
     notify: overrides.notify ?? (async () => {}),
   };
   return runAutoRepayCycle(deps);

@@ -1,31 +1,69 @@
-import { InMemoryAlertStore } from '@sherpa/memory';
+import { loadConfig } from '@sherpa/config';
 import { startHealthServer } from './health.js';
-import { runAlertCycle } from './alert-runner.js';
-
-const INTERVAL_MS = Number(process.env.ALERT_INTERVAL_MS ?? 60_000);
+import {
+  attachNotificationStore,
+  createConsoleLogger,
+  createWorkerStores,
+  readWorkerIntervals,
+  readWorkerToggles,
+  runAlertWorkerCycle,
+  runAutoRepayProductionCycle,
+  runDCAWorkerCycle,
+  startRecurringCycle,
+  workerHealthExtra,
+} from './runtime.js';
 
 async function main(): Promise<void> {
-  const store = new InMemoryAlertStore();
+  const config = loadConfig();
+  const log = createConsoleLogger();
+  const stores = createWorkerStores(config);
+  const intervals = readWorkerIntervals();
+  const toggles = readWorkerToggles();
 
-  await startHealthServer(store);
+  attachNotificationStore(stores);
+  await startHealthServer(stores.alertStore, Number(process.env.PORT ?? 3001), () =>
+    workerHealthExtra(stores),
+  );
 
-  console.log(`[worker] alert runner starting (interval=${INTERVAL_MS}ms)`);
+  log.info('[worker] automation worker starting', {
+    persistence: stores.persistence,
+    chain: config.chainEnv,
+    alerts: toggles.alerts,
+    dca: toggles.dca,
+    autoRepay: toggles.autoRepay,
+    intervals,
+  });
 
-  const tick = async () => {
-    try {
-      const result = await runAlertCycle(store);
-      if (result.evaluated > 0) {
-        console.log(
-          `[worker] cycle done: ${result.evaluated} evaluated, ${result.triggered} triggered, ${result.failed} failed`,
-        );
-      }
-    } catch (err) {
-      console.error('[worker] cycle error', err);
-    }
-  };
+  if (toggles.alerts) {
+    startRecurringCycle(
+      'alerts',
+      intervals.alertsMs,
+      () => runAlertWorkerCycle(stores),
+      log,
+    );
+  }
 
-  await tick();
-  setInterval(tick, INTERVAL_MS);
+  if (toggles.dca) {
+    startRecurringCycle(
+      'dca',
+      intervals.dcaMs,
+      () => runDCAWorkerCycle(config, stores, log),
+      log,
+    );
+  }
+
+  if (toggles.autoRepay) {
+    startRecurringCycle(
+      'auto-repay',
+      intervals.autoRepayMs,
+      () => runAutoRepayProductionCycle(config, stores),
+      log,
+    );
+  }
+
+  if (!toggles.alerts && !toggles.dca && !toggles.autoRepay) {
+    log.error('[worker] no automation loops enabled');
+  }
 }
 
 main().catch((err) => {

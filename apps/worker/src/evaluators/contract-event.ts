@@ -8,34 +8,42 @@ export async function evaluateContractEvent(alert: AlertRow): Promise<EvaluateRe
     return { value: 0, triggered: false, error: 'missing contractAddress or topic' };
   }
 
-  const eventCount = await fetchEventCount(contractAddress, topic);
+  let eventCount: number;
+  try {
+    eventCount = await fetchEventCount(contractAddress, topic);
+  } catch (err) {
+    return {
+      value: 0,
+      triggered: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
   const triggered = checkCondition(eventCount, alert.comparison, Number(alert.threshold));
   return { value: eventCount, triggered };
 }
 
 export async function fetchEventCount(contractAddress: string, topic: string): Promise<number> {
-  try {
-    const rpcUrl = process.env.BASE_RPC_URL ?? 'https://mainnet.base.org';
-    const resp = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'eth_getLogs',
-        params: [
-          {
-            address: contractAddress,
-            topics: [topic],
-            fromBlock: 'latest',
-            toBlock: 'latest',
-          },
-        ],
-      }),
-    });
-    const json = (await resp.json()) as { result?: unknown[] };
-    return json.result?.length ?? 0;
-  } catch {
-    return 0;
-  }
+  const rpcUrl = process.env.BASE_RPC_URL ?? 'https://mainnet.base.org';
+  const resp = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'eth_getLogs',
+      params: [
+        {
+          address: contractAddress,
+          topics: [topic],
+          fromBlock: 'latest',
+          toBlock: 'latest',
+        },
+      ],
+    }),
+  });
+  if (!resp.ok) throw new Error(`rpc_http_${resp.status}`);
+  const json = (await resp.json()) as { result?: unknown[]; error?: { message: string } };
+  if (json.error) throw new Error(`rpc_error: ${json.error.message}`);
+  if (!json.result) throw new Error('rpc_missing_result');
+  return json.result.length;
 }

@@ -48,6 +48,7 @@ const UpdateAlertBody = z
   .strict();
 
 const defaultStore: AlertStore = new InMemoryAlertStore();
+type PersistenceMode = 'process-memory' | 'postgres';
 
 function serializeAlert(alert: AlertRow) {
   return {
@@ -76,6 +77,7 @@ function serializeAlert(alert: AlertRow) {
 export async function alertRoutes(
   app: FastifyInstance,
   maybeStore: AlertStore = defaultStore,
+  persistence: PersistenceMode = 'process-memory',
 ): Promise<void> {
   const store = 'create' in maybeStore ? maybeStore : defaultStore;
 
@@ -108,7 +110,7 @@ export async function alertRoutes(
     return reply.send({
       alerts: alerts.map(serializeAlert),
       userAddress: params.data.userAddress,
-      persistence: 'process-memory',
+      persistence,
     });
   });
 

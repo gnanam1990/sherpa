@@ -397,10 +397,13 @@ export interface AutoRepayCycleResult {
 const HF_SCALE = 10000;
 const RUNNER_MAX_CONSECUTIVE_FAILURES = 3;
 
+export function normalizeHealthFactor(value: number): number {
+  return value > 100 ? value / HF_SCALE : value;
+}
+
 export function shouldTrigger(rule: AutoRepayRuleRow, currentHF: number): boolean {
   if (rule.status !== 'active') return false;
-  const currentHFBps = Math.floor(currentHF * HF_SCALE);
-  return currentHFBps <= rule.trigger_hf;
+  return currentHF <= normalizeHealthFactor(rule.trigger_hf);
 }
 
 export function calculateRepayAmount(
@@ -453,7 +456,11 @@ export async function runAutoRepayCycle(deps: AutoRepayDeps): Promise<AutoRepayC
       }
 
       result.triggered++;
-      const repayAmount = calculateRepayAmount(currentHF, rule.target_hf, rule.max_repay_per_execution);
+      const repayAmount = calculateRepayAmount(
+        currentHF,
+        normalizeHealthFactor(rule.target_hf),
+        rule.max_repay_per_execution,
+      );
 
       if (repayAmount <= 0n) {
         result.errors.push(`[${rule.id}] calculated repay amount is 0`);

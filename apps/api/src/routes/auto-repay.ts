@@ -37,13 +37,22 @@ const UpdateAutoRepayBody = z
   .strict();
 
 const defaultStore: AutoRepayStore = new InMemoryAutoRepayStore();
+type PersistenceMode = 'process-memory' | 'postgres';
+
+function hfToBps(hf: number): number {
+  return Math.round(hf * 10_000);
+}
+
+function hfFromStored(value: number): number {
+  return value > 100 ? value / 10_000 : value;
+}
 
 function serializeRule(rule: AutoRepayRuleRow) {
   return {
     id: rule.id,
     userAddress: rule.user_address,
-    triggerHF: rule.trigger_hf,
-    targetHF: rule.target_hf,
+    triggerHF: hfFromStored(rule.trigger_hf),
+    targetHF: hfFromStored(rule.target_hf),
     maxRepayPerExecution: rule.max_repay_per_execution,
     repaySource: rule.repay_source,
     maxPerDay: rule.max_per_day,
@@ -61,6 +70,7 @@ function serializeRule(rule: AutoRepayRuleRow) {
 export async function autoRepayRoutes(
   app: FastifyInstance,
   maybeStore: AutoRepayStore = defaultStore,
+  persistence: PersistenceMode = 'process-memory',
 ): Promise<void> {
   const store = 'createRule' in maybeStore ? maybeStore : defaultStore;
 
@@ -71,8 +81,8 @@ export async function autoRepayRoutes(
     }
     const rule = await store.createRule({
       userAddress: parsed.data.userAddress,
-      triggerHf: parsed.data.triggerHF,
-      targetHf: parsed.data.targetHF,
+      triggerHf: hfToBps(parsed.data.triggerHF),
+      targetHf: hfToBps(parsed.data.targetHF),
       maxRepayPerExecution: parsed.data.maxRepayPerExecution,
       repaySource: parsed.data.repaySource,
       maxPerDay: parsed.data.maxPerDay,
@@ -89,7 +99,7 @@ export async function autoRepayRoutes(
     return reply.send({
       rules: rules.map(serializeRule),
       userAddress: params.data.userAddress,
-      persistence: 'process-memory',
+      persistence,
     });
   });
 
@@ -103,8 +113,8 @@ export async function autoRepayRoutes(
       return reply.status(400).send({ error: body.error.message });
     }
     const rule = await store.updateRule(params.data.id, {
-      triggerHf: body.data.triggerHF,
-      targetHf: body.data.targetHF,
+      triggerHf: body.data.triggerHF === undefined ? undefined : hfToBps(body.data.triggerHF),
+      targetHf: body.data.targetHF === undefined ? undefined : hfToBps(body.data.targetHF),
       maxRepayPerExecution: body.data.maxRepayPerExecution,
       repaySource: body.data.repaySource,
       status: body.data.status,

@@ -15,7 +15,9 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@sherpa/config": "workspace:*",
     "@sherpa/memory": "workspace:*",
+    "@sherpa/scheduler": "workspace:*",
     "fastify": "^5.2.0"
   },
   "devDependencies": {

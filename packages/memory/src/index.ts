@@ -17,6 +17,21 @@ import {
   InMemoryNotificationStore,
   type NotificationStore,
 } from './notifications.js';
+import {
+  createPostgresAlertStore,
+  InMemoryAlertStore,
+  type AlertStore,
+} from './alerts.js';
+import {
+  createPostgresDCAStore,
+  InMemoryDCAStore,
+  type DCAStore,
+} from './dca.js';
+import {
+  createPostgresAutoRepayStore,
+  InMemoryAutoRepayStore,
+  type AutoRepayStore,
+} from './auto-repay.js';
 
 export * from './audit.js';
 export * from './audit.postgres.js';
@@ -97,4 +112,43 @@ export function createNotificationStore(
   if (!config.useRealDb) return new InMemoryNotificationStore();
   const pool = getPool(config);
   return createPostgresNotificationStore(pool);
+}
+
+/**
+ * Pick the right AlertStore implementation. Production workers and API
+ * routes must share the Postgres-backed store so active alerts survive
+ * process restarts and are visible to the background evaluator.
+ */
+export function createAlertStore(
+  config: Pick<SherpaConfig, 'useRealDb' | 'databaseUrl'>,
+): AlertStore {
+  if (!config.useRealDb) return new InMemoryAlertStore();
+  const pool = getPool(config);
+  return createPostgresAlertStore(pool);
+}
+
+/**
+ * Pick the right DCAStore implementation. DCA execution is intentionally
+ * fail-closed until a session-key executor is configured, but schedules and
+ * failed attempts still need durable storage in production.
+ */
+export function createDCAStore(
+  config: Pick<SherpaConfig, 'useRealDb' | 'databaseUrl'>,
+): DCAStore {
+  if (!config.useRealDb) return new InMemoryDCAStore();
+  const pool = getPool(config);
+  return createPostgresDCAStore(pool);
+}
+
+/**
+ * Pick the right AutoRepayStore implementation. Auto-repay rules are durable
+ * in production; execution remains fail-closed unless explicit tx builder and
+ * broadcaster dependencies are provided.
+ */
+export function createAutoRepayStore(
+  config: Pick<SherpaConfig, 'useRealDb' | 'databaseUrl'>,
+): AutoRepayStore {
+  if (!config.useRealDb) return new InMemoryAutoRepayStore();
+  const pool = getPool(config);
+  return createPostgresAutoRepayStore(pool);
 }

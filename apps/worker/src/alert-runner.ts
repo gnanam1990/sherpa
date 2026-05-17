@@ -36,7 +36,23 @@ export async function runAlertCycle(store: AlertStore): Promise<AlertCycleResult
 
       if (evalResult.triggered) {
         const payload = formatAlertPayload(alert, evalResult.value);
-        await dispatchAlertNotification(alert, payload);
+        const notificationResults = await dispatchAlertNotification(alert, payload);
+        const failedNotifications = notificationResults.filter((n) => !n.success);
+        if (
+          notificationResults.length > 0 &&
+          failedNotifications.length === notificationResults.length
+        ) {
+          result.failed++;
+          result.errors.push(
+            `[${alert.id}] notification_failed: ${failedNotifications.map((n) => n.error ?? 'unknown').join('; ')}`,
+          );
+          continue;
+        }
+        if (failedNotifications.length > 0) {
+          result.errors.push(
+            `[${alert.id}] notification_partial_failure: ${failedNotifications.map((n) => n.error ?? 'unknown').join('; ')}`,
+          );
+        }
         await store.markTriggered(alert.id);
         result.triggered++;
       }

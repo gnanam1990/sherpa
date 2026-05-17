@@ -17,7 +17,10 @@ import { createResolver, isResolved, type IdentityResolver } from '@sherpa/ident
 import { kv } from '@vercel/kv';
 import {
   createAuditLog,
+  createAlertStore,
+  createAutoRepayStore,
   createAuditStore,
+  createDCAStore,
   createInMemoryRateLimiter,
   createNotificationStore,
   createPaymasterRateLimiter,
@@ -28,6 +31,9 @@ import {
   updateAuditLog,
   type AuditLogRow,
   type AuditStore,
+  type AlertStore,
+  type AutoRepayStore,
+  type DCAStore,
   type NotificationStore,
   type PaymasterRateLimiter,
   type RateLimiter,
@@ -251,6 +257,12 @@ export type BuildServerOptions = {
   paymasterRateLimiter?: PaymasterRateLimiter;
   /** Override notification persistence (tests can inject an isolated store). */
   notificationStore?: NotificationStore;
+  /** Override alert persistence (tests can inject an isolated store). */
+  alertStore?: AlertStore;
+  /** Override DCA persistence (tests can inject an isolated store). */
+  dcaStore?: DCAStore;
+  /** Override auto-repay persistence (tests can inject an isolated store). */
+  autoRepayStore?: AutoRepayStore;
   /** Override fetch for the paymaster proxy (tests assert request shape). */
   paymasterFetch?: typeof globalThis.fetch;
   /** Override Base Aave positions reader (tests inject a deterministic mock). */
@@ -513,6 +525,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     return reply.code(500).send({ error: 'internal_error' });
   });
   const auditStore = options.auditStore ?? createAuditStore(config);
+  const sharedAutomationConfig =
+    config.databaseUrl ? config : { ...config, useRealDb: false };
+  const alertStore = options.alertStore ?? createAlertStore(sharedAutomationConfig);
+  const dcaStore = options.dcaStore ?? createDCAStore(sharedAutomationConfig);
+  const autoRepayStore =
+    options.autoRepayStore ?? createAutoRepayStore(sharedAutomationConfig);
+  const automationPersistence = sharedAutomationConfig.useRealDb ? 'postgres' : 'process-memory';
   const rateLimiter = options.rateLimiter ?? createInMemoryRateLimiter();
   const resolver = options.resolver ?? defaultResolver(config);
   const llmComplete = options.llmComplete ?? defaultLlmComplete(config);
@@ -870,17 +889,15 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
 
   registerFarcasterRoutes(app, config);
   registerTelegramRoutes(app);
-  dcaRoutes(app);
-  autoRepayRoutes(app);
-  alertRoutes(app);
+  dcaRoutes(app, dcaStore, automationPersistence);
+  autoRepayRoutes(app, autoRepayStore, automationPersistence);
+  alertRoutes(app, alertStore, automationPersistence);
   sessionKeyRoutes(app);
   strategyRoutes(app);
   notificationRoutes(app, {
     store:
       options.notificationStore ??
-      createNotificationStore(
-        config.databaseUrl ? config : { ...config, useRealDb: false },
-      ),
+      createNotificationStore(sharedAutomationConfig),
   });
   portfolioRoutes(app);
   governanceRoutes(app);
