@@ -1,6 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --background: 220 14% 98%;
+  --foreground: 220 13% 5%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 13% 5%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 40%;
+  --border: 220 13% 92%;
+  --primary: 222 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 187 100% 50%;
+  --accent-foreground: 220 13% 5%;
+  --destructive: 4 100% 62%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 220 13% 92%;
+  --ring: 222 100% 50%;
+}
+
+.dark {
+  --background: 220 13% 5%;
+  --foreground: 220 14% 98%;
+  --card: 220 13% 9%;
+  --card-foreground: 220 14% 98%;
+  --muted: 220 13% 12%;
+  --muted-foreground: 220 9% 60%;
+  --border: 220 13% 14%;
+  --primary: 222 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 187 100% 50%;
+  --accent-foreground: 220 13% 5%;
+  --destructive: 4 100% 62%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 220 13% 14%;
+  --ring: 222 100% 50%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  min-height: 100vh;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+::selection {
+  color: #ffffff;
+  background: #0052ff;
+}
 
 @layer base {
   *:focus-visible {
@@ -11,6 +65,41 @@
 }
 
 @layer components {
+  .base-card {
+    @apply rounded-xl border border-border bg-card;
+  }
+
+  .base-card-soft {
+    @apply rounded-xl border border-border bg-card shadow-card-soft;
+  }
+
+  .dark .base-card-soft {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  .base-input {
+    @apply rounded-lg border border-border bg-muted px-4 py-3 text-foreground placeholder:text-muted-foreground;
+    @apply focus:border-base-blue focus:outline-none focus:ring-2 focus:ring-base-blue/20;
+  }
+
+  .base-btn {
+    @apply rounded-lg bg-base-blue px-4 py-2.5 font-semibold text-white shadow-glow-blue transition-colors;
+    @apply hover:bg-base-blue-dark;
+  }
+
+  .base-btn-ghost {
+    @apply rounded-lg border border-border bg-transparent px-4 py-2.5 font-medium text-foreground transition-colors;
+    @apply hover:bg-muted;
+  }
+
+  .meta-label {
+    @apply font-mono text-xs uppercase tracking-widest text-muted-foreground;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold tracking-tight;
+  }
+
   .skip-to-content {
     position: absolute;
     left: 50%;
@@ -25,6 +114,7 @@
     color: #ffffff;
     transition: transform 150ms ease;
   }
+
   .skip-to-content:focus {
     transform: translate(-50%, 0);
   }
