@@ -22,10 +22,10 @@ const ProposeBody = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
   actions: z.array(z.object({
-    target: z.string(),
-    value: z.string(),
-    signature: z.string(),
-    calldata: z.string(),
+    target: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+    value: z.string().regex(/^\d+$/),
+    signature: z.string().max(200),
+    calldata: z.string().regex(/^0x[a-fA-F0-9]*$/),
   })).default([]),
 });
 
@@ -46,6 +46,14 @@ const SnapshotVoteBody = z.object({
 });
 
 type GovernanceSource = 'snapshot' | 'aave' | 'compound' | 'optimism';
+type DraftProposal = z.infer<typeof ProposeBody> & {
+  id: string;
+  status: 'draft';
+  createdAt: string;
+  executionEnabled: false;
+};
+
+const draftProposals = new Map<string, DraftProposal>();
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -101,6 +109,9 @@ export async function governanceRoutes(app: FastifyInstance): Promise<void> {
 
   app.get('/api/governance/proposals/:id', async (req: FastifyRequest, reply: FastifyReply) => {
     const { id } = req.params as { id: string };
+    const draft = draftProposals.get(id);
+    if (draft) return reply.send({ ...draft, source: 'draft' });
+
     try {
       const [aave, compound, optimism] = await Promise.all([
         aaveGov.getProposals(),
@@ -111,15 +122,29 @@ export async function governanceRoutes(app: FastifyInstance): Promise<void> {
       const found = all.find((p) => p.id === id);
       if (!found) return reply.status(404).send({ error: 'Proposal not found' });
       return reply.send(found);
-    } catch (err: any) {
-      return reply.status(500).send({ error: err.message });
+    } catch (err: unknown) {
+      return reply.status(500).send({ error: errorMessage(err) });
     }
   });
 
   app.post('/api/governance/proposals', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = ProposeBody.safeParse(req.body);
     if (!parsed.success) return reply.status(400).send({ error: parsed.error.message });
-    return reply.code(501).send({ error: 'not_implemented', details: 'On-chain proposal submission pending Stage 5.' });
+
+    const proposal: DraftProposal = {
+      ...parsed.data,
+      proposerAddress: parsed.data.proposerAddress.toLowerCase(),
+      id: `draft_${crypto.randomUUID()}`,
+      status: 'draft',
+      createdAt: new Date().toISOString(),
+      executionEnabled: false,
+    };
+    draftProposals.set(proposal.id, proposal);
+
+    return reply.code(201).send({
+      proposal,
+      warning: 'Draft saved only. Sherpa does not submit governance proposals on-chain from this endpoint.',
+    });
   });
 
   app.post('/api/governance/vote', async (req: FastifyRequest, reply: FastifyReply) => {
@@ -152,8 +177,8 @@ export async function governanceRoutes(app: FastifyInstance): Promise<void> {
         return reply.send({ success: true, type: 'transaction', tx: { ...tx, value: tx.value.toString() }, ...parsed.data });
       }
       return reply.send({ success: true, ...parsed.data });
-    } catch (err: any) {
-      return reply.status(500).send({ error: err.message });
+    } catch (err: unknown) {
+      return reply.status(500).send({ error: errorMessage(err) });
     }
   });
 
@@ -170,8 +195,8 @@ export async function governanceRoutes(app: FastifyInstance): Promise<void> {
         parsed.data.reason,
       );
       return reply.send({ success: true, id: result.id });
-    } catch (err: any) {
-      return reply.status(500).send({ error: err.message });
+    } catch (err: unknown) {
+      return reply.status(500).send({ error: errorMessage(err) });
     }
   });
 
@@ -180,8 +205,8 @@ export async function governanceRoutes(app: FastifyInstance): Promise<void> {
     try {
       const votes = await snapshot.getVotesByAddress(address);
       return reply.send({ address, votes });
-    } catch (err: any) {
-      return reply.status(500).send({ error: err.message });
+    } catch (err: unknown) {
+      return reply.status(500).send({ error: errorMessage(err) });
     }
   });
 
@@ -203,8 +228,8 @@ export async function governanceRoutes(app: FastifyInstance): Promise<void> {
         delegator: result.delegator,
         delegatee: result.delegatee,
       });
-    } catch (err: any) {
-      return reply.status(500).send({ error: err.message });
+    } catch (err: unknown) {
+      return reply.status(500).send({ error: errorMessage(err) });
     }
   });
 
@@ -216,8 +241,8 @@ export async function governanceRoutes(app: FastifyInstance): Promise<void> {
         protocols.map((p) => delegation.getDelegation(address as `0x${string}`, p)),
       );
       return reply.send({ address, delegations: statuses });
-    } catch (err: any) {
-      return reply.status(500).send({ error: err.message });
+    } catch (err: unknown) {
+      return reply.status(500).send({ error: errorMessage(err) });
     }
   });
 
@@ -241,8 +266,8 @@ export async function governanceRoutes(app: FastifyInstance): Promise<void> {
         delegator: result.delegator,
         delegatee: result.delegatee,
       });
-    } catch (err: any) {
-      return reply.status(500).send({ error: err.message });
+    } catch (err: unknown) {
+      return reply.status(500).send({ error: errorMessage(err) });
     }
   });
 

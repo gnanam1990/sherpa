@@ -79,14 +79,46 @@ describe('Governance API Routes', () => {
       const res = await app.inject({ method: 'GET', url: '/api/governance/proposals?source=snapshot' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.payload);
-      expect(body.proposals.every((p: any) => p.source === 'snapshot')).toBe(true);
+      expect(body.proposals.every((p: Record<string, unknown>) => p.source === 'snapshot')).toBe(true);
     });
 
     test('filters by aave source', async () => {
       const res = await app.inject({ method: 'GET', url: '/api/governance/proposals?source=aave' });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.payload);
-      expect(body.proposals.every((p: any) => p.source === 'aave')).toBe(true);
+      expect(body.proposals.every((p: Record<string, unknown>) => p.source === 'aave')).toBe(true);
+    });
+  });
+
+  describe('POST /api/governance/proposals', () => {
+    test('stores a draft proposal instead of submitting on-chain', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/governance/proposals',
+        payload: {
+          proposerAddress: '0x1234567890abcdef1234567890abcdef12345678',
+          title: 'Add Sherpa delegate policy',
+          description: 'Draft a proposal before sending it through the official governance UI.',
+          actions: [{
+            target: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd',
+            value: '0',
+            signature: 'setDelegate(address)',
+            calldata: '0x',
+          }],
+        },
+      });
+      expect(res.statusCode).toBe(201);
+      const body = JSON.parse(res.payload);
+      expect(body.proposal.id).toMatch(/^draft_/);
+      expect(body.proposal.executionEnabled).toBe(false);
+      expect(body.warning).toContain('Draft saved only');
+
+      const lookup = await app.inject({
+        method: 'GET',
+        url: `/api/governance/proposals/${body.proposal.id}`,
+      });
+      expect(lookup.statusCode).toBe(200);
+      expect(JSON.parse(lookup.payload).source).toBe('draft');
     });
   });
 
