@@ -548,25 +548,28 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   app.get<{ Params: { addr: string } }>('/api/balance/:addr', async (req, reply) => {
     const resolved = await resolver(req.params.addr);
     if (!isResolved(resolved)) return reply.code(400).send({ error: resolved });
+    const balanceChain = config.stage2PublicMainnetEnabled
+      ? { chainId: 8453, rpcUrl: config.baseMainnetRpcUrl, name: 'base' }
+      : { chainId: config.chain.chainId, rpcUrl: config.rpcUrl, name: config.chain.name };
     if (!config.useRealRpc) {
       return reply.send({
         address: resolved.address,
         source: resolved.source,
-        chain: config.chain.name,
+        chain: balanceChain.name,
         balances: { ETH: '0', USDC: '0' },
         stage: 'stub',
       });
     }
     try {
       const client = getPublicClient({
-        chainId: config.chain.chainId,
-        rpcUrl: config.rpcUrl,
+        chainId: balanceChain.chainId,
+        rpcUrl: balanceChain.rpcUrl,
       });
-      const snap = await fetchBalance(client, resolved.address);
+      const snap = await fetchBalance(client, resolved.address, { chainId: balanceChain.chainId });
       return reply.send({
         address: resolved.address,
         source: resolved.source,
-        chain: config.chain.name,
+        chain: balanceChain.name,
         balances: { ETH: snap.ethDisplay, USDC: snap.usdcDisplay },
       });
     } catch (err) {

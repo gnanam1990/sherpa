@@ -237,8 +237,14 @@ async function readJson<T>(res: Response): Promise<T> {
 }
 
 function balanceSummary(data: BalanceResponse): string {
+  const chain =
+    data.chain === 'base'
+      ? 'Base mainnet'
+      : data.chain === 'base-sepolia'
+        ? 'Base Sepolia'
+        : data.chain;
   return [
-    `Balance on ${data.chain}`,
+    `Balance on ${chain}`,
     `ETH: ${data.balances.ETH}`,
     `USDC: ${data.balances.USDC}`,
   ].join('\n');

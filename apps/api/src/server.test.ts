@@ -498,6 +498,23 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  it('GET /api/balance/:addr targets Base mainnet when public Stage 2 mainnet is enabled', async () => {
+    const app = buildServer({
+      config: {
+        ...offlineConfig,
+        baseMainnetRpcUrl: 'https://mainnet.base.org',
+        stage2PublicMainnetEnabled: true,
+      },
+    });
+    const res = await app.inject({ method: 'GET', url: `/api/balance/${USDC_RECIPIENT}` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { chain: string; stage?: string; balances: { ETH: string; USDC: string } };
+    expect(body.stage).toBe('stub');
+    expect(body.chain).toBe('base');
+    expect(body.balances.USDC).toBe('0');
+    await app.close();
+  });
+
   it('GET /api/history/:addr returns [] with emptyIndexer default', async () => {
     const app = buildServer({ config: offlineConfig });
     const res = await app.inject({ method: 'GET', url: `/api/history/${USDC_RECIPIENT}?limit=5` });

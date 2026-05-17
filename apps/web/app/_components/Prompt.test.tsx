@@ -153,7 +153,7 @@ describe('Prompt', () => {
       if (url === `/api/balance/${USER_ADDRESS}`) {
         return jsonResponse({
           address: USER_ADDRESS,
-          chain: 'base-sepolia',
+          chain: 'base',
           balances: { ETH: '0.25', USDC: '5.00' },
         });
       }
@@ -167,7 +167,7 @@ describe('Prompt', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
-    expect(await screen.findByText(/Balance on base-sepolia/)).toBeTruthy();
+    expect(await screen.findByText(/Balance on Base mainnet/)).toBeTruthy();
     expect(screen.getByText(/ETH: 0.25/)).toBeTruthy();
     expect(screen.getByText(/USDC: 5.00/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Proceed' })).toBeNull();
