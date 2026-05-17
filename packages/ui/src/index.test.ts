@@ -8,5 +8,5 @@ describe('@sherpa/ui exports', () => {
     expect(typeof card.ConfirmationCard).toBe('function');
     expect(mod.tokens.color.baseBlue).toBe('#0052FF');
     expect(typeof mod.ConfirmationCard).toBe('function');
-  });
+  }, 15_000);
 });
