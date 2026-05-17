@@ -1,6 +1,6 @@
 import { describe, it, expect, test } from 'vitest';
 import { parseDeterministic, parseWithLLM, plan } from './index.js';
-import { createLimitless, makeUniswap } from '@sherpa/tools';
+import { createAave, createLimitless, makeUniswap } from '@sherpa/tools';
 import { ALLOWED_CONTRACTS } from '@sherpa/safety';
 import type { LLMResponse } from '@sherpa/llm';
 
@@ -1666,6 +1666,44 @@ describe('core/executor', () => {
     expect(out.card.intent).toBe('BORROW');
     expect(out.card.batch?.calls.length).toBe(1);
     expect(out.card.warnings.join(' ')).toMatch(/testnet only/i);
+  });
+
+  it('SWAP mainnet beta targets SherpaRouter on Base mainnet', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const router = '0x00bfef87DD352D48F8572BcfA52E57870B35DE8b' as const;
+    const aave = createAave({
+      chainId: 8453,
+      poolAddress: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5',
+    });
+    const p = parseDeterministic('swap 1 USDC for ETH');
+    const out = await plan(p, {
+      aave,
+      aerodromeFactoryAddress: '0x420DD381b31aEf6683db6B902084cB0FFECe40Da',
+      aerodromeRouterAddress: '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43',
+      chainId: 8453,
+      sherpaRouterAddress: router,
+      stage2Mainnet: true,
+      stage2ReadContract: async () => [999_000n, 2_000_000_000_000_000n],
+      userAddress: me,
+      userKey: 'mainnet-beta-swap-test',
+    });
+    if (!out.ok) throw new Error(out.error);
+    expect(out.ok).toBe(true);
+    expect(out.card.intent).toBe('SWAP');
+    expect(out.card.batch?.chainId).toBe('0x2105');
+    expect(out.card.batch?.calls.at(-1)?.to).toBe(router);
+    expect(out.card.gas_display).toBe('user pays');
+    expect(out.card.warnings.join(' ')).toMatch(/private beta/i);
+  });
+
+  it('REPAY and WITHDRAW stay blocked unless mainnet beta deps are present', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const repay = await plan(parseDeterministic('repay 1 usdc'), { userAddress: me });
+    const withdraw = await plan(parseDeterministic('withdraw 1 usdc from aave'), { userAddress: me });
+    expect(repay.ok).toBe(false);
+    expect(withdraw.ok).toBe(false);
+    if (!repay.ok) expect(repay.error).toMatch(/private mainnet beta/i);
+    if (!withdraw.ok) expect(withdraw.error).toMatch(/private mainnet beta/i);
   });
 
   // ── BALANCE executor ───────────────────────────────────────────────

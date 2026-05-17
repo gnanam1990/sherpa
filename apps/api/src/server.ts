@@ -58,6 +58,7 @@ import {
   fetchBalance,
   getUserAaveAccountData,
   getPublicClient,
+  type SherpaRouterReadContract,
   type AavePosition,
   type HistoryItem,
   type HistoryIndexer,
@@ -200,6 +201,8 @@ export type BuildServerOptions = {
   paymasterFetch?: typeof globalThis.fetch;
   /** Override Base Aave positions reader (tests inject a deterministic mock). */
   positionsReader?: PositionReader;
+  /** Override Stage 2 Router read calls (tests inject deterministic quote/reserve responses). */
+  stage2ReadContract?: SherpaRouterReadContract;
 };
 
 /**
@@ -314,15 +317,46 @@ function isStage2ComingSoonIntent(intent: string): boolean {
   return stage2ComingSoonIntents.has(intent);
 }
 
-function isStage2TestnetExecutableIntent(intent: string): boolean {
-  return stage2TestnetExecutableIntents.has(intent);
-}
-
 function canRunStage2Testnet(config: SherpaConfig): boolean {
   return config.chainEnv === 'base-sepolia' && config.chainId === 84532 && config.stage2TestnetEnabled;
 }
 
-function stage2PlanDeps(config: SherpaConfig) {
+function canRunStage2Mainnet(config: SherpaConfig, userAddress: `0x${string}` | undefined): boolean {
+  if (!config.stage2Enabled || !userAddress) return false;
+  if (config.stage2BetaWallets.length === 0) return false;
+  const allowed = config.stage2BetaWallets.some((addr) => addr.toLowerCase() === userAddress.toLowerCase());
+  return Boolean(
+    allowed &&
+      config.sherpaRouterBaseMainnet &&
+      config.aerodromeRouterAddress &&
+      config.aerodromeFactoryAddress &&
+      config.aavePoolAddress,
+  );
+}
+
+function canRunStage2Intent(config: SherpaConfig, intent: string, userAddress: `0x${string}` | undefined): boolean {
+  if (stage2TestnetExecutableIntents.has(intent) && canRunStage2Testnet(config)) return true;
+  return stage2ComingSoonIntents.has(intent) && canRunStage2Mainnet(config, userAddress);
+}
+
+function stage2PlanDeps(
+  config: SherpaConfig,
+  userAddress: `0x${string}` | undefined,
+  readContract?: SherpaRouterReadContract,
+) {
+  if (canRunStage2Mainnet(config, userAddress)) {
+    return {
+      aave: config.aavePoolAddress ? createAave({ chainId: 8453, poolAddress: config.aavePoolAddress }) : undefined,
+      aerodromeFactoryAddress: config.aerodromeFactoryAddress,
+      aerodromeRouterAddress: config.aerodromeRouterAddress,
+      chainId: 8453,
+      paymasterUrl: undefined,
+      sherpaRouterAddress: config.sherpaRouterBaseMainnet,
+      stage2Mainnet: true,
+      stage2ReadContract: readContract,
+      stage2RpcUrl: config.baseMainnetRpcUrl,
+    };
+  }
   if (!canRunStage2Testnet(config)) return {};
   return {
     aerodromeRouterAddress: config.aerodromeRouterAddress,
@@ -407,13 +441,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       typeof parsed.data.userKey === 'string' && /^0x[a-fA-F0-9]{40}$/.test(parsed.data.userKey)
         ? (parsed.data.userKey as `0x${string}`)
         : undefined;
-    if (isStage2ComingSoonIntent(parsedIntent.intent) && !isStage2TestnetExecutableIntent(parsedIntent.intent)) {
-      return reply.send({
-        parsed: parsedIntent,
-        stage2: { status: 'coming_soon', reason: 'pending_external_audit' },
-      });
-    }
-    if (isStage2TestnetExecutableIntent(parsedIntent.intent) && !canRunStage2Testnet(config)) {
+    if (isStage2ComingSoonIntent(parsedIntent.intent) && !canRunStage2Intent(config, parsedIntent.intent, userAddress)) {
       return reply.send({
         parsed: parsedIntent,
         stage2: { status: 'coming_soon', reason: 'pending_external_audit' },
@@ -426,7 +454,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       paymasterUrl: config.paymasterUrl,
       rateLimiter,
       resolver,
-      ...stage2PlanDeps(config),
+      ...stage2PlanDeps(config, userAddress, options.stage2ReadContract),
     });
     if (!planResult.ok) {
       return reply.send({ parsed: parsedIntent, error: planResult.error });
@@ -446,13 +474,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
         error: 'positions is read-only; use GET /api/positions/:address',
       });
     }
-    if (isStage2ComingSoonIntent(parsedIntent.intent) && !isStage2TestnetExecutableIntent(parsedIntent.intent)) {
-      return reply.code(400).send({
-        ok: false,
-        error: `Stage 2 ${parsedIntent.intent.toLowerCase()} is pending external audit.`,
-      });
-    }
-    if (isStage2TestnetExecutableIntent(parsedIntent.intent) && !canRunStage2Testnet(config)) {
+    if (isStage2ComingSoonIntent(parsedIntent.intent) && !canRunStage2Intent(config, parsedIntent.intent, parsed.data.userAddress)) {
       return reply.code(400).send({
         ok: false,
         error: `Stage 2 ${parsedIntent.intent.toLowerCase()} is pending external audit.`,
@@ -465,7 +487,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       paymasterUrl: config.paymasterUrl,
       rateLimiter,
       resolver,
-      ...stage2PlanDeps(config),
+      ...stage2PlanDeps(config, parsed.data.userAddress, options.stage2ReadContract),
     });
     if (!planResult.ok) {
       return reply.code(400).send({ ok: false, error: planResult.error });

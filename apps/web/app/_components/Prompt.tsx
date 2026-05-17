@@ -141,7 +141,7 @@ function toSendCallsVariables(batch: SerializedSendCallsEnvelope) {
   return {
     chainId: (batch.chainId.startsWith('0x')
       ? Number.parseInt(batch.chainId, 16)
-      : Number(batch.chainId)) as 84532,
+      : Number(batch.chainId)) as 84532 | 8453,
     capabilities: batch.capabilities,
     calls: batch.calls.map((call) => ({
       to: call.to as `0x${string}`,

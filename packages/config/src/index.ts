@@ -159,6 +159,14 @@ export type SherpaConfig = {
   aavePoolAddress?: `0x${string}`;
   /** Aave V3 Data Provider address (optional — for reserve data). */
   aaveDataProviderAddress?: `0x${string}`;
+  /** Base mainnet RPC used by read-only positions and private Stage 2 beta planning. */
+  baseMainnetRpcUrl: string;
+  /** Stage 2 SherpaRouter deployment on Base mainnet. */
+  sherpaRouterBaseMainnet?: `0x${string}`;
+  /** Stage 2 SherpaTreasury deployment on Base mainnet. */
+  sherpaTreasuryBaseMainnet?: `0x${string}`;
+  /** Aerodrome factory used in single-hop Router swap routes. */
+  aerodromeFactoryAddress?: `0x${string}`;
   feeTreasuryAddress?: `0x${string}`;
   feeEnabled: boolean;
   feeBps: number;
@@ -168,6 +176,8 @@ export type SherpaConfig = {
   stage2TestnetEnabled: boolean;
   /** Public-facing Stage 2 flag (exposed via NEXT_PUBLIC_*). */
   stage2PublicEnabled: boolean;
+  /** Wallet allowlist for private Base-mainnet Stage 2 app rollout. */
+  stage2BetaWallets: readonly `0x${string}`[];
 };
 
 /**
@@ -196,6 +206,20 @@ export const ONCHAIN_ADDRESSES = Object.freeze({
     aavePool: '0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27' as const,
     sherpaRouter: '0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032' as const,
     sherpaTreasury: '0x70A58169BF96587E55F500c4b5cb9d956Ef826ee' as const,
+  },
+  /**
+   * Stage 2 guarded Base mainnet deployment.
+   *
+   * Source: deployments/base-mainnet.json, deployed 2026-05-17 after two
+   * external review rounds. App traffic remains feature-flag + beta-wallet
+   * gated until monitored production smoke is complete.
+   */
+  stage2BaseMainnet: {
+    aerodromeRouter: '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43' as const,
+    aerodromeFactory: '0x420DD381b31aEf6683db6B902084cB0FFECe40Da' as const,
+    aavePool: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5' as const,
+    sherpaRouter: '0x00bfef87DD352D48F8572BcfA52E57870B35DE8b' as const,
+    sherpaTreasury: '0xF4e72beAA559E1815f4671e39EDb1295aD975918' as const,
   },
 });
 
@@ -234,6 +258,7 @@ const IdentityEnvSchema = z.object({
   NEYNAR_API_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   NEYNAR_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
   ALCHEMY_ETH_MAINNET_RPC: z.preprocess(emptyToUndefined, z.string().url().optional()),
+  BASE_MAINNET_RPC_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
   KV_REST_API_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
   KV_REST_API_TOKEN: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
 });
@@ -278,6 +303,7 @@ const TenderlyEnvSchema = z.object({
 
 const AerodromeEnvSchema = z.object({
   AERODROME_ROUTER_ADDRESS: z.preprocess(emptyToUndefined, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional()),
+  AERODROME_FACTORY_ADDRESS: z.preprocess(emptyToUndefined, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional()),
 });
 
 const AaveEnvSchema = z.object({
@@ -295,7 +321,18 @@ const Stage2EnvSchema = z.object({
   SHERPA_STAGE_2_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('false')),
   SHERPA_STAGE_2_TESTNET_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('true')),
   NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('false')),
+  SHERPA_STAGE_2_BETA_WALLETS: z.preprocess(emptyToUndefined, z.string().optional()),
+  SHERPA_ROUTER_BASE_MAINNET: z.preprocess(emptyToUndefined, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional()),
+  SHERPA_TREASURY_BASE_MAINNET: z.preprocess(emptyToUndefined, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional()),
 });
+
+function parseWalletList(value: string | undefined): readonly `0x${string}`[] {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item): item is `0x${string}` => /^0x[a-fA-F0-9]{40}$/.test(item));
+}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   const chainEnv = ChainEnvSchema.parse({
@@ -315,6 +352,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     NEYNAR_API_KEY: env.NEYNAR_API_KEY,
     NEYNAR_BASE_URL: env.NEYNAR_BASE_URL,
     ALCHEMY_ETH_MAINNET_RPC: env.ALCHEMY_ETH_MAINNET_RPC,
+    BASE_MAINNET_RPC_URL: env.BASE_MAINNET_RPC_URL,
     KV_REST_API_URL: env.KV_REST_API_URL,
     KV_REST_API_TOKEN: env.KV_REST_API_TOKEN,
   });
@@ -349,11 +387,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   });
   const aerodromeEnv = AerodromeEnvSchema.parse({
     AERODROME_ROUTER_ADDRESS: env.AERODROME_ROUTER_ADDRESS,
+    AERODROME_FACTORY_ADDRESS: env.AERODROME_FACTORY_ADDRESS,
   });
   const stage2Env = Stage2EnvSchema.parse({
     SHERPA_STAGE_2_ENABLED: env.SHERPA_STAGE_2_ENABLED,
     SHERPA_STAGE_2_TESTNET_ENABLED: env.SHERPA_STAGE_2_TESTNET_ENABLED,
     NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED: env.NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED,
+    SHERPA_STAGE_2_BETA_WALLETS: env.SHERPA_STAGE_2_BETA_WALLETS,
+    SHERPA_ROUTER_BASE_MAINNET: env.SHERPA_ROUTER_BASE_MAINNET,
+    SHERPA_TREASURY_BASE_MAINNET: env.SHERPA_TREASURY_BASE_MAINNET,
   });
 
   const paymasterUrl = env.SHERPA_PAYMASTER_URL;
@@ -361,6 +403,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   const stage2TestnetEnabled =
     chainName === 'base-sepolia' && stage2Env.SHERPA_STAGE_2_TESTNET_ENABLED === 'true';
   const testnetAddresses = ONCHAIN_ADDRESSES.stage2BaseSepolia;
+  const mainnetAddresses = ONCHAIN_ADDRESSES.stage2BaseMainnet;
 
   if (paymasterUrl) {
     if (isMainnet && chainName === 'base-mainnet' && !paymasterUrl.includes('mainnet')) {
@@ -419,16 +462,21 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     simulationFailOpen,
     isMainnet,
     aerodromeRouterAddress: (aerodromeEnv.AERODROME_ROUTER_ADDRESS ??
-      (stage2TestnetEnabled ? testnetAddresses.mockAerodromeRouter : undefined)) as `0x${string}` | undefined,
+      (isMainnet ? mainnetAddresses.aerodromeRouter : stage2TestnetEnabled ? testnetAddresses.mockAerodromeRouter : undefined)) as `0x${string}` | undefined,
     aavePoolAddress: (aaveEnv.AAVE_POOL_ADDRESS ??
-      (stage2TestnetEnabled ? testnetAddresses.aavePool : undefined)) as `0x${string}` | undefined,
+      (isMainnet ? mainnetAddresses.aavePool : stage2TestnetEnabled ? testnetAddresses.aavePool : undefined)) as `0x${string}` | undefined,
     aaveDataProviderAddress: aaveEnv.AAVE_DATA_PROVIDER_ADDRESS as `0x${string}` | undefined,
+    baseMainnetRpcUrl: idEnv.BASE_MAINNET_RPC_URL ?? CHAINS['base-mainnet'].rpcUrl,
+    sherpaRouterBaseMainnet: (stage2Env.SHERPA_ROUTER_BASE_MAINNET ?? mainnetAddresses.sherpaRouter) as `0x${string}`,
+    sherpaTreasuryBaseMainnet: (stage2Env.SHERPA_TREASURY_BASE_MAINNET ?? mainnetAddresses.sherpaTreasury) as `0x${string}`,
+    aerodromeFactoryAddress: (aerodromeEnv.AERODROME_FACTORY_ADDRESS ?? mainnetAddresses.aerodromeFactory) as `0x${string}`,
     feeTreasuryAddress: feeEnv.SHERPA_FEE_TREASURY_ADDRESS as `0x${string}` | undefined,
     feeEnabled: feeEnv.SHERPA_FEE_ENABLED,
     feeBps: feeEnv.SHERPA_FEE_BPS,
     stage2Enabled: stage2Env.SHERPA_STAGE_2_ENABLED === 'true',
     stage2TestnetEnabled,
     stage2PublicEnabled: stage2Env.NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED === 'true',
+    stage2BetaWallets: parseWalletList(stage2Env.SHERPA_STAGE_2_BETA_WALLETS),
   };
 }
 

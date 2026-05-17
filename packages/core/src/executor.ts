@@ -21,6 +21,11 @@ import {
   aave as defaultAave,
   buildApproveCall,
   buildBorrowCall,
+  buildSherpaRouterBorrowPlan,
+  buildSherpaRouterRepayPlan,
+  buildSherpaRouterSupplyPlan,
+  buildSherpaRouterSwapPlan,
+  buildSherpaRouterWithdrawPlan,
   limitless as defaultLimitless,
   onramp,
   searchPolyForgeMarkets,
@@ -30,6 +35,7 @@ import {
   type AaveAdapter,
   type AaveBorrowParams,
   type AaveLendParams,
+  type SherpaRouterReadContract,
   type LimitlessAdapter,
   type BuyParams,
   type BuyQuote,
@@ -71,6 +77,16 @@ export type ExecutorDeps = {
   aerodromeRouterAddress?: Address;
   /** True only for Base Sepolia Stage 2 demos; applies small amount caps and warnings. */
   stage2Testnet?: boolean;
+  /** True only for guarded Base mainnet Stage 2 beta. */
+  stage2Mainnet?: boolean;
+  /** Audited SherpaRouter address for mainnet Stage 2. */
+  sherpaRouterAddress?: Address;
+  /** Aerodrome factory used in Router swap routes. */
+  aerodromeFactoryAddress?: Address;
+  /** Base mainnet RPC used for Router quotes/reserve lookups. */
+  stage2RpcUrl?: string;
+  /** Test hook for Router quote/reserve reads. */
+  stage2ReadContract?: SherpaRouterReadContract;
   /**
    * Optional simulation callback for Ring 6. When provided, the planner
    * runs simulation after building steps and rejects if the tx would fail.
@@ -121,6 +137,38 @@ function enforceTestnetAmountCap(
         : TESTNET_MAX_WETH_AMOUNT;
   if (parsed > cap) return testnetCapError(action);
   return undefined;
+}
+
+function enforceMainnetBetaAmountCap(action: string, asset: string, amount: string): string | undefined {
+  const normalized = asset.toUpperCase();
+  const decimals = normalized === 'USDC' ? 6 : 18;
+  const parsed = parseTokenAmount(amount, decimals);
+  const cap = normalized === 'USDC' ? 100_000_000n : 50_000_000_000_000_000n;
+  if (parsed > cap) {
+    return `${action} is in private mainnet beta. Max per action: 100 USDC or 0.05 WETH.`;
+  }
+  return undefined;
+}
+
+function routerDeps(deps: ExecutorDeps) {
+  if (!deps.stage2Mainnet || !deps.sherpaRouterAddress || !deps.aerodromeRouterAddress || !deps.aave?.poolAddress) {
+    return undefined;
+  }
+  return {
+    routerAddress: deps.sherpaRouterAddress,
+    aerodromeRouterAddress: deps.aerodromeRouterAddress,
+    aerodromeFactoryAddress: deps.aerodromeFactoryAddress,
+    aavePoolAddress: deps.aave.poolAddress,
+    rpcUrl: deps.stage2RpcUrl,
+    readContract: deps.stage2ReadContract,
+  };
+}
+
+function mainnetWarnings(feature: string): string[] {
+  return [
+    `${feature} is live for private beta wallets on Base mainnet. Start with tiny amounts.`,
+    'Mainnet action: you pay network gas; Sherpa will not attach the Sepolia paymaster.',
+  ];
 }
 
 function stepToCall(step: ExecutionStep): Call {
@@ -187,6 +235,8 @@ export async function plan(parsed: ParsedIntent, deps: ExecutorDeps = {}): Promi
   if (parsed.intent === 'SWAP') return planSwap(parsed, deps);
   if (parsed.intent === 'LEND') return planLend(parsed, deps);
   if (parsed.intent === 'BORROW') return planBorrow(parsed, deps);
+  if (parsed.intent === 'REPAY') return planRepay(parsed, deps);
+  if (parsed.intent === 'WITHDRAW') return planWithdraw(parsed, deps);
   if (parsed.intent === 'DCA') return planDca(parsed, deps);
   if (parsed.intent === 'ALERT') return planAlert(parsed, deps);
   if (parsed.intent === 'AUTO_REPAY') return planAutoRepay(parsed, deps);
@@ -640,6 +690,52 @@ async function planSwap(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
   const capError = enforceTestnetAmountCap('SWAP', fromAsset, fromAmount, deps);
   if (capError) return { ok: false, error: capError };
 
+  if (deps.stage2Mainnet) {
+    const betaCapError = enforceMainnetBetaAmountCap('SWAP', fromAsset, fromAmount);
+    if (betaCapError) return { ok: false, error: betaCapError };
+    const rd = routerDeps(deps);
+    if (!rd) return { ok: false, error: 'SWAP mainnet beta is not configured.' };
+    try {
+      const routerPlan = await buildSherpaRouterSwapPlan({
+        fromAsset,
+        toAsset,
+        amount: fromAmount,
+        slippageBps,
+        deps: rd,
+      });
+      const pending: PendingTx = {
+        to: deps.sherpaRouterAddress!,
+        data: routerPlan.steps.at(-1)?.data ?? '0x',
+        value: 0n,
+        asset: routerPlan.asset.address as Address,
+        amount: routerPlan.amountBaseUnits,
+        recipientSource: 'direct',
+      };
+      const r = await runRings(pending, deps, [deps.sherpaRouterAddress!, routerPlan.asset.address as Address]);
+      if (!r.ok) return r;
+
+      const steps: ExecutionStep[] = routerPlan.steps;
+      return {
+        ok: true,
+        card: {
+          intent: 'SWAP',
+          primary_action_label: 'Swap',
+          primary_amount_display: `${fromAmount} ${routerPlan.asset.symbol}`,
+          secondary_amount_display: routerPlan.secondaryDisplay,
+          steps,
+          batch: envelopeFor(steps, { ...deps, paymasterUrl: undefined }),
+          gas_display: GAS_USER_PAYS,
+          warnings: mainnetWarnings('Swap'),
+          estimated_completion_ms: 10_000,
+          protocolFeeBps: 10,
+          feeAsset: routerPlan.asset.symbol,
+        },
+      };
+    } catch (err) {
+      return { ok: false, error: (err as Error).message };
+    }
+  }
+
   // Guard: Aerodrome not configured → graceful error (not a crash)
   try {
     const result = await buildSwapCall(
@@ -751,11 +847,49 @@ async function planLend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
   if (!amount || !asset) {
     return { ok: false, error: 'missing slots: amount/asset' };
   }
-  if (asset !== 'USDC') {
-    return { ok: false, error: `Aave doesn't support ${asset} on this network. Try USDC.` };
-  }
   if (!deps.userAddress) {
     return { ok: false, error: 'LEND requires a connected wallet.' };
+  }
+
+  if (deps.stage2Mainnet) {
+    const betaCapError = enforceMainnetBetaAmountCap('LEND', asset, amount);
+    if (betaCapError) return { ok: false, error: betaCapError };
+    const rd = routerDeps(deps);
+    if (!rd) return { ok: false, error: 'LEND mainnet beta is not configured.' };
+    try {
+      const routerPlan = await buildSherpaRouterSupplyPlan({ asset, amount, deps: rd });
+      const pending: PendingTx = {
+        to: deps.sherpaRouterAddress!,
+        data: routerPlan.steps.at(-1)?.data ?? '0x',
+        value: 0n,
+        asset: routerPlan.asset.address as Address,
+        amount: routerPlan.amountBaseUnits,
+        recipientSource: 'direct',
+      };
+      const r = await runRings(pending, deps, [deps.sherpaRouterAddress!, routerPlan.asset.address as Address]);
+      if (!r.ok) return r;
+      const steps: ExecutionStep[] = routerPlan.steps;
+      return {
+        ok: true,
+        card: {
+          intent: 'LEND',
+          primary_action_label: 'Lend',
+          primary_amount_display: `${amount} ${routerPlan.asset.symbol}`,
+          secondary_amount_display: routerPlan.secondaryDisplay,
+          steps,
+          batch: envelopeFor(steps, { ...deps, paymasterUrl: undefined }),
+          gas_display: GAS_USER_PAYS,
+          warnings: mainnetWarnings('Lend'),
+          estimated_completion_ms: 10_000,
+        },
+      };
+    } catch (err) {
+      return { ok: false, error: (err as Error).message };
+    }
+  }
+
+  if (asset !== 'USDC') {
+    return { ok: false, error: `Aave doesn't support ${asset} on this network. Try USDC.` };
   }
   const capError = enforceTestnetAmountCap('LEND', asset, amount, deps);
   if (capError) return { ok: false, error: capError };
@@ -858,11 +992,49 @@ async function planBorrow(parsed: ParsedIntent, deps: ExecutorDeps): Promise<Pla
   if (!amount || !asset) {
     return { ok: false, error: 'missing slots: amount/asset' };
   }
-  if (asset !== 'USDC') {
-    return { ok: false, error: `Aave testnet borrowing starts with USDC. Try USDC.` };
-  }
   if (!deps.userAddress) {
     return { ok: false, error: 'BORROW requires a connected wallet.' };
+  }
+
+  if (deps.stage2Mainnet) {
+    const betaCapError = enforceMainnetBetaAmountCap('BORROW', asset, amount);
+    if (betaCapError) return { ok: false, error: betaCapError };
+    const rd = routerDeps(deps);
+    if (!rd) return { ok: false, error: 'BORROW mainnet beta is not configured.' };
+    try {
+      const routerPlan = await buildSherpaRouterBorrowPlan({ asset, amount, deps: rd });
+      const pending: PendingTx = {
+        to: deps.sherpaRouterAddress!,
+        data: routerPlan.steps.at(-1)?.data ?? '0x',
+        value: 0n,
+        asset: routerPlan.asset.address as Address,
+        amount: routerPlan.amountBaseUnits,
+        recipientSource: 'direct',
+      };
+      const r = await runRings(pending, deps, [deps.sherpaRouterAddress!, routerPlan.asset.address as Address]);
+      if (!r.ok) return r;
+      const steps: ExecutionStep[] = routerPlan.steps;
+      return {
+        ok: true,
+        card: {
+          intent: 'BORROW',
+          primary_action_label: 'Borrow',
+          primary_amount_display: `${amount} ${routerPlan.asset.symbol}`,
+          secondary_amount_display: routerPlan.secondaryDisplay,
+          steps,
+          batch: envelopeFor(steps, { ...deps, paymasterUrl: undefined }),
+          gas_display: GAS_USER_PAYS,
+          warnings: mainnetWarnings('Borrow'),
+          estimated_completion_ms: 10_000,
+        },
+      };
+    } catch (err) {
+      return { ok: false, error: (err as Error).message };
+    }
+  }
+
+  if (asset !== 'USDC') {
+    return { ok: false, error: `Aave testnet borrowing starts with USDC. Try USDC.` };
   }
   const capError = enforceTestnetAmountCap('BORROW', asset, amount, deps);
   if (capError) return { ok: false, error: capError };
@@ -931,6 +1103,92 @@ async function planBorrow(parsed: ParsedIntent, deps: ExecutorDeps): Promise<Pla
       return { ok: false, error: `Aave doesn't support borrowing ${asset} on this network.` };
     }
     return { ok: false, error: msg };
+  }
+}
+
+async function planRepay(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+  const amount = typeof parsed.slots.amount === 'string' ? parsed.slots.amount : '';
+  const asset = (typeof parsed.slots.asset === 'string' ? parsed.slots.asset : '').toUpperCase();
+  if (!amount || !asset) return { ok: false, error: 'missing slots: amount/asset' };
+  if (!deps.userAddress) return { ok: false, error: 'REPAY requires a connected wallet.' };
+  if (!deps.stage2Mainnet) return { ok: false, error: 'REPAY is pending private mainnet beta enablement.' };
+
+  const betaCapError = enforceMainnetBetaAmountCap('REPAY', asset, amount);
+  if (betaCapError) return { ok: false, error: betaCapError };
+  const rd = routerDeps(deps);
+  if (!rd) return { ok: false, error: 'REPAY mainnet beta is not configured.' };
+  try {
+    const routerPlan = await buildSherpaRouterRepayPlan({ asset, amount, deps: rd });
+    const pending: PendingTx = {
+      to: deps.sherpaRouterAddress!,
+      data: routerPlan.steps.at(-1)?.data ?? '0x',
+      value: 0n,
+      asset: routerPlan.asset.address as Address,
+      amount: routerPlan.amountBaseUnits,
+      recipientSource: 'direct',
+    };
+    const r = await runRings(pending, deps, [deps.sherpaRouterAddress!, routerPlan.asset.address as Address]);
+    if (!r.ok) return r;
+    const steps: ExecutionStep[] = routerPlan.steps;
+    return {
+      ok: true,
+      card: {
+        intent: 'REPAY',
+        primary_action_label: 'Repay',
+        primary_amount_display: `${amount} ${routerPlan.asset.symbol}`,
+        secondary_amount_display: routerPlan.secondaryDisplay,
+        steps,
+        batch: envelopeFor(steps, { ...deps, paymasterUrl: undefined }),
+        gas_display: GAS_USER_PAYS,
+        warnings: mainnetWarnings('Repay'),
+        estimated_completion_ms: 10_000,
+      },
+    };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
+async function planWithdraw(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
+  const amount = typeof parsed.slots.amount === 'string' ? parsed.slots.amount : '';
+  const asset = (typeof parsed.slots.asset === 'string' ? parsed.slots.asset : '').toUpperCase();
+  if (!amount || !asset) return { ok: false, error: 'missing slots: amount/asset' };
+  if (!deps.userAddress) return { ok: false, error: 'WITHDRAW requires a connected wallet.' };
+  if (!deps.stage2Mainnet) return { ok: false, error: 'WITHDRAW is pending private mainnet beta enablement.' };
+
+  const betaCapError = enforceMainnetBetaAmountCap('WITHDRAW', asset, amount);
+  if (betaCapError) return { ok: false, error: betaCapError };
+  const rd = routerDeps(deps);
+  if (!rd) return { ok: false, error: 'WITHDRAW mainnet beta is not configured.' };
+  try {
+    const routerPlan = await buildSherpaRouterWithdrawPlan({ asset, amount, deps: rd });
+    const pending: PendingTx = {
+      to: deps.sherpaRouterAddress!,
+      data: routerPlan.steps.at(-1)?.data ?? '0x',
+      value: 0n,
+      asset: routerPlan.asset.address as Address,
+      amount: routerPlan.amountBaseUnits,
+      recipientSource: 'direct',
+    };
+    const r = await runRings(pending, deps, [deps.sherpaRouterAddress!, routerPlan.asset.address as Address]);
+    if (!r.ok) return r;
+    const steps: ExecutionStep[] = routerPlan.steps;
+    return {
+      ok: true,
+      card: {
+        intent: 'WITHDRAW',
+        primary_action_label: 'Withdraw',
+        primary_amount_display: `${amount} ${routerPlan.asset.symbol}`,
+        secondary_amount_display: routerPlan.secondaryDisplay,
+        steps,
+        batch: envelopeFor(steps, { ...deps, paymasterUrl: undefined }),
+        gas_display: GAS_USER_PAYS,
+        warnings: mainnetWarnings('Withdraw'),
+        estimated_completion_ms: 10_000,
+      },
+    };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
   }
 }
 

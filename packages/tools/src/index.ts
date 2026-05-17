@@ -93,6 +93,20 @@ export { emptyIndexer, type HistoryIndexer, type HistoryItem } from './history.j
 export { createBasescanIndexer, type BasescanConfig } from './basescan.js';
 export { createSimulator, type Simulator, type SimulatorCall, type TenderlyConfig, type SimulationResult, type SimulationErrorCode } from './simulator/tenderly.js';
 export { resolveToken, allTokens, getTokensForChain, type TokenInfo } from './registry.js';
+export {
+  AERODROME_FACTORY_BASE,
+  SHERPA_ROUTER_BASE_MAINNET,
+  SHERPA_TREASURY_BASE_MAINNET,
+  buildSherpaRouterBorrowPlan,
+  buildSherpaRouterRepayPlan,
+  buildSherpaRouterSupplyPlan,
+  buildSherpaRouterSwapPlan,
+  buildSherpaRouterWithdrawPlan,
+  type SherpaRouterDeps,
+  type SherpaRouterPlan,
+  type SherpaRouterReadContract,
+  type SherpaRouterStep,
+} from './sherpa-router.js';
 export { across, createAcross, getBridgeQuote, buildBridgeCall, SUPPORTED_CHAINS } from './across/index.js';
 export type { AcrossAdapter, BridgeParams, BridgeQuote, BridgeCallResult } from './across/index.js';
 export { lido, createLido, LidoNotConfiguredError } from './lido/index.js';

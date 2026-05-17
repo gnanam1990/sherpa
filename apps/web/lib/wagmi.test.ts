@@ -73,6 +73,22 @@ describe('wagmi wallet config', () => {
     });
   });
 
+  it('does not attach the Sepolia paymaster to Base mainnet Stage 2 batches', () => {
+    expect(
+      withPaymasterCapabilities(
+        {
+          chainId: 8453,
+          capabilities: { atomic: { status: 'supported' } },
+        },
+        '/api/paymaster',
+        PUBLIC_LOCATION,
+      ),
+    ).toEqual({
+      chainId: 8453,
+      capabilities: { atomic: { status: 'supported' } },
+    });
+  });
+
   it('builds ERC-8021 dataSuffix capabilities from the public builder code', () => {
     const dataSuffix = getBuilderCodeDataSuffix('bc_test');
 

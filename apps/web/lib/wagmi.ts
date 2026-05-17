@@ -3,7 +3,7 @@
 import { createConfig, createStorage, http, noopStorage, useSendCalls, useWaitForCallsStatus } from 'wagmi';
 import type { UseSendCallsParameters, UseWaitForCallsStatusParameters } from 'wagmi';
 import { coinbaseWallet } from 'wagmi/connectors';
-import { baseSepolia } from 'wagmi/chains';
+import { base, baseSepolia } from 'wagmi/chains';
 import { Attribution } from 'ox/erc8021';
 
 export const walletEnv = {
@@ -23,17 +23,18 @@ const connectors = [
 ];
 
 export const wagmiConfig = createConfig({
-  chains: [baseSepolia],
+  chains: [baseSepolia, base],
   connectors,
   ssr: true,
   storage: createStorage({ storage: noopStorage }),
   transports: {
     [baseSepolia.id]: http(),
+    [base.id]: http(),
   },
 });
 
 type PaymasterLocation = Pick<Location, 'origin' | 'hostname'>;
-type SendCallsVariables = { capabilities?: Record<string, unknown> };
+type SendCallsVariables = { capabilities?: Record<string, unknown>; chainId?: number };
 type SherpaCapabilityOptions = {
   builderCode?: string;
   location?: PaymasterLocation;
@@ -63,6 +64,7 @@ export function withPaymasterCapabilities<
   paymasterUrl = PAYMASTER_PROXY_URL,
   location?: PaymasterLocation,
 ): Variables {
+  if (variables.chainId && variables.chainId !== baseSepolia.id) return variables;
   const paymasterCapabilities = getPaymasterCapabilities(paymasterUrl, location);
   return {
     ...variables,

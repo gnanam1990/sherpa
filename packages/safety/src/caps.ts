@@ -11,6 +11,18 @@ export const DEFAULT_CAPS: readonly AmountCap[] = Object.freeze([
     maxPerTx: 500_000_000n,
     maxPerDay: 500_000_000n,
   },
+  // USDC on Base mainnet: private-beta cap, max 100 per tx/day.
+  {
+    asset: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    maxPerTx: 100_000_000n,
+    maxPerDay: 100_000_000n,
+  },
+  // WETH on Base/Base Sepolia: max 0.05 per tx/day for Stage 2 beta.
+  {
+    asset: '0x4200000000000000000000000000000000000006',
+    maxPerTx: 50_000_000_000_000_000n,
+    maxPerDay: 50_000_000_000_000_000n,
+  },
   // Native ETH: max 0.05 per tx, 0.2 per day
   {
     asset: 'native',

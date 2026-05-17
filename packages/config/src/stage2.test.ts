@@ -51,6 +51,22 @@ describe('stage2 feature flags', () => {
     expect(cfg.stage2PublicEnabled).toBe(false);
   });
 
+  it('parses private beta wallets for guarded mainnet rollout', () => {
+    const cfg = loadConfig({
+      SHERPA_STAGE_2_BETA_WALLETS:
+        '0x99f37717f2EB28955CFB553f3B7Eb4eFaDf4dA8C, not-an-address',
+    });
+    expect(cfg.stage2BetaWallets).toEqual(['0x99f37717f2EB28955CFB553f3B7Eb4eFaDf4dA8C']);
+  });
+
+  it('defaults Base mainnet Stage 2 deployment addresses', () => {
+    const cfg = loadConfig({});
+    expect(cfg.sherpaRouterBaseMainnet).toBe('0x00bfef87DD352D48F8572BcfA52E57870B35DE8b');
+    expect(cfg.sherpaTreasuryBaseMainnet).toBe('0xF4e72beAA559E1815f4671e39EDb1295aD975918');
+    expect(cfg.aerodromeFactoryAddress).toBe('0x420DD381b31aEf6683db6B902084cB0FFECe40Da');
+    expect(cfg.baseMainnetRpcUrl).toBe('https://mainnet.base.org');
+  });
+
   it('stage2 flags do not affect other config fields', () => {
     const cfg = loadConfig({
       SHERPA_STAGE_2_ENABLED: 'true',
