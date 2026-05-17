@@ -82,6 +82,55 @@ const executeBody = z.object({
   ),
 });
 
+const addressSchema = z.custom<`0x${string}`>(
+  (v) => typeof v === 'string' && /^0x[a-fA-F0-9]{40}$/.test(v),
+  { message: 'userAddress must be 0x-prefixed 20-byte hex' },
+);
+const promptInputSchema = z.string().trim().min(1).max(500);
+const amountSchema = z.preprocess(
+  (v) => (typeof v === 'number' ? String(v) : v),
+  z.string().trim().min(1).max(80).regex(/^(?:\d+|\d*\.\d+)$/, 'amount must be a decimal string'),
+);
+const tokenSymbolSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(20)
+  .regex(/^[a-zA-Z][a-zA-Z0-9_]*$/, 'asset must be a token symbol')
+  .transform((v) => v.toUpperCase());
+const optionalSlippageSchema = z
+  .preprocess(
+    (v) => (typeof v === 'number' ? String(v) : v),
+    z.string().trim().min(1).max(16).regex(/^(?:\d+|\d*\.\d+)$/).optional(),
+  )
+  .optional();
+
+const directStage2Base = z.object({
+  input: promptInputSchema.optional(),
+  userAddress: addressSchema,
+});
+
+const directSwapBody = directStage2Base.extend({
+  amount: amountSchema.optional(),
+  fromAmount: amountSchema.optional(),
+  fromAsset: tokenSymbolSchema.optional(),
+  tokenIn: tokenSymbolSchema.optional(),
+  toAsset: tokenSymbolSchema.optional(),
+  tokenOut: tokenSymbolSchema.optional(),
+  slippagePct: optionalSlippageSchema,
+});
+
+const directAmountAssetBody = directStage2Base.extend({
+  amount: amountSchema.optional(),
+  asset: tokenSymbolSchema.optional(),
+});
+
+const directBorrowBody = directAmountAssetBody.extend({
+  borrowAmount: amountSchema.optional(),
+  borrowAsset: tokenSymbolSchema.optional(),
+  collateralAsset: tokenSymbolSchema.optional(),
+});
+
 const confirmBody = z.object({
   txHash: z
     .custom<`0x${string}`>((v) => typeof v === 'string' && /^0x[a-fA-F0-9]{64}$/.test(v), { message: 'txHash must be 0x-prefixed 32-byte hex' })
@@ -95,6 +144,7 @@ const adminRouteOptions = { config: { rateLimit: { max: 30, timeWindow: '1 minut
 const publicReadRouteOptions = { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } };
 const stage2ComingSoonIntents = new Set(['SWAP', 'LEND', 'BORROW', 'REPAY', 'WITHDRAW']);
 const stage2TestnetExecutableIntents = new Set(['SWAP', 'LEND', 'BORROW']);
+type DirectStage2Intent = 'SWAP' | 'LEND' | 'BORROW' | 'REPAY' | 'WITHDRAW';
 
 type PositionsResponse = {
   address: `0x${string}`;
@@ -315,6 +365,56 @@ function serializePosition(address: `0x${string}`, position: AavePosition): Posi
 
 function isStage2ComingSoonIntent(intent: string): boolean {
   return stage2ComingSoonIntents.has(intent);
+}
+
+function missingFields(fields: Record<string, unknown>): string[] {
+  return Object.entries(fields)
+    .filter(([, value]) => value === undefined || value === '')
+    .map(([key]) => key);
+}
+
+function directInputError(missing: string[]): { error: string; missing: string[] } {
+  return {
+    error: 'invalid body',
+    missing,
+  };
+}
+
+function buildDirectSwapInput(data: z.infer<typeof directSwapBody>): string | { error: string; missing: string[] } {
+  if (data.input) return data.input;
+  const amount = data.fromAmount ?? data.amount;
+  const fromAsset = data.fromAsset ?? data.tokenIn;
+  const toAsset = data.toAsset ?? data.tokenOut;
+  const missing = missingFields({ fromAmount: amount, fromAsset, toAsset });
+  if (missing.length > 0) return directInputError(missing);
+  const slippage = data.slippagePct ? ` with ${data.slippagePct}% slippage` : '';
+  return `swap ${amount} ${fromAsset} for ${toAsset}${slippage}`;
+}
+
+function buildAmountAssetInput(
+  data: z.infer<typeof directAmountAssetBody>,
+  verb: 'lend' | 'repay' | 'withdraw',
+): string | { error: string; missing: string[] } {
+  if (data.input) return data.input;
+  const missing = missingFields({ amount: data.amount, asset: data.asset });
+  if (missing.length > 0) return directInputError(missing);
+  const suffix = verb === 'lend' ? ' to aave' : verb === 'withdraw' ? ' from aave' : '';
+  return `${verb} ${data.amount} ${data.asset}${suffix}`;
+}
+
+function buildBorrowInput(data: z.infer<typeof directBorrowBody>): string | { error: string; missing: string[] } {
+  if (data.input) return data.input;
+  const amount = data.borrowAmount ?? data.amount;
+  const asset = data.borrowAsset ?? data.asset;
+  const missing = missingFields({ amount, asset });
+  if (missing.length > 0) return directInputError(missing);
+  return data.collateralAsset
+    ? `borrow ${amount} ${asset} against ${data.collateralAsset}`
+    : `borrow ${amount} ${asset}`;
+}
+
+function stage2FeatureName(intent: DirectStage2Intent): string {
+  return intent.toLowerCase();
 }
 
 function canRunStage2Testnet(config: SherpaConfig): boolean {
@@ -783,29 +883,138 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   // ---- Stage 2 routes (gated by SHERPA_STAGE_2_ENABLED) --------------------
   const requireStage2 = createRequireStage2(config);
 
-  app.post('/api/swap', { preHandler: requireStage2 }, async (_req, reply) => {
-    return reply.code(501).send({ error: 'not_implemented', details: 'Swap handler pending implementation.' });
+  const buildDirectStage2Card = async (
+    input: string,
+    expectedIntent: DirectStage2Intent,
+    userAddress: `0x${string}`,
+  ) => {
+    const parsedIntent = await parse(input, userAddress);
+    if (parsedIntent.intent !== expectedIntent) {
+      return {
+        status: 400,
+        body: {
+          ok: false,
+          error: 'intent_mismatch',
+          expected: expectedIntent,
+          parsed: parsedIntent,
+        },
+      };
+    }
+    if (!canRunStage2Intent(config, parsedIntent.intent, userAddress)) {
+      return {
+        status: 400,
+        body: {
+          ok: false,
+          error: `Stage 2 ${stage2FeatureName(expectedIntent)} is not enabled for this wallet or environment.`,
+          parsed: parsedIntent,
+        },
+      };
+    }
+    const planResult = await plan(parsedIntent, {
+      userKey: userAddress,
+      userAddress,
+      chainId: config.chain.chainId,
+      paymasterUrl: config.paymasterUrl,
+      rateLimiter,
+      resolver,
+      ...stage2PlanDeps(config, userAddress, options.stage2ReadContract),
+    });
+    if (!planResult.ok) {
+      return {
+        status: 400,
+        body: { ok: false, error: planResult.error, parsed: parsedIntent },
+      };
+    }
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        parsed: parsedIntent,
+        planHash: hashPlan(planResult.card),
+        card: serializeCard(planResult.card),
+      },
+    };
+  };
+
+  app.post('/api/swap', { preHandler: requireStage2 }, async (req, reply) => {
+    const parsed = directSwapBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
+    const input = buildDirectSwapInput(parsed.data);
+    if (typeof input !== 'string') return reply.code(400).send(input);
+    const result = await buildDirectStage2Card(input, 'SWAP', parsed.data.userAddress);
+    return reply.code(result.status).send(result.body);
   });
-  app.get('/api/swap/quote', { preHandler: requireStage2 }, async (_req, reply) => {
-    return reply.code(501).send({ error: 'not_implemented', details: 'Swap quote handler pending implementation.' });
+
+  app.get('/api/swap/quote', { preHandler: requireStage2 }, async (req, reply) => {
+    const parsed = directSwapBody.safeParse(req.query);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid query', details: parsed.error.issues });
+    const input = buildDirectSwapInput(parsed.data);
+    if (typeof input !== 'string') return reply.code(400).send(input);
+    const result = await buildDirectStage2Card(input, 'SWAP', parsed.data.userAddress);
+    return reply.code(result.status).send(result.body);
   });
-  app.post('/api/lend', { preHandler: requireStage2 }, async (_req, reply) => {
-    return reply.code(501).send({ error: 'not_implemented', details: 'Lend handler pending implementation.' });
+
+  app.post('/api/lend', { preHandler: requireStage2 }, async (req, reply) => {
+    const parsed = directAmountAssetBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
+    const input = buildAmountAssetInput(parsed.data, 'lend');
+    if (typeof input !== 'string') return reply.code(400).send(input);
+    const result = await buildDirectStage2Card(input, 'LEND', parsed.data.userAddress);
+    return reply.code(result.status).send(result.body);
   });
-  app.get('/api/lend/apy', { preHandler: requireStage2 }, async (_req, reply) => {
-    return reply.code(501).send({ error: 'not_implemented', details: 'Lend APY handler pending implementation.' });
+
+  app.get('/api/lend/apy', { preHandler: requireStage2 }, async (req, reply) => {
+    const parsed = directAmountAssetBody.safeParse({ amount: '1', ...((req.query ?? {}) as Record<string, unknown>) });
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid query', details: parsed.error.issues });
+    const input = buildAmountAssetInput(parsed.data, 'lend');
+    if (typeof input !== 'string') return reply.code(400).send(input);
+    const result = await buildDirectStage2Card(input, 'LEND', parsed.data.userAddress);
+    if (result.status !== 200) return reply.code(result.status).send(result.body);
+    return reply.code(result.status).send({
+      ...result.body,
+      apy: {
+        asset: parsed.data.asset,
+        supplyApyBps: null,
+        source: 'aave_preview_card',
+        note: 'Direct live APY polling is not exposed yet; this endpoint returns the same Aave planning preview as /api/lend.',
+      },
+    });
   });
-  app.post('/api/withdraw', { preHandler: requireStage2 }, async (_req, reply) => {
-    return reply.code(501).send({ error: 'not_implemented', details: 'Withdraw handler pending implementation.' });
+
+  app.post('/api/withdraw', { preHandler: requireStage2 }, async (req, reply) => {
+    const parsed = directAmountAssetBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
+    const input = buildAmountAssetInput(parsed.data, 'withdraw');
+    if (typeof input !== 'string') return reply.code(400).send(input);
+    const result = await buildDirectStage2Card(input, 'WITHDRAW', parsed.data.userAddress);
+    return reply.code(result.status).send(result.body);
   });
-  app.post('/api/borrow', { preHandler: requireStage2 }, async (_req, reply) => {
-    return reply.code(501).send({ error: 'not_implemented', details: 'Borrow handler pending implementation.' });
+
+  app.post('/api/borrow', { preHandler: requireStage2 }, async (req, reply) => {
+    const parsed = directBorrowBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
+    const input = buildBorrowInput(parsed.data);
+    if (typeof input !== 'string') return reply.code(400).send(input);
+    const result = await buildDirectStage2Card(input, 'BORROW', parsed.data.userAddress);
+    return reply.code(result.status).send(result.body);
   });
-  app.get('/api/borrow/preview', { preHandler: requireStage2 }, async (_req, reply) => {
-    return reply.code(501).send({ error: 'not_implemented', details: 'Borrow preview handler pending implementation.' });
+
+  app.get('/api/borrow/preview', { preHandler: requireStage2 }, async (req, reply) => {
+    const parsed = directBorrowBody.safeParse(req.query);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid query', details: parsed.error.issues });
+    const input = buildBorrowInput(parsed.data);
+    if (typeof input !== 'string') return reply.code(400).send(input);
+    const result = await buildDirectStage2Card(input, 'BORROW', parsed.data.userAddress);
+    return reply.code(result.status).send(result.body);
   });
-  app.post('/api/repay', { preHandler: requireStage2 }, async (_req, reply) => {
-    return reply.code(501).send({ error: 'not_implemented', details: 'Repay handler pending implementation.' });
+
+  app.post('/api/repay', { preHandler: requireStage2 }, async (req, reply) => {
+    const parsed = directAmountAssetBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid body', details: parsed.error.issues });
+    const input = buildAmountAssetInput(parsed.data, 'repay');
+    if (typeof input !== 'string') return reply.code(400).send(input);
+    const result = await buildDirectStage2Card(input, 'REPAY', parsed.data.userAddress);
+    return reply.code(result.status).send(result.body);
   });
 
   return app;

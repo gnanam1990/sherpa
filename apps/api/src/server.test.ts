@@ -12,6 +12,8 @@ const MAINNET_ROUTER = '0x00bfef87DD352D48F8572BcfA52E57870B35DE8b' as const;
 const MAINNET_AERODROME = '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43' as const;
 const MAINNET_FACTORY = '0x420DD381b31aEf6683db6B902084cB0FFECe40Da' as const;
 const MAINNET_AAVE = '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5' as const;
+const MAINNET_ATOKEN = '0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB' as const;
+const MAINNET_DEBT_TOKEN = '0x59dca05b6c26dbd64b5381374aAaC5CD05644C28' as const;
 const mainnetStage2Config = {
   ...offlineConfig,
   aerodromeFactoryAddress: MAINNET_FACTORY,
@@ -23,6 +25,17 @@ const mainnetStage2Config = {
   stage2Enabled: true,
   stage2PublicMainnetEnabled: false,
 } as const;
+
+function mainnetStage2ReadContract(params: { functionName: string }) {
+  if (params.functionName === 'getAmountsOut') return Promise.resolve([1_000_000n, 999_000n]);
+  if (params.functionName === 'getReserveData') {
+    const reserveData = Array.from({ length: 12 }, () => 0n) as unknown[];
+    reserveData[8] = MAINNET_ATOKEN;
+    reserveData[10] = MAINNET_DEBT_TOKEN;
+    return Promise.resolve(reserveData);
+  }
+  throw new Error(`unexpected readContract call: ${params.functionName}`);
+}
 
 function makeSentryStub(): SentryLike & {
   init: ReturnType<typeof vi.fn>;
@@ -222,6 +235,129 @@ describe('apps/api', () => {
     expect(body.card?.intent).toBe('SWAP');
     expect(body.card?.batch?.chainId).toBe('0x2105');
     expect(body.card?.batch?.calls.at(-1)?.to).toBe(MAINNET_ROUTER);
+    await app.close();
+  });
+
+  it('POST /api/swap builds a direct Stage 2 mainnet card instead of a stub', async () => {
+    const app = buildServer({
+      config: mainnetStage2Config,
+      stage2ReadContract: mainnetStage2ReadContract,
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/swap',
+      payload: {
+        userAddress: USDC_RECIPIENT,
+        fromAmount: '1',
+        fromAsset: 'USDC',
+        toAsset: 'WETH',
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      ok: boolean;
+      parsed?: { intent: string };
+      planHash?: string;
+      card?: { intent: string; batch?: { chainId: string; calls: Array<{ to: string }> }; gas_display?: string };
+    };
+    expect(body.ok).toBe(true);
+    expect(body.parsed?.intent).toBe('SWAP');
+    expect(body.planHash).toMatch(/^0x[a-f0-9]{64}$/);
+    expect(body.card?.intent).toBe('SWAP');
+    expect(body.card?.batch?.chainId).toBe('0x2105');
+    expect(body.card?.batch?.calls.at(-1)?.to).toBe(MAINNET_ROUTER);
+    expect(body.card?.gas_display).toBe('user pays');
+    await app.close();
+  });
+
+  it('GET /api/swap/quote builds the same direct Stage 2 swap preview path', async () => {
+    const app = buildServer({
+      config: mainnetStage2Config,
+      stage2ReadContract: mainnetStage2ReadContract,
+    });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/swap/quote?userAddress=${USDC_RECIPIENT}&fromAmount=1&fromAsset=USDC&toAsset=WETH`,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { ok: boolean; card?: { intent: string; batch?: { chainId: string } } };
+    expect(body.ok).toBe(true);
+    expect(body.card?.intent).toBe('SWAP');
+    expect(body.card?.batch?.chainId).toBe('0x2105');
+    await app.close();
+  });
+
+  it('direct Stage 2 Aave routes build mainnet cards instead of stubs', async () => {
+    const app = buildServer({
+      config: mainnetStage2Config,
+      stage2ReadContract: mainnetStage2ReadContract,
+    });
+    const routes = [
+      { method: 'POST' as const, url: '/api/lend', payload: { userAddress: USDC_RECIPIENT, amount: '1', asset: 'USDC' }, intent: 'LEND' },
+      { method: 'POST' as const, url: '/api/borrow', payload: { userAddress: USDC_RECIPIENT, amount: '1', asset: 'USDC' }, intent: 'BORROW' },
+      { method: 'POST' as const, url: '/api/repay', payload: { userAddress: USDC_RECIPIENT, amount: '1', asset: 'USDC' }, intent: 'REPAY' },
+      { method: 'POST' as const, url: '/api/withdraw', payload: { userAddress: USDC_RECIPIENT, amount: '1', asset: 'USDC' }, intent: 'WITHDRAW' },
+    ];
+
+    for (const route of routes) {
+      const res = await app.inject({
+        method: route.method,
+        url: route.url,
+        payload: route.payload,
+      });
+      expect(res.statusCode, route.url).toBe(200);
+      const body = res.json() as {
+        ok: boolean;
+        card?: { intent: string; batch?: { chainId: string; calls: Array<{ to: string }> } };
+      };
+      expect(body.ok, route.url).toBe(true);
+      expect(body.card?.intent, route.url).toBe(route.intent);
+      expect(body.card?.batch?.chainId, route.url).toBe('0x2105');
+      expect(body.card?.batch?.calls.at(-1)?.to, route.url).toBe(MAINNET_ROUTER);
+    }
+    await app.close();
+  });
+
+  it('direct Stage 2 GET Aave helper routes return previews instead of stubs', async () => {
+    const app = buildServer({
+      config: mainnetStage2Config,
+      stage2ReadContract: mainnetStage2ReadContract,
+    });
+    const lend = await app.inject({
+      method: 'GET',
+      url: `/api/lend/apy?userAddress=${USDC_RECIPIENT}&asset=USDC&amount=1`,
+    });
+    expect(lend.statusCode).toBe(200);
+    expect(lend.json()).toMatchObject({
+      ok: true,
+      card: { intent: 'LEND' },
+      apy: { asset: 'USDC', source: 'aave_preview_card' },
+    });
+
+    const borrow = await app.inject({
+      method: 'GET',
+      url: `/api/borrow/preview?userAddress=${USDC_RECIPIENT}&asset=USDC&amount=1`,
+    });
+    expect(borrow.statusCode).toBe(200);
+    expect(borrow.json()).toMatchObject({
+      ok: true,
+      card: { intent: 'BORROW' },
+    });
+    await app.close();
+  });
+
+  it('direct Stage 2 routes keep wallet and environment gates', async () => {
+    const app = buildServer({ config: { ...mainnetStage2Config, stage2BetaWallets: [] } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/lend',
+      payload: { userAddress: USDC_RECIPIENT, amount: '1', asset: 'USDC' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('not enabled for this wallet or environment'),
+    });
     await app.close();
   });
 
