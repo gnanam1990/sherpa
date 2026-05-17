@@ -5,21 +5,11 @@ export async function detectHardwareWallets(): Promise<HardwareWalletInfo[]> {
 }
 
 export async function connectLedger(
-  derivationPath?: string,
+  _derivationPath?: string,
 ): Promise<HardwareWalletInfo> {
-  return {
-    type: 'ledger',
-    address: '0x' + '00'.repeat(20) as `0x${string}`,
-    derivationPath: derivationPath || "m/44'/60'/0'/0/0",
-    connected: true,
-  };
+  throw new Error('ledger_connection_not_available_server_side');
 }
 
 export async function connectTrezor(): Promise<HardwareWalletInfo> {
-  return {
-    type: 'trezor',
-    address: '0x' + '00'.repeat(20) as `0x${string}`,
-    derivationPath: "m/44'/60'/0'/0/0",
-    connected: true,
-  };
+  throw new Error('trezor_connection_not_available_server_side');
 }

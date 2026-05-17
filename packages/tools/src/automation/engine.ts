@@ -4,7 +4,7 @@ export async function evaluateCondition(
   _rule: AutomationRule,
   _deps: AutomationDeps,
 ): Promise<boolean> {
-  // Stub: evaluate condition against current state
+  // Safe default: without an injected oracle/scheduler state, no condition is met.
   return false;
 }
 
@@ -12,8 +12,7 @@ export async function executeAction(
   _rule: AutomationRule,
   _deps: AutomationDeps,
 ): Promise<{ success: boolean; txHash?: string; error?: string }> {
-  // Stub: execute the action
-  return { success: true, txHash: '0xstub' };
+  return { success: false, error: 'automation_execution_not_configured' };
 }
 
 export function validateAutomation(rule: Partial<AutomationRule>): string[] {

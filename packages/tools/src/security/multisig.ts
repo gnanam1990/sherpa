@@ -29,12 +29,12 @@ export const MULTISIG_ABI = [
 ] as const;
 
 export async function createMultisig(
-  _config: MultisigConfig,
+  config: MultisigConfig,
 ): Promise<{ address: `0x${string}`; txHash: string }> {
-  return {
-    address: '0x' + '00'.repeat(20) as `0x${string}`,
-    txHash: '0xstub',
-  };
+  if (config.threshold > config.signers.length) {
+    throw new Error('multisig_threshold_exceeds_signers');
+  }
+  throw new Error('multisig_deployment_not_configured');
 }
 
 export async function getMultisigTransactions(
