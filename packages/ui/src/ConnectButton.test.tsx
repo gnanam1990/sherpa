@@ -5,7 +5,9 @@ import { ConnectButton } from './ConnectButton.js';
 const mockState = vi.hoisted(() => ({
   isConnected: false,
   address: undefined as `0x${string}` | undefined,
+  chainId: 84532,
   connect: vi.fn(),
+  connectors: [{ id: 'coinbaseWalletSDK', name: 'Coinbase Wallet' }],
   disconnect: vi.fn(),
 }));
 
@@ -16,11 +18,11 @@ vi.mock('wagmi', async () => {
     useAccount: () => ({
       address: mockState.address,
       isConnected: mockState.isConnected,
-      chain: mockState.isConnected ? { id: 84532, name: 'Base Sepolia' } : undefined,
+      chain: mockState.isConnected ? { id: mockState.chainId, name: 'Base' } : undefined,
     }),
     useConnect: () => ({
       connect: mockState.connect,
-      connectors: [{ id: 'coinbaseWalletSDK', name: 'Coinbase Wallet' }],
+      connectors: mockState.connectors,
       isPending: false,
     }),
     useDisconnect: () => ({ disconnect: mockState.disconnect }),
@@ -31,6 +33,8 @@ describe('ConnectButton', () => {
   beforeEach(() => {
     mockState.isConnected = false;
     mockState.address = undefined;
+    mockState.chainId = 84532;
+    mockState.connectors = [{ id: 'coinbaseWalletSDK', name: 'Coinbase Wallet' }];
     mockState.connect.mockReset();
     mockState.disconnect.mockReset();
   });
@@ -61,5 +65,29 @@ describe('ConnectButton', () => {
     expect(mockState.connect).toHaveBeenCalledWith({
       connector: expect.objectContaining({ id: 'coinbaseWalletSDK' }),
     });
+  });
+
+  it('renders Rabby/browser wallet option when an injected connector is available', () => {
+    mockState.connectors = [
+      { id: 'coinbaseWalletSDK', name: 'Coinbase Wallet' },
+      { id: 'injected', name: 'Rabby Wallet' },
+    ];
+    render(<ConnectButton variant="compact" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rabby' }));
+
+    expect(mockState.connect).toHaveBeenCalledWith({
+      connector: expect.objectContaining({ id: 'injected' }),
+    });
+  });
+
+  it('treats Base mainnet as a supported connected network', () => {
+    mockState.isConnected = true;
+    mockState.address = '0x1234567890123456789012345678901234567890';
+    mockState.chainId = 8453;
+    render(<ConnectButton variant="compact" />);
+
+    expect(screen.getByRole('button', { name: '0x1234...7890' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Unsupported network' })).toBeNull();
   });
 });

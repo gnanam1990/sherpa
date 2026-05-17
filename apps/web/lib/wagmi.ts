@@ -2,7 +2,7 @@
 
 import { createConfig, createStorage, http, noopStorage, useSendCalls, useWaitForCallsStatus } from 'wagmi';
 import type { UseSendCallsParameters, UseWaitForCallsStatusParameters } from 'wagmi';
-import { coinbaseWallet } from 'wagmi/connectors';
+import { coinbaseWallet, injected } from 'wagmi/connectors';
 import { base, baseSepolia } from 'wagmi/chains';
 import { Attribution } from 'ox/erc8021';
 
@@ -19,6 +19,9 @@ const connectors = [
   coinbaseWallet({
     appName: 'Sherpa',
     preference: 'smartWalletOnly',
+  }),
+  injected({
+    shimDisconnect: true,
   }),
 ];
 
