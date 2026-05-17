@@ -21,7 +21,7 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what re
 | **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP               | ✅ Live                | Live on Base Sepolia                                            |
 | **Stage 2** | DeFi positions + writes                               | ✅ Live on Base mainnet | Public mainnet cards with guarded amount caps and verified contracts |
 | **Stage 3** | Multi-surface (Farcaster/Base Mini App, Telegram bot) | ✅ Live                | Ongoing listing/discovery polish                                |
-| **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta / Partial      | Production workers + notifications + execution audit            |
+| **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta / Partial      | Worker image built; Railway deploy + notifications + session-key execution remain |
 | **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace       | 🔵 Partial             | Read-only chain explorer live; session keys/marketplace pending |
 | **Stage 6** | Portfolio Dashboard, Notifications, Fee Taker         | 🔵 Partial             | Production notification channels + fee taker pending            |
 | **Stage 7** | Governance, Social, Automation Deep Dive              | 🔵 Partial             | Read-only proposal browsing live; write actions pending         |
@@ -109,13 +109,14 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what re
 - Scheduler code and memory models
 - Alert framework
 - Auto-repay rule configuration
+- Railway-ready `apps/worker` service with durable stores and `/health`
 
 **What's blocking production execution**:
 
-- Production scheduler deployment
-- Notification delivery channels
+- Railway worker service deployment and smoke test
+- Notification delivery channel verification
+- Session-key signing/broadcasting for unattended DCA and auto-repay writes
 - Worker monitoring and recovery
-- External audit before automated execution
 
 **Dependencies**: Stage 2 production writes
 

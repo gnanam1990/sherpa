@@ -350,7 +350,7 @@ function dcaSummary(data: DCAResponse): string {
     `Status: ${data.status}`,
     data.nextExecutionAt ? `Next: ${new Date(data.nextExecutionAt).toLocaleString()}` : undefined,
     `ID: ${data.id}`,
-    'Execution remains beta/testnet-gated until audit and production worker setup.',
+    'Execution remains gated until session-key signing is configured.',
   ]
     .filter(Boolean)
     .join('\n');

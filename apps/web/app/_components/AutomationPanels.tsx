@@ -148,9 +148,7 @@ export function AlertsPanel() {
         }),
       );
       await loadRules();
-      setStatus(
-        'Alert saved. Delivery worker stays beta until notification credentials are configured.',
-      );
+      setStatus('Alert saved. The production worker will evaluate it once Railway is connected.');
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
     }
@@ -252,7 +250,7 @@ export function DCAPanel() {
         }),
       );
       await loadSchedules();
-      setStatus('DCA schedule saved. Execution worker remains testnet/audit gated.');
+      setStatus('DCA schedule saved. Execution stays gated until session-key signing is configured.');
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
     }
@@ -260,7 +258,7 @@ export function DCAPanel() {
 
   return (
     <SetupShell
-      description="Create and manage recurring buy schedules. The scheduler API is live; unattended execution remains gated until audit and persistent production storage are complete."
+      description="Create and manage recurring buy schedules. The scheduler API and worker are built for durable storage; unattended swaps stay gated until session-key signing is configured."
       eyebrow="Beta live"
       title="DCA scheduler"
     >
@@ -349,7 +347,7 @@ export function AutoRepayPanel() {
         }),
       );
       await loadRules();
-      setStatus('Rule saved. Automatic repayments remain disabled until audit and signer setup.');
+      setStatus('Rule saved. Automatic repayments stay disabled until signer setup is configured.');
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
     }
@@ -357,7 +355,7 @@ export function AutoRepayPanel() {
 
   return (
     <SetupShell
-      description="Configure liquidation-protection rules with explicit health-factor targets and daily caps. This is a real rule manager; autonomous repayment execution remains audit gated."
+      description="Configure liquidation-protection rules with explicit health-factor targets and daily caps. This is a real rule manager; autonomous repayment execution stays gated until signer setup is configured."
       eyebrow="Beta live"
       title="Auto-repay"
     >
