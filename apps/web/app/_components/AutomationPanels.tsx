@@ -568,8 +568,8 @@ export function GovernancePanel() {
 export function TelegramPanel() {
   return (
     <SetupShell
-      description="The Telegram bot is deployed on Railway and connected to the production Sherpa API. It parses chat commands and routes signing through the web confirmation flow."
-      eyebrow="Live"
+      description="The Telegram bot is live on Railway and connected to the production Sherpa API. It parses chat commands and routes signing through the web confirmation flow."
+      eyebrow="Live on Railway"
       title="Telegram bot"
     >
       <div className={cardClass}>

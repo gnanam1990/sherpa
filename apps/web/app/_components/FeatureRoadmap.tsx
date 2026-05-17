@@ -58,7 +58,7 @@ const FEATURES: Array<{
   {
     name: 'Telegram bot',
     status: 'live',
-    description: 'Chat with @sherpaonbasebot; signing routes through web confirmation.',
+    description: 'Live on Railway: chat with @sherpaonbasebot; signing routes through web.',
     href: '/telegram',
   },
   {
