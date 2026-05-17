@@ -25,6 +25,17 @@ function mockFetch() {
     if (url.startsWith('/api/alerts/') && (!init || init.method === undefined)) {
       return Response.json({ alerts: [] });
     }
+    if (url === '/api/farcaster/notifications/976779/status') {
+      return Response.json({
+        active: true,
+        fid: '976779',
+        client: 'farcaster',
+        urlHost: 'api.farcaster.xyz',
+      });
+    }
+    if (url.startsWith('/api/farcaster/notifications/')) {
+      return Response.json({ active: false, fid: '1' });
+    }
     if (url === '/api/alerts' && init?.method === 'POST') {
       return Response.json(
         {
@@ -94,6 +105,7 @@ describe('AlertsPanel', () => {
     expect(screen.getByRole('button', { name: 'Create alert' })).toBeDisabled();
 
     await userEvent.type(screen.getByPlaceholderText('Farcaster FID'), '976779');
+    await screen.findByText(/Notifications active/);
     await userEvent.click(screen.getByRole('button', { name: 'Create alert' }));
 
     await waitFor(() => {
@@ -103,5 +115,16 @@ describe('AlertsPanel', () => {
       expect(body.notificationChannels).toEqual(['farcaster']);
       expect(body.params).toEqual({ farcasterFid: 976779 });
     });
+  });
+
+  it('keeps Farcaster alert creation disabled until a Mini App token is active', async () => {
+    mockFetch();
+    render(<AlertsPanel />);
+
+    await userEvent.selectOptions(screen.getByDisplayValue('In-app'), 'farcaster');
+    await userEvent.type(screen.getByPlaceholderText('Farcaster FID'), '123');
+
+    await screen.findByText(/No active token yet/);
+    expect(screen.getByRole('button', { name: 'Create alert' })).toBeDisabled();
   });
 });

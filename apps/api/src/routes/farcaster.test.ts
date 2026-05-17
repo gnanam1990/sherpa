@@ -115,6 +115,33 @@ describe('POST /api/webhooks/farcaster', () => {
   });
 });
 
+describe('GET /api/farcaster/notifications/:fid/status', () => {
+  it('rejects invalid FIDs', async () => {
+    const app = buildServer({ config: offlineConfig() });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/farcaster/notifications/not-a-fid/status',
+    });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('reports inactive status without exposing token data in process-memory mode', async () => {
+    const app = buildServer({ config: offlineConfig() });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/farcaster/notifications/976779/status',
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      active: false,
+      fid: '976779',
+      persistence: 'process-memory',
+    });
+    await app.close();
+  });
+});
+
 describe('GET /api/farcaster/frame', () => {
   it('returns frame metadata', async () => {
     const app = buildServer({ config: offlineConfig() });

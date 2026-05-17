@@ -15,6 +15,13 @@ type AlertRule = {
   createdAt: string;
 };
 
+type FarcasterNotificationStatus = {
+  active: boolean;
+  fid: string;
+  client?: string;
+  urlHost?: string;
+};
+
 type DCASchedule = {
   id: string;
   fromAsset: { symbol?: string };
@@ -119,13 +126,18 @@ export function AlertsPanel() {
   >('push');
   const [telegramChatId, setTelegramChatId] = useState('');
   const [farcasterFid, setFarcasterFid] = useState('');
+  const [farcasterStatus, setFarcasterStatus] = useState<
+    'idle' | 'checking' | 'active' | 'missing' | 'error'
+  >('idle');
+  const [farcasterStatusText, setFarcasterStatusText] = useState('');
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [status, setStatus] = useState<string>('Ready');
   const canUse = Boolean(isConnected && address);
+  const farcasterFidIsValid = /^\d+$/.test(farcasterFid.trim());
   const canCreate =
     canUse &&
     (notificationChannel !== 'telegram' || telegramChatId.trim().length > 0) &&
-    (notificationChannel !== 'farcaster' || /^\d+$/.test(farcasterFid.trim()));
+    (notificationChannel !== 'farcaster' || farcasterStatus === 'active');
 
   const loadRules = useCallback(async () => {
     if (!address) return;
@@ -136,6 +148,52 @@ export function AlertsPanel() {
   useEffect(() => {
     void loadRules().catch((err) => setStatus(err instanceof Error ? err.message : String(err)));
   }, [loadRules]);
+
+  useEffect(() => {
+    if (notificationChannel !== 'farcaster') {
+      setFarcasterStatus('idle');
+      setFarcasterStatusText('');
+      return;
+    }
+    if (!farcasterFid.trim()) {
+      setFarcasterStatus('idle');
+      setFarcasterStatusText('Enter your Farcaster FID to check Mini App notification readiness.');
+      return;
+    }
+    if (!farcasterFidIsValid) {
+      setFarcasterStatus('error');
+      setFarcasterStatusText('FID must be numeric.');
+      return;
+    }
+
+    const controller = new AbortController();
+    setFarcasterStatus('checking');
+    setFarcasterStatusText('Checking Mini App notification token...');
+    fetch(`/api/farcaster/notifications/${farcasterFid.trim()}/status`, {
+      signal: controller.signal,
+    })
+      .then((res) => readJson<FarcasterNotificationStatus>(res))
+      .then((data) => {
+        if (data.active) {
+          setFarcasterStatus('active');
+          setFarcasterStatusText(
+            `Notifications active${data.client ? ` via ${data.client}` : ''}${data.urlHost ? ` (${data.urlHost})` : ''}.`,
+          );
+        } else {
+          setFarcasterStatus('missing');
+          setFarcasterStatusText(
+            'No active token yet. Open the Sherpa Mini App in Farcaster and enable notifications first.',
+          );
+        }
+      })
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        setFarcasterStatus('error');
+        setFarcasterStatusText(err instanceof Error ? err.message : String(err));
+      });
+
+    return () => controller.abort();
+  }, [farcasterFid, farcasterFidIsValid, notificationChannel]);
 
   async function createRule(event: FormEvent) {
     event.preventDefault();
@@ -226,13 +284,24 @@ export function AlertsPanel() {
             />
           ) : null}
           {notificationChannel === 'farcaster' ? (
-            <input
-              className={fieldClass}
-              inputMode="numeric"
-              placeholder="Farcaster FID"
-              value={farcasterFid}
-              onChange={(e) => setFarcasterFid(e.target.value)}
-            />
+            <div className="space-y-1">
+              <input
+                className={fieldClass}
+                inputMode="numeric"
+                placeholder="Farcaster FID"
+                value={farcasterFid}
+                onChange={(e) => setFarcasterFid(e.target.value)}
+              />
+              <p
+                className={
+                  farcasterStatus === 'active'
+                    ? 'text-xs text-green-400'
+                    : 'text-xs text-sherpa-muted'
+                }
+              >
+                {farcasterStatusText}
+              </p>
+            </div>
           ) : null}
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">

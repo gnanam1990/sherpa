@@ -23,7 +23,7 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what re
 | **Stage 3** | Multi-surface (Farcaster/Base Mini App, Telegram bot) | ✅ Live                | Ongoing listing/discovery polish                                |
 | **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta / Partial      | Railway worker live; Telegram verified; Farcaster wired for enabled Mini App tokens; session-key execution remains |
 | **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace       | 🔵 Partial             | Read-only chain explorer live; durable session-key metadata API live; signing/marketplace pending |
-| **Stage 6** | Portfolio Dashboard, Notifications, Fee Taker         | 🔵 Partial             | Telegram alerts live; Farcaster alerts wired for active Mini App tokens; email/browser push + fee taker pending |
+| **Stage 6** | Portfolio Dashboard, Notifications, Fee Taker         | 🔵 Partial             | Telegram alerts live; Farcaster readiness checks and token-backed alerts wired; email/browser push + fee taker pending |
 | **Stage 7** | Governance, Social, Automation Deep Dive              | 🔵 Partial             | Read-only proposal browsing live; write actions pending         |
 | **Stage 8** | Developer API, Cross-chain, Mobile                    | ⚪ Planned             | Post Stage 7                                                    |
 | **Stage 9** | Risk & Compliance                                     | ⚪ Planned             | Post Stage 8                                                    |
@@ -150,6 +150,7 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what re
 - Channel abstractions for push/email/Farcaster/Telegram delivery
 - Telegram alert delivery verified against the production bot
 - Farcaster alert delivery wired to stored Mini App notification tokens
+- Farcaster notification readiness endpoint for checking active token status by FID
 
 **What's pending**:
 

@@ -89,4 +89,6 @@ Farcaster delivery boundary:
 The worker resolves active Farcaster notification tokens from Postgres by FID
 and posts to the stored client notification URL. Live smoke requires a user to
 add the Mini App and enable notifications so the webhook can store a token.
+The API exposes `/api/farcaster/notifications/:fid/status` so the web alerts
+form can check whether a FID is ready before creating a Farcaster alert.
 ```

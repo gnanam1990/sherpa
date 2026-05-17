@@ -1,5 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import { saveNotificationToken, deactivateNotificationTokens } from '@sherpa/memory';
+import {
+  deactivateNotificationTokens,
+  getActiveNotificationToken,
+  saveNotificationToken,
+} from '@sherpa/memory';
 import { getPool } from '@sherpa/config';
 import type { SherpaConfig } from '@sherpa/config';
 
@@ -8,7 +12,40 @@ function decodeBase64Url(str: string): string {
   return Buffer.from(base64, 'base64').toString('utf-8');
 }
 
+function hostnameOf(url: string): string | undefined {
+  try {
+    return new URL(url).host;
+  } catch {
+    return undefined;
+  }
+}
+
 export function registerFarcasterRoutes(app: FastifyInstance, config: SherpaConfig): void {
+  app.get('/api/farcaster/notifications/:fid/status', async (req, reply) => {
+    const params = req.params as { fid?: string };
+    if (!params.fid || !/^\d+$/.test(params.fid)) {
+      return reply.code(400).send({ error: 'invalid fid' });
+    }
+
+    const fid = BigInt(params.fid);
+    if (!config.useRealDb) {
+      return reply.send({
+        active: false,
+        fid: params.fid,
+        persistence: 'process-memory',
+      });
+    }
+
+    const token = await getActiveNotificationToken(getPool(config), fid);
+    return reply.send({
+      active: Boolean(token),
+      fid: params.fid,
+      client: token?.client,
+      urlHost: token ? hostnameOf(token.url) : undefined,
+      persistence: 'postgres',
+    });
+  });
+
   app.post('/api/webhooks/farcaster', async (req, reply) => {
     try {
       const body = req.body as Record<string, unknown> | undefined;
