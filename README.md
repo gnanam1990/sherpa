@@ -45,8 +45,8 @@ See [Stage Status](docs/sherpa/STAGE_STATUS.md) for the fuller breakdown.
 
 | Network      | Contracts                                                                                                                                                                                          | Status                                                 |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Base Sepolia | [SherpaRouter](https://sepolia.basescan.org/address/0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032), [SherpaTreasury](https://sepolia.basescan.org/address/0x70A58169BF96587E55F500c4b5cb9d956Ef826ee) | Deployed 2026-05-16, verified, pending Code4rena audit |
-| Base Mainnet | SherpaRouter, SherpaTreasury                                                                                                                                                                       | Pending audit                                          |
+| Base Sepolia | [SherpaRouter](https://sepolia.basescan.org/address/0x7CfdE6a4D1A85236419d4343a3A466d0677A0056), [SherpaTreasury](https://sepolia.basescan.org/address/0x70A58169BF96587E55F500c4b5cb9d956Ef826ee) | Patched deployment 2026-05-17, verified, external reviews remediated |
+| Base Mainnet | SherpaRouter, SherpaTreasury                                                                                                                                                                       | Blocked pending final sign-off + multisig             |
 
 Base Sepolia uses a verified mock Aerodrome router for swap-path testing because Aerodrome does not provide an official Base Sepolia router. Deployment details are recorded in `deployments/base-sepolia.json`.
 

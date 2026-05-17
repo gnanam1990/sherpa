@@ -30,11 +30,9 @@ Stage 2 adds DeFi primitives: swap (Aerodrome V2), supply/withdraw/borrow/repay
 - Battle-tested patterns: OpenZeppelin `Ownable`, `Pausable`,
   `ReentrancyGuard`, `SafeERC20`.
 - Integrates Aerodrome V2 and Aave V3 Pool (both independently audited).
-- Previous deployment verified on Base Sepolia:
-  - SherpaRouter: `0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032`
+- Patched deployment verified on Base Sepolia:
+  - SherpaRouter: `0x7CfdE6a4D1A85236419d4343a3A466d0677A0056`
   - SherpaTreasury: `0x70A58169BF96587E55F500c4b5cb9d956Ef826ee`
-  - Note: the router above predates the latest issue-report remediation; the
-    patched router will be redeployed from the audit tag before live smoke tests.
   - Note: the testnet Aerodrome router is a mock (no official Aerodrome on
     Base Sepolia); the swap path is re-validated on mainnet pre-launch.
 

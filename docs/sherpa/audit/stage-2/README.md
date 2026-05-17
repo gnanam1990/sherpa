@@ -16,13 +16,11 @@ This folder contains everything needed to audit Stage 2 of Sherpa.
 ## Base Sepolia deployment status
 
 - Network: Base Sepolia (chainId 84532)
-- Previous verified SherpaRouter: `0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032`
+- Patched verified SherpaRouter: `0x7CfdE6a4D1A85236419d4343a3A466d0677A0056`
 - SherpaTreasury: `0x70A58169BF96587E55F500c4b5cb9d956Ef826ee`
-- Previous contracts verified on basescan-sepolia
-- ⚠️ The router above predates the issue-report remediation that forwards
-  borrowed funds to the user, decodes Aave reserve data, and validates swap
-  route endpoints. Treat it as a historical smoke-test target until the patched
-  router is redeployed.
+- Contracts verified on basescan-sepolia
+- Patched router deploy tx:
+  `0x273084f0ee61bdd166a729ba319736e60f4fe2405a4ff2f690c6695e55f26b37`
 - ⚠️ Aerodrome router on this testnet deployment is a **mock** — see
   KNOWN_ISSUES.md
 
@@ -33,8 +31,7 @@ This folder contains everything needed to audit Stage 2 of Sherpa.
 - Audit branch: `audit/stage-2` (points at the tag)
 
 > Run `git checkout stage-2-pre-audit-v1.0.0`. The tag is the canonical source
-> reference for review. The existing Base Sepolia address should be redeployed
-> from this tag before any auditor relies on live bytecode behavior.
+> reference for review and matches the patched Base Sepolia router above.
 
 ## Snapshot of verification (reproducible)
 

@@ -1,9 +1,9 @@
 {
   "chainId": 84532,
   "network": "base-sepolia",
-  "deployment_date": "2026-05-16T15:21:22Z",
+  "deployment_date": "2026-05-17T07:29:42Z",
   "deployer": "0xdd8FA0CD3BB2fB1D1964C6E5d168081C21973D8c",
-  "status": "testnet-deployed-pending-audit",
+  "status": "testnet-deployed-external-review-remediated",
   "external_dependencies": {
     "aave_pool": {
       "address": "0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27",
@@ -31,10 +31,10 @@
     "basescan_url": "https://sepolia.basescan.org/address/0x70A58169BF96587E55F500c4b5cb9d956Ef826ee"
   },
   "router": {
-    "address": "0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032",
-    "deploy_tx": "0x9f53e8dce4204ae67ad36cd114cdd4e1814873fa8f88014c399830f6aa14b232",
-    "block": 41588233,
-    "gas_used": 1351030,
+    "address": "0x7CfdE6a4D1A85236419d4343a3A466d0677A0056",
+    "deploy_tx": "0x273084f0ee61bdd166a729ba319736e60f4fe2405a4ff2f690c6695e55f26b37",
+    "block": 41617347,
+    "gas_used": 1671089,
     "constructor_args": {
       "owner": "0xdd8FA0CD3BB2fB1D1964C6E5d168081C21973D8c",
       "aerodrome": "0x135Ea0F5422fB1D4aDeaC8A205735498ffA5B933",
@@ -42,18 +42,21 @@
       "treasury": "0x70A58169BF96587E55F500c4b5cb9d956Ef826ee"
     },
     "verified": true,
-    "basescan_url": "https://sepolia.basescan.org/address/0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032",
+    "basescan_url": "https://sepolia.basescan.org/address/0x7CfdE6a4D1A85236419d4343a3A466d0677A0056",
     "post_deploy_checks": {
       "fee_bps": 10,
-      "min_health_factor": "1200000000000000000",
-      "builder_code": "bc_97ju6eu2"
+      "min_health_factor": "1500000000000000000",
+      "min_withdraw_health_factor": "1500000000000000000",
+      "builder_code": "bc_97ju6eu2",
+      "owner": "0xdd8FA0CD3BB2fB1D1964C6E5d168081C21973D8c",
+      "paused": false
     }
   },
   "allowlist_setup": {
     "tx_hashes": [
-      "0x757c2bae9043eefa4e31d3444b0393244f6dcdaec91b3b6cbd292887222f6a0a"
+      "0xe1b8b92b9c5634f7b56892e62f9aa8a764a838a08c5291d828e4afe8429f265b"
     ],
-    "gas_used": 74098,
+    "gas_used": 75620,
     "swap_tokens": [
       {
         "symbol": "USDC",
@@ -80,12 +83,13 @@
     ]
   },
   "gas_summary": {
-    "total_gas_used": 2191557,
-    "total_eth_spent": "0.000013149342055895",
-    "remaining_deployer_balance": "0.089986850657944105"
+    "patched_router_and_allowlist_gas_used": 1746709,
+    "patched_router_and_allowlist_eth_spent": "0.000010292898499242",
+    "remaining_deployer_balance": "0.089976557160449190"
   },
   "notes": [
     "This is a Base Sepolia audit target only.",
+    "Patched router was redeployed from commit 1e36318 after two external review rounds were remediated.",
     "Stage 2 production feature flags remain false by default.",
     "Do not use the mock Aerodrome router on Base mainnet."
   ]

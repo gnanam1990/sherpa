@@ -14,9 +14,8 @@ read-only positions view.
 - **Audit tag**: `stage-2-pre-audit-v1.0.0` — the canonical immutable
   reference. Run `git checkout stage-2-pre-audit-v1.0.0`.
 - **Audit branch**: `audit/stage-2` (points at the tag)
-- **Deployment note**: the previously verified Base Sepolia router predates the
-  issue-report remediation. The tagged source is canonical; redeploy the patched
-  router before using a live testnet target for auditor smoke tests.
+- **Deployment note**: the patched Base Sepolia router is deployed and verified
+  from the tagged source after two external review rounds were remediated.
 - **Compiler**: Solidity 0.8.24, optimizer enabled (200 runs), `via_ir = true`
 - **Framework**: Foundry
 
@@ -81,22 +80,22 @@ Total `src/` tree (contracts + libraries + interfaces): 736 lines, 8 files.
 - Test files (`packages/contracts/test/`) and deploy scripts (`packages/contracts/script/`)
 - External protocols (Aerodrome V2, Aave V3) — independently audited; integration correctness is in scope, their internals are not
 
-## Deployment (historical Base Sepolia smoke target)
+## Deployment (patched Base Sepolia audit target)
 
 - **Network**: Base Sepolia, chainId **84532**
-- **Deployment date**: 2026-05-16T15:21:22Z
+- **Deployment date**: 2026-05-17T07:29:42Z
 - **Deployer / owner (EOA)**: `0xdd8FA0CD3BB2fB1D1964C6E5d168081C21973D8c`
 
 | Contract | Address | Block | Verified |
 |---|---|---|---|
-| SherpaRouter | `0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032` | 41588233 | ✅ basescan-sepolia |
+| SherpaRouter | `0x7CfdE6a4D1A85236419d4343a3A466d0677A0056` | 41617347 | ✅ basescan-sepolia |
 | SherpaTreasury | `0x70A58169BF96587E55F500c4b5cb9d956Ef826ee` | 41588193 | ✅ basescan-sepolia |
 
-> ⚠️ The router address above was deployed before the issue-report remediation
-> that fixed borrow fund forwarding, Aave reserve-data decoding, and swap route
-> endpoint validation. It is retained as historical deployment evidence. The
-> patched router should be redeployed from `stage-2-pre-audit-v1.0.0` before an
-> external auditor depends on live Base Sepolia bytecode behavior.
+Patched router deploy tx:
+`0x273084f0ee61bdd166a729ba319736e60f4fe2405a4ff2f690c6695e55f26b37`
+
+Allowlist setup tx:
+`0xe1b8b92b9c5634f7b56892e62f9aa8a764a838a08c5291d828e4afe8429f265b`
 
 **External dependencies (testnet):**
 

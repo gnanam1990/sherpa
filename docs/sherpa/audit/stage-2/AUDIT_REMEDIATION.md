@@ -15,9 +15,9 @@ commits currently published on `main`, `audit/stage-2`, and
 | Finding remediation | Complete in source |
 | Final audit source tag | `stage-2-pre-audit-v1.0.0` |
 | Final remediated source commit | `b3fb02ab623aef26d071c6e02b1e8d60cab111c9` |
-| Audit package head | The `stage-2-pre-audit-v1.0.0` tag includes this remediation summary on top of the remediated source. |
-| Patched Base Sepolia router redeploy | Pending |
-| Mainnet launch | Blocked until redeploy, final sign-off, and multisig |
+| Audit package head | The `stage-2-pre-audit-v1.0.0` tag includes this remediation summary and patched Base Sepolia deployment record on top of the remediated source. |
+| Patched Base Sepolia router redeploy | Complete: `0x7CfdE6a4D1A85236419d4343a3A466d0677A0056` |
+| Mainnet launch | Blocked until final sign-off, fresh deployer / Safe multisig, and mainnet launch controls |
 
 ## Review sources
 
@@ -55,7 +55,7 @@ commits currently published on `main`, `audit/stage-2`, and
 | ER2-2 | High | `withdraw()` used non-standard Aave Pool function `getReserveAToken`. | Fixed | Router now fetches the aToken by staticcalling Aave V3 `getReserveData(address)` and decoding the `aTokenAddress` return word with success, length, and zero-address checks; mock interface updated. Commit: `b3fb02a`. |
 | ER2-3 | Medium / High | `repay()` could strand overpayments in the router. | Already fixed | Fixed in round 1 by refunding `amount - repaid`; round 2 artifacts include the passing overpayment regression test. Commits: `c664cb1`, verified in `b3fb02a`. |
 | ER2-4 | Medium | `swap()` did not validate route endpoints against `tokenIn` / `tokenOut`. | Fixed | Stage 2 swaps now require exactly one route and require `routes[0].from == tokenIn` and `routes[0].to == tokenOut`; tests cover mismatched endpoints and multi-hop rejection. Commit: `b3fb02a`. |
-| ER2-5 | Low | Audit package referenced missing tag / branch. | Fixed | Remote audit branch `audit/stage-2` and annotated tag `stage-2-pre-audit-v1.0.0` now exist and resolve to commit `b3fb02a`. |
+| ER2-5 | Low | Audit package referenced missing tag / branch. | Fixed | Remote audit branch `audit/stage-2` and annotated tag `stage-2-pre-audit-v1.0.0` now exist; the tag includes this remediation summary and the patched Base Sepolia deployment record. |
 
 ## Verification after remediation
 
@@ -82,12 +82,36 @@ Results:
 | Slither | 0 high, 0 critical; reviewed residue documented in `KNOWN_ISSUES.md` |
 | Coverage | Router 96.94% lines / 95.35% statements / 90.00% branches / 100% functions; Treasury, FeeCalculator, SafetyCheck 100% |
 
+## Patched Base Sepolia deployment
+
+| Item | Value |
+|---|---|
+| Network | Base Sepolia (`84532`) |
+| SherpaRouter | `0x7CfdE6a4D1A85236419d4343a3A466d0677A0056` |
+| SherpaTreasury | `0x70A58169BF96587E55F500c4b5cb9d956Ef826ee` |
+| Deploy tx | `0x273084f0ee61bdd166a729ba319736e60f4fe2405a4ff2f690c6695e55f26b37` |
+| Allowlist tx | `0xe1b8b92b9c5634f7b56892e62f9aa8a764a838a08c5291d828e4afe8429f265b` |
+| Verified | Yes, on basescan-sepolia |
+| Allowlisted tokens | USDC `0x036CbD53842c5426634e7929541eC2318f3dCF7e`, WETH `0x4200000000000000000000000000000000000006` |
+
+Post-deploy checks:
+
+| Check | Result |
+|---|---|
+| `owner()` | `0xdd8FA0CD3BB2fB1D1964C6E5d168081C21973D8c` |
+| `SHERPA_TREASURY()` | `0x70A58169BF96587E55F500c4b5cb9d956Ef826ee` |
+| `AERODROME_ROUTER()` | `0x135Ea0F5422fB1D4aDeaC8A205735498ffA5B933` |
+| `AAVE_POOL()` | `0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27` |
+| `FEE_BPS()` | `10` |
+| `MIN_HEALTH_FACTOR()` | `1500000000000000000` |
+| `MIN_WITHDRAW_HEALTH_FACTOR()` | `1500000000000000000` |
+| `swapTokenAllowlist(USDC)` | `true` |
+| `swapTokenAllowlist(WETH)` | `true` |
+| `paused()` | `false` |
+
 ## Remaining launch blockers
 
-1. Redeploy the patched `SherpaRouter` to Base Sepolia from commit `b3fb02a`.
-2. Update `deployments/base-sepolia.json`, `README.md`, and `SCOPE.md` with the
-   new router address and verification link.
-3. Send this remediation summary, the final tag, and the new Basescan link back
+1. Send this remediation summary, the final tag, and the new Basescan link back
    to the external reviewers for final acknowledgement.
-4. Use a fresh mainnet deployer or Safe multisig. Do not use any private key
+2. Use a fresh mainnet deployer or Safe multisig. Do not use any private key
    that has appeared in chat or terminal history for mainnet assets.
