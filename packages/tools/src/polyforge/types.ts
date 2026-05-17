@@ -16,4 +16,5 @@ export type PolyForgeSearchParams = {
 export type PolyForgeDeps = {
   apiUrl?: string;
   apiKey?: string;
+  fetchImpl?: typeof fetch;
 };

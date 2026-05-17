@@ -90,27 +90,25 @@ export function createUniswapV3(
       throw new Error('[uniswap-v3] quoter address not configured');
     }
 
-    let amountOut: bigint;
-    if (deps.client) {
-      const result = (await deps.client.simulateContract({
-        address: quoterAddress,
-        abi: QUOTER_V2_ABI,
-        functionName: 'quoteExactInputSingle',
-        args: [
-          {
-            tokenIn: params.tokenIn,
-            tokenOut: params.tokenOut,
-            amountIn: params.amountIn,
-            fee: params.fee,
-            sqrtPriceLimitX96: 0n,
-          },
-        ],
-      })) as unknown as { result: readonly [bigint, bigint, number, bigint] };
-      amountOut = result.result[0];
-    } else {
-      // Stub: assume 1:1 for simplicity when no client
-      amountOut = params.amountIn;
+    if (!deps.client) {
+      throw new Error('[uniswap-v3] public client not configured');
     }
+
+    const result = (await deps.client.simulateContract({
+      address: quoterAddress,
+      abi: QUOTER_V2_ABI,
+      functionName: 'quoteExactInputSingle',
+      args: [
+        {
+          tokenIn: params.tokenIn,
+          tokenOut: params.tokenOut,
+          amountIn: params.amountIn,
+          fee: params.fee,
+          sqrtPriceLimitX96: 0n,
+        },
+      ],
+    })) as unknown as { result: readonly [bigint, bigint, number, bigint] };
+    const amountOut = result.result[0];
 
     return {
       tokenIn: params.tokenIn,

@@ -1,9 +1,8 @@
 export type AavePositionConfig = Record<string, never>;
 
 export async function getHealthFactor(
-  _address: string,
+  address: string,
   _config?: AavePositionConfig,
 ): Promise<number> {
-  // Stub: real implementation queries Aave pool.getUserAccountData()
-  return 0;
+  throw new Error(`aave_position_oracle_not_configured:${address}`);
 }
