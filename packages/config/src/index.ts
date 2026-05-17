@@ -159,7 +159,7 @@ export type SherpaConfig = {
   aavePoolAddress?: `0x${string}`;
   /** Aave V3 Data Provider address (optional — for reserve data). */
   aaveDataProviderAddress?: `0x${string}`;
-  /** Base mainnet RPC used by read-only positions and private Stage 2 beta planning. */
+  /** Base mainnet RPC used by read-only positions and Stage 2 mainnet planning. */
   baseMainnetRpcUrl: string;
   /** Stage 2 SherpaRouter deployment on Base mainnet. */
   sherpaRouterBaseMainnet?: `0x${string}`;
@@ -176,6 +176,8 @@ export type SherpaConfig = {
   stage2TestnetEnabled: boolean;
   /** Public-facing Stage 2 flag (exposed via NEXT_PUBLIC_*). */
   stage2PublicEnabled: boolean;
+  /** Whether Base mainnet Stage 2 write cards are public for any connected wallet. */
+  stage2PublicMainnetEnabled: boolean;
   /** Wallet allowlist for private Base-mainnet Stage 2 app rollout. */
   stage2BetaWallets: readonly `0x${string}`[];
 };
@@ -208,11 +210,11 @@ export const ONCHAIN_ADDRESSES = Object.freeze({
     sherpaTreasury: '0x70A58169BF96587E55F500c4b5cb9d956Ef826ee' as const,
   },
   /**
-   * Stage 2 guarded Base mainnet deployment.
+   * Stage 2 Base mainnet deployment.
    *
    * Source: deployments/base-mainnet.json, deployed 2026-05-17 after two
-   * external review rounds. App traffic remains feature-flag + beta-wallet
-   * gated until monitored production smoke is complete.
+   * external review rounds. App traffic remains feature-flag controlled and
+   * can be rolled out privately or publicly via explicit Stage 2 flags.
    */
   stage2BaseMainnet: {
     aerodromeRouter: '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43' as const,
@@ -321,6 +323,7 @@ const Stage2EnvSchema = z.object({
   SHERPA_STAGE_2_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('false')),
   SHERPA_STAGE_2_TESTNET_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('true')),
   NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('false')),
+  SHERPA_STAGE_2_PUBLIC_MAINNET: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('false')),
   SHERPA_STAGE_2_BETA_WALLETS: z.preprocess(emptyToUndefined, z.string().optional()),
   SHERPA_ROUTER_BASE_MAINNET: z.preprocess(emptyToUndefined, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional()),
   SHERPA_TREASURY_BASE_MAINNET: z.preprocess(emptyToUndefined, z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional()),
@@ -393,6 +396,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     SHERPA_STAGE_2_ENABLED: env.SHERPA_STAGE_2_ENABLED,
     SHERPA_STAGE_2_TESTNET_ENABLED: env.SHERPA_STAGE_2_TESTNET_ENABLED,
     NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED: env.NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED,
+    SHERPA_STAGE_2_PUBLIC_MAINNET: env.SHERPA_STAGE_2_PUBLIC_MAINNET,
     SHERPA_STAGE_2_BETA_WALLETS: env.SHERPA_STAGE_2_BETA_WALLETS,
     SHERPA_ROUTER_BASE_MAINNET: env.SHERPA_ROUTER_BASE_MAINNET,
     SHERPA_TREASURY_BASE_MAINNET: env.SHERPA_TREASURY_BASE_MAINNET,
@@ -476,6 +480,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     stage2Enabled: stage2Env.SHERPA_STAGE_2_ENABLED === 'true',
     stage2TestnetEnabled,
     stage2PublicEnabled: stage2Env.NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED === 'true',
+    stage2PublicMainnetEnabled: stage2Env.SHERPA_STAGE_2_PUBLIC_MAINNET === 'true',
     stage2BetaWallets: parseWalletList(stage2Env.SHERPA_STAGE_2_BETA_WALLETS),
   };
 }

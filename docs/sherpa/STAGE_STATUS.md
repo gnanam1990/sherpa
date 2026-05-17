@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sherpa is built in 9 stages. This document tracks what is actually live, what is testnet/read-only, and what still needs audit or production hardening.
+Sherpa is built in 9 stages. This document tracks what is actually live, what remains read-only/beta, and what still needs production hardening.
 
 ## Status Legend
 
@@ -19,7 +19,7 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what is
 | Stage       | Description                                           | Status                 | Target / Gate                                                   |
 | ----------- | ----------------------------------------------------- | ---------------------- | --------------------------------------------------------------- |
 | **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP               | ✅ Live                | Live on Base Sepolia                                            |
-| **Stage 2** | DeFi positions + writes                               | 🟡 Mainnet contracts deployed | Post-deploy smoke tests + monitoring before app write traffic   |
+| **Stage 2** | DeFi positions + writes                               | ✅ Live on Base mainnet | Public mainnet cards with guarded amount caps and verified contracts |
 | **Stage 3** | Multi-surface (Farcaster/Base Mini App, Telegram bot) | ✅ Live                | Ongoing listing/discovery polish                                |
 | **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta / Partial      | Production workers + notifications + execution audit            |
 | **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace       | 🔵 Partial             | Read-only chain explorer live; session keys/marketplace pending |
@@ -49,21 +49,22 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what is
 
 ---
 
-### Stage 2: DeFi Intents 🟡 Testnet / Read-only
+### Stage 2: DeFi Intents ✅ Live on Base mainnet
 
 **What's live**:
 
 - POSITIONS: Read-only Aave V3 account data on Base mainnet
-- SWAP: Base Sepolia testnet demo through verified mock Aerodrome router
-- LEND: Base Sepolia testnet supply flow
-- BORROW: Base Sepolia testnet borrow flow
-- Base mainnet contracts deployed and verified
+- SWAP: Base mainnet via verified SherpaRouter and Aerodrome
+- LEND: Base mainnet supply flow through verified SherpaRouter and Aave V3
+- BORROW: Base mainnet borrow flow through verified SherpaRouter and Aave V3
+- REPAY: Base mainnet repay flow through verified SherpaRouter and Aave V3
+- WITHDRAW: Base mainnet withdraw flow through verified SherpaRouter and Aave V3
 
-**What's built but still gated**:
+**Safety boundary**:
 
-- REPAY: Visible, audit-gated
-- WITHDRAW: Visible, audit-gated
-- App-level mainnet swap/lend/borrow/repay/withdraw traffic
+- Public rollout is explicit via `SHERPA_STAGE_2_ENABLED=true` and `SHERPA_STAGE_2_PUBLIC_MAINNET=true`
+- Mainnet cards use guarded amount caps and tell users they pay network gas
+- Stage 1 sponsored send remains on Base Sepolia
 
 **Contracts**:
 
@@ -74,13 +75,7 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what is
 - Deployment artifact: `deployments/base-sepolia.json`
 - Mainnet deployment artifact: `deployments/base-mainnet.json`
 
-**What's blocking app-level production writes**:
-
-- Post-deployment smoke tests
-- Production monitoring and rollback verification
-- Mainnet app/write-flag rollout
-
-**Dependencies**: Stage 1 live, post-deploy verification complete
+**Dependencies**: Stage 1 live, external reviews remediated, Safe ownership verified, production env flags enabled
 
 ---
 
@@ -203,25 +198,20 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what is
 
 ### Live Now
 
-- Web app on Base Sepolia
+- Web app at https://sherpa-web.vercel.app
 - Stage 1 intents: SEND, BALANCE, HISTORY, IDENTITY_LOOKUP
 - Aave positions read-only on Base mainnet
-- Stage 2 swap/lend/borrow demos on Base Sepolia
-- Stage 2 contracts deployed and verified on Base mainnet
+- Stage 2 swap/lend/borrow/repay/withdraw cards on Base mainnet
+- Stage 2 contracts deployed, verified, and Safe-owned on Base mainnet
 - Farcaster/Base Mini App
 - Telegram bot
 - Coinbase Smart Wallet integration
 - Sponsored gas
 - Read-only multi-chain and governance views
 
-### Pending Post-Deploy Rollout
-
-- Stage 2 app-level mainnet DeFi writes
-- Repay and withdraw execution
-- Production monitoring/rollback checks
-
 ### Pending Production Hardening
 
+- Continued production monitoring/rollback drills
 - Scheduler workers
 - Notification delivery channels
 - Auto-repay execution

@@ -12,6 +12,11 @@ describe('stage2 feature flags', () => {
     expect(cfg.stage2PublicEnabled).toBe(false);
   });
 
+  it('defaults SHERPA_STAGE_2_PUBLIC_MAINNET to false', () => {
+    const cfg = loadConfig({});
+    expect(cfg.stage2PublicMainnetEnabled).toBe(false);
+  });
+
   it('parses SHERPA_STAGE_2_ENABLED=true', () => {
     const cfg = loadConfig({ SHERPA_STAGE_2_ENABLED: 'true' });
     expect(cfg.stage2Enabled).toBe(true);
@@ -32,6 +37,16 @@ describe('stage2 feature flags', () => {
     expect(cfg.stage2PublicEnabled).toBe(false);
   });
 
+  it('parses SHERPA_STAGE_2_PUBLIC_MAINNET=true', () => {
+    const cfg = loadConfig({ SHERPA_STAGE_2_PUBLIC_MAINNET: 'true' });
+    expect(cfg.stage2PublicMainnetEnabled).toBe(true);
+  });
+
+  it('parses SHERPA_STAGE_2_PUBLIC_MAINNET=false', () => {
+    const cfg = loadConfig({ SHERPA_STAGE_2_PUBLIC_MAINNET: 'false' });
+    expect(cfg.stage2PublicMainnetEnabled).toBe(false);
+  });
+
   it('treats empty SHERPA_STAGE_2_ENABLED as false', () => {
     const cfg = loadConfig({ SHERPA_STAGE_2_ENABLED: '' });
     expect(cfg.stage2Enabled).toBe(false);
@@ -40,6 +55,11 @@ describe('stage2 feature flags', () => {
   it('treats empty NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED as false', () => {
     const cfg = loadConfig({ NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED: '' });
     expect(cfg.stage2PublicEnabled).toBe(false);
+  });
+
+  it('treats empty SHERPA_STAGE_2_PUBLIC_MAINNET as false', () => {
+    const cfg = loadConfig({ SHERPA_STAGE_2_PUBLIC_MAINNET: '' });
+    expect(cfg.stage2PublicMainnetEnabled).toBe(false);
   });
 
   it('allows independent control of server and public flags', () => {

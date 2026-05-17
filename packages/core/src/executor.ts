@@ -73,11 +73,11 @@ export type ExecutorDeps = {
   uniswap?: ToolAdapter<BuyParams, BuyQuote, BuyParams>;
   /** Override the default Aave adapter for LEND. */
   aave?: AaveAdapter;
-  /** Explicit Aerodrome-compatible router address for testnet swap demos. */
+  /** Explicit Aerodrome-compatible router address for Stage 2 swap planning. */
   aerodromeRouterAddress?: Address;
   /** True only for Base Sepolia Stage 2 demos; applies small amount caps and warnings. */
   stage2Testnet?: boolean;
-  /** True only for guarded Base mainnet Stage 2 beta. */
+  /** True only for Base mainnet Stage 2. */
   stage2Mainnet?: boolean;
   /** Audited SherpaRouter address for mainnet Stage 2. */
   sherpaRouterAddress?: Address;
@@ -139,13 +139,13 @@ function enforceTestnetAmountCap(
   return undefined;
 }
 
-function enforceMainnetBetaAmountCap(action: string, asset: string, amount: string): string | undefined {
+function enforceMainnetAmountCap(action: string, asset: string, amount: string): string | undefined {
   const normalized = asset.toUpperCase();
   const decimals = normalized === 'USDC' ? 6 : 18;
   const parsed = parseTokenAmount(amount, decimals);
   const cap = normalized === 'USDC' ? 100_000_000n : 50_000_000_000_000_000n;
   if (parsed > cap) {
-    return `${action} is in private mainnet beta. Max per action: 100 USDC or 0.05 WETH.`;
+    return `${action} is live on Base mainnet with guarded amount caps. Max per action: 100 USDC or 0.05 WETH.`;
   }
   return undefined;
 }
@@ -166,7 +166,7 @@ function routerDeps(deps: ExecutorDeps) {
 
 function mainnetWarnings(feature: string): string[] {
   return [
-    `${feature} is live for private beta wallets on Base mainnet. Start with tiny amounts.`,
+    `${feature} is live on Base mainnet. Start with tiny amounts.`,
     'Mainnet action: you pay network gas; Sherpa will not attach the Sepolia paymaster.',
   ];
 }
@@ -691,10 +691,10 @@ async function planSwap(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
   if (capError) return { ok: false, error: capError };
 
   if (deps.stage2Mainnet) {
-    const betaCapError = enforceMainnetBetaAmountCap('SWAP', fromAsset, fromAmount);
-    if (betaCapError) return { ok: false, error: betaCapError };
+    const mainnetCapError = enforceMainnetAmountCap('SWAP', fromAsset, fromAmount);
+    if (mainnetCapError) return { ok: false, error: mainnetCapError };
     const rd = routerDeps(deps);
-    if (!rd) return { ok: false, error: 'SWAP mainnet beta is not configured.' };
+    if (!rd) return { ok: false, error: 'SWAP mainnet is not configured.' };
     try {
       const routerPlan = await buildSherpaRouterSwapPlan({
         fromAsset,
@@ -852,10 +852,10 @@ async function planLend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
   }
 
   if (deps.stage2Mainnet) {
-    const betaCapError = enforceMainnetBetaAmountCap('LEND', asset, amount);
-    if (betaCapError) return { ok: false, error: betaCapError };
+    const mainnetCapError = enforceMainnetAmountCap('LEND', asset, amount);
+    if (mainnetCapError) return { ok: false, error: mainnetCapError };
     const rd = routerDeps(deps);
-    if (!rd) return { ok: false, error: 'LEND mainnet beta is not configured.' };
+    if (!rd) return { ok: false, error: 'LEND mainnet is not configured.' };
     try {
       const routerPlan = await buildSherpaRouterSupplyPlan({ asset, amount, deps: rd });
       const pending: PendingTx = {
@@ -997,10 +997,10 @@ async function planBorrow(parsed: ParsedIntent, deps: ExecutorDeps): Promise<Pla
   }
 
   if (deps.stage2Mainnet) {
-    const betaCapError = enforceMainnetBetaAmountCap('BORROW', asset, amount);
-    if (betaCapError) return { ok: false, error: betaCapError };
+    const mainnetCapError = enforceMainnetAmountCap('BORROW', asset, amount);
+    if (mainnetCapError) return { ok: false, error: mainnetCapError };
     const rd = routerDeps(deps);
-    if (!rd) return { ok: false, error: 'BORROW mainnet beta is not configured.' };
+    if (!rd) return { ok: false, error: 'BORROW mainnet is not configured.' };
     try {
       const routerPlan = await buildSherpaRouterBorrowPlan({ asset, amount, deps: rd });
       const pending: PendingTx = {
@@ -1111,12 +1111,12 @@ async function planRepay(parsed: ParsedIntent, deps: ExecutorDeps): Promise<Plan
   const asset = (typeof parsed.slots.asset === 'string' ? parsed.slots.asset : '').toUpperCase();
   if (!amount || !asset) return { ok: false, error: 'missing slots: amount/asset' };
   if (!deps.userAddress) return { ok: false, error: 'REPAY requires a connected wallet.' };
-  if (!deps.stage2Mainnet) return { ok: false, error: 'REPAY is pending private mainnet beta enablement.' };
+  if (!deps.stage2Mainnet) return { ok: false, error: 'REPAY is pending mainnet enablement.' };
 
-  const betaCapError = enforceMainnetBetaAmountCap('REPAY', asset, amount);
-  if (betaCapError) return { ok: false, error: betaCapError };
+  const mainnetCapError = enforceMainnetAmountCap('REPAY', asset, amount);
+  if (mainnetCapError) return { ok: false, error: mainnetCapError };
   const rd = routerDeps(deps);
-  if (!rd) return { ok: false, error: 'REPAY mainnet beta is not configured.' };
+  if (!rd) return { ok: false, error: 'REPAY mainnet is not configured.' };
   try {
     const routerPlan = await buildSherpaRouterRepayPlan({ asset, amount, deps: rd });
     const pending: PendingTx = {
@@ -1154,12 +1154,12 @@ async function planWithdraw(parsed: ParsedIntent, deps: ExecutorDeps): Promise<P
   const asset = (typeof parsed.slots.asset === 'string' ? parsed.slots.asset : '').toUpperCase();
   if (!amount || !asset) return { ok: false, error: 'missing slots: amount/asset' };
   if (!deps.userAddress) return { ok: false, error: 'WITHDRAW requires a connected wallet.' };
-  if (!deps.stage2Mainnet) return { ok: false, error: 'WITHDRAW is pending private mainnet beta enablement.' };
+  if (!deps.stage2Mainnet) return { ok: false, error: 'WITHDRAW is pending mainnet enablement.' };
 
-  const betaCapError = enforceMainnetBetaAmountCap('WITHDRAW', asset, amount);
-  if (betaCapError) return { ok: false, error: betaCapError };
+  const mainnetCapError = enforceMainnetAmountCap('WITHDRAW', asset, amount);
+  if (mainnetCapError) return { ok: false, error: mainnetCapError };
   const rd = routerDeps(deps);
-  if (!rd) return { ok: false, error: 'WITHDRAW mainnet beta is not configured.' };
+  if (!rd) return { ok: false, error: 'WITHDRAW mainnet is not configured.' };
   try {
     const routerPlan = await buildSherpaRouterWithdrawPlan({ asset, amount, deps: rd });
     const pending: PendingTx = {

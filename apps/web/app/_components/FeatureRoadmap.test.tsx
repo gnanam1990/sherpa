@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { FeatureRoadmap } from './FeatureRoadmap';
 
 describe('FeatureRoadmap', () => {
-  it('shows live, read-only, testnet, and beta statuses', () => {
+  it('shows live, read-only, mainnet, and beta statuses', () => {
     render(<FeatureRoadmap />);
 
     expect(screen.getByText('Send tokens')).toBeTruthy();
     expect(screen.getAllByText('Live').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Aave positions')).toBeTruthy();
     expect(screen.getAllByText('Read-only live').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Testnet live').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Mainnet live').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Beta live').length).toBeGreaterThan(0);
     expect(screen.getByText('Telegram bot')).toBeTruthy();
   });
@@ -32,14 +32,14 @@ describe('FeatureRoadmap', () => {
     expect(screen.getByText('Governance').closest('a')?.getAttribute('href')).toBe('/governance');
   });
 
-  it('links to source and Sepolia contracts', () => {
+  it('links to source and mainnet contracts', () => {
     render(<FeatureRoadmap />);
 
     expect(screen.getByRole('link', { name: 'Source' }).getAttribute('href')).toBe(
       'https://github.com/gnanam1990/sherpa',
     );
-    expect(screen.getByRole('link', { name: 'Sepolia contracts' }).getAttribute('href')).toContain(
-      'sepolia.basescan.org/address/0xDfe689',
+    expect(screen.getByRole('link', { name: 'Mainnet contracts' }).getAttribute('href')).toContain(
+      'basescan.org/address/0x00bfef',
     );
   });
 });

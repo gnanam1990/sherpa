@@ -99,7 +99,7 @@ export function HomeContent() {
       />
 
       <footer className="text-xs text-sherpa-muted">
-        Stage 1 · Base Sepolia · <span className="text-sherpa-success">sponsored gas</span>
+        Stage 1 send · Base Sepolia · Stage 2 · <span className="text-sherpa-success">Base mainnet</span>
       </footer>
 
       <FeatureRoadmap />

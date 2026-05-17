@@ -21,6 +21,7 @@ const mainnetStage2Config = {
   sherpaRouterBaseMainnet: MAINNET_ROUTER,
   stage2BetaWallets: [USDC_RECIPIENT],
   stage2Enabled: true,
+  stage2PublicMainnetEnabled: false,
 } as const;
 
 function makeSentryStub(): SentryLike & {
@@ -158,7 +159,7 @@ describe('apps/api', () => {
     await app.close();
   });
 
-  it('POST /api/parse returns private-beta mainnet Stage 2 cards for allowlisted wallets', async () => {
+  it('POST /api/parse returns mainnet Stage 2 cards for allowlisted wallets', async () => {
     const app = buildServer({
       config: mainnetStage2Config,
       stage2ReadContract: async () => [999_000n, 2_000_000_000_000_000n],
@@ -195,6 +196,32 @@ describe('apps/api', () => {
       parsed: { intent: 'LEND' },
       stage2: { status: 'coming_soon' },
     });
+    await app.close();
+  });
+
+  it('POST /api/parse returns public mainnet Stage 2 cards when public mainnet is enabled', async () => {
+    const app = buildServer({
+      config: {
+        ...mainnetStage2Config,
+        stage2BetaWallets: [],
+        stage2PublicMainnetEnabled: true,
+      },
+      stage2ReadContract: async () => [999_000n, 2_000_000_000_000_000n],
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse',
+      payload: { input: 'swap 1 usdc for eth', userKey: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      card?: { intent: string; batch?: { chainId: string; calls: Array<{ to: string }> } };
+      stage2?: unknown;
+    };
+    expect(body.stage2).toBeUndefined();
+    expect(body.card?.intent).toBe('SWAP');
+    expect(body.card?.batch?.chainId).toBe('0x2105');
+    expect(body.card?.batch?.calls.at(-1)?.to).toBe(MAINNET_ROUTER);
     await app.close();
   });
 
@@ -251,9 +278,37 @@ describe('apps/api', () => {
     await app.close();
   });
 
-  it('POST /api/execute allows private-beta mainnet Stage 2 intents', async () => {
+  it('POST /api/execute allows mainnet Stage 2 intents for allowlisted wallets', async () => {
     const auditStore = createInMemoryAuditStore();
     const app = buildServer({ auditStore, config: mainnetStage2Config });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/execute',
+      payload: { input: 'lend 1 usdc to aave', userAddress: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      ok: boolean;
+      card?: { intent: string; batch?: { chainId: string; calls: Array<{ to: string }> }; gas_display?: string };
+    };
+    expect(body.ok).toBe(true);
+    expect(body.card?.intent).toBe('LEND');
+    expect(body.card?.batch?.chainId).toBe('0x2105');
+    expect(body.card?.batch?.calls.at(-1)?.to).toBe(MAINNET_ROUTER);
+    expect(body.card?.gas_display).toBe('user pays');
+    await app.close();
+  });
+
+  it('POST /api/execute allows public mainnet Stage 2 intents when public mainnet is enabled', async () => {
+    const auditStore = createInMemoryAuditStore();
+    const app = buildServer({
+      auditStore,
+      config: {
+        ...mainnetStage2Config,
+        stage2BetaWallets: [],
+        stage2PublicMainnetEnabled: true,
+      },
+    });
     const res = await app.inject({
       method: 'POST',
       url: '/api/execute',

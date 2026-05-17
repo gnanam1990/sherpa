@@ -9,7 +9,7 @@ export default function SwapPage() {
           Back to Sherpa
         </Link>
         <div className="mt-6">
-          <Stage2ComingSoon feature="swap" testnetEnabled />
+          <Stage2ComingSoon feature="swap" mainnetEnabled />
         </div>
       </div>
     </main>

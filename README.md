@@ -6,21 +6,21 @@
 
 > The natural-language Base agent.
 
-[![Live](https://img.shields.io/badge/live-Base_Sepolia-blue)](https://sherpa-web.vercel.app)
+[![Live](https://img.shields.io/badge/live-Base-blue)](https://sherpa-web.vercel.app)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Type plain English. Sherpa does it onchain.
 
-Sherpa is a natural-language agent for the Base L2 blockchain. Users type intent in English; Sherpa parses and validates the request, then either executes supported Base Sepolia actions through Coinbase Smart Wallet with sponsored gas, returns safe read-only data, or clearly marks unaudited flows as testnet/audit-gated.
+Sherpa is a natural-language agent for the Base L2 blockchain. Users type intent in English; Sherpa parses and validates the request, then either executes supported Base actions through Coinbase Smart Wallet, returns safe read-only data, or clearly marks gated flows before any wallet prompt.
 
 ## Status
 
-Sherpa is live, but the safety boundary is deliberate: mainnet DeFi writes stay disabled in the app until post-deployment smoke tests, monitoring, and rollback procedures are complete.
+Sherpa is live with two production boundaries: Stage 1 send remains on Base Sepolia with sponsored gas, and Stage 2 DeFi writes run on Base mainnet through verified contracts with guarded amount caps and wallet confirmation cards.
 
 | Stage       | Description                                           | Status                      | Details                                                                                                                                      |
 | ----------- | ----------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP               | ✅ Live (Base Sepolia)      | Web app, Smart Wallet, sponsored gas, identity resolution, balance/history                                                                   |
-| **Stage 2** | Positions + DeFi writes                               | 🟡 Mainnet contracts deployed | Aave positions are read-only on Base mainnet. Stage 2 contracts are deployed and verified on Base mainnet. App write flags remain post-deploy gated |
+| **Stage 2** | Positions + DeFi writes                               | ✅ Live (Base mainnet)       | Aave positions are read-only. Swap/lend/borrow/repay/withdraw build Base mainnet confirmation cards through verified Sherpa contracts with guarded caps |
 | **Stage 3** | Multi-surface (Farcaster/Base Mini App, Telegram bot) | ✅ Live                     | Mini App deployed at `sherpa-miniapp.vercel.app`; Telegram bot online at `@sherpaonbasebot`                                                  |
 | **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta surfaces live       | Alert/DCA/auto-repay setup screens exist. Production workers, notification delivery, and execution remain gated                              |
 | **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace       | 🔵 Partial                  | Multi-chain explorer is read-only. Session keys and strategy marketplace remain pending                                                      |
@@ -71,11 +71,11 @@ Sherpa does not have a token. Any SHERPA token claiming to be affiliated with th
 | ------------------------- | ------------------------------------------------------------ |
 | Send tokens               | Live on Base Sepolia with sponsored gas                      |
 | Aave positions            | Read-only live against Base mainnet Aave V3                  |
-| Swap / lend / borrow      | Testnet-only demos on Base Sepolia                           |
-| Repay / withdraw          | Visible, but still audit-gated                               |
+| Swap / lend / borrow      | Live on Base mainnet through verified SherpaRouter            |
+| Repay / withdraw          | Live on Base mainnet through verified SherpaRouter            |
 | Alerts / DCA / auto-repay | Beta setup surfaces; production execution pending            |
 | Multi-chain / governance  | Read-only discovery views                                    |
-| Mainnet DeFi writes       | Contracts deployed; app write flags stay off until smoke tests + monitoring |
+| Mainnet DeFi writes       | Public via explicit `SHERPA_STAGE_2_PUBLIC_MAINNET=true` rollout |
 
 ## Quick Start
 

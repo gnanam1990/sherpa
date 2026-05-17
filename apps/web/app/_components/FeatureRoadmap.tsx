@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-type FeatureStatus = 'live' | 'read-only' | 'testnet' | 'beta';
+type FeatureStatus = 'live' | 'read-only' | 'mainnet' | 'beta';
 
 const FEATURES: Array<{
   name: string;
@@ -21,20 +21,20 @@ const FEATURES: Array<{
   },
   {
     name: 'Swap',
-    status: 'testnet',
-    description: 'Testnet-only swap demo on Base Sepolia.',
+    status: 'mainnet',
+    description: 'Swap on Base mainnet through verified SherpaRouter.',
     href: '/swap',
   },
   {
     name: 'Lend / Withdraw',
-    status: 'testnet',
-    description: 'Supply to Aave V3 on Base Sepolia. Withdraw remains audit pending.',
+    status: 'mainnet',
+    description: 'Supply to and withdraw from Aave V3 on Base mainnet.',
     href: '/lend',
   },
   {
     name: 'Borrow / Repay',
-    status: 'testnet',
-    description: 'Borrow against Base Sepolia Aave collateral. Repay remains audit pending.',
+    status: 'mainnet',
+    description: 'Borrow against and repay Aave V3 debt on Base mainnet.',
     href: '/borrow',
   },
   {
@@ -84,8 +84,8 @@ const STATUS_CONFIG: Record<FeatureStatus, { label: string; classes: string }> =
     label: 'Read-only live',
     classes: 'border-sherpa-blue/30 bg-sherpa-blue/10 text-sherpa-blue',
   },
-  testnet: {
-    label: 'Testnet live',
+  mainnet: {
+    label: 'Mainnet live',
     classes: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
   },
   beta: {
@@ -100,7 +100,7 @@ export function FeatureRoadmap() {
       <div className="mb-5">
         <h2 className="text-xl font-semibold tracking-[-0.02em]">What Sherpa can do</h2>
         <p className="mt-1 text-sm text-sherpa-muted">
-          Stage 1 is live. Stage 2 writes are testnet-only; automation is beta-managed until audit.
+          Stage 1 send is live on Base Sepolia. Stage 2 swap and Aave actions are live on Base mainnet with guarded amount caps.
         </p>
       </div>
 
@@ -141,11 +141,11 @@ export function FeatureRoadmap() {
         <span aria-hidden="true">/</span>
         <a
           className="underline-offset-4 transition hover:text-sherpa-fg hover:underline"
-          href="https://sepolia.basescan.org/address/0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032"
+          href="https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b"
           rel="noopener noreferrer"
           target="_blank"
         >
-          Sepolia contracts
+          Mainnet contracts
         </a>
       </div>
     </section>

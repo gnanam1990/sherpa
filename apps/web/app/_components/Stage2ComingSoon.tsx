@@ -35,24 +35,31 @@ export function stage2ComingSoonText(feature: Stage2Feature, parsedIntent?: unkn
   const info = FEATURE_INFO[feature];
   const parsed = parsedIntent ? `\n\nI understood: ${JSON.stringify(parsedIntent)}` : '';
   return [
-    `${info.title} - Coming soon`,
+    `${info.title} - Connect wallet to continue`,
     info.description,
-    'Status: contracts are deployed to Base Sepolia and pending external audit before mainnet launch.',
-    'View Sepolia router: https://sepolia.basescan.org/address/0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032',
+    'Status: Base mainnet contracts are deployed and verified. Connect a wallet on Base to build a mainnet confirmation card.',
+    'View mainnet router: https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b',
   ].join('\n') + parsed;
 }
 
 export function Stage2ComingSoon({
   feature,
   parsedIntent,
+  mainnetEnabled = false,
   testnetEnabled = false,
 }: {
   feature: Stage2Feature;
   parsedIntent?: unknown;
+  mainnetEnabled?: boolean;
   testnetEnabled?: boolean;
 }) {
   const info = FEATURE_INFO[feature];
-  const executable = testnetEnabled && ['swap', 'lend', 'borrow'].includes(feature);
+  const testnetExecutable = testnetEnabled && ['swap', 'lend', 'borrow'].includes(feature);
+  const executable = mainnetEnabled || testnetExecutable;
+  const showingTestnet = testnetExecutable && !mainnetEnabled;
+  const contractHref = showingTestnet
+    ? 'https://sepolia.basescan.org/address/0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032'
+    : 'https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b';
   return (
     <section
       className={`rounded-lg border p-6 ${
@@ -68,14 +75,18 @@ export function Stage2ComingSoon({
               executable ? 'text-blue-300' : 'text-yellow-300'
             }`}
           >
-            {executable ? 'Testnet enabled' : 'Audit pending'}
+            {mainnetEnabled ? 'Mainnet live' : executable ? 'Testnet enabled' : 'Connect wallet'}
           </p>
           <h2
             className={`mt-1 text-2xl font-semibold tracking-[-0.03em] ${
               executable ? 'text-blue-100' : 'text-yellow-100'
             }`}
           >
-            {executable ? `${info.title} is live on testnet` : `${info.title} is coming soon`}
+            {mainnetEnabled
+              ? `${info.title} is live on Base`
+              : executable
+                ? `${info.title} is live on testnet`
+                : `${info.title} needs a connected wallet`}
           </h2>
           <p className={`mt-2 text-sm ${executable ? 'text-blue-100/80' : 'text-yellow-100/80'}`}>
             {info.description}
@@ -88,7 +99,7 @@ export function Stage2ComingSoon({
               : 'border-yellow-400/30 text-yellow-200'
           }`}
         >
-          {executable ? 'Base Sepolia only' : 'Base Sepolia ready'}
+          {mainnetEnabled ? 'Base mainnet' : executable ? 'Base Sepolia only' : 'Base mainnet ready'}
         </span>
       </div>
 
@@ -102,11 +113,21 @@ export function Stage2ComingSoon({
       ) : null}
 
       <div className="space-y-2 text-sm text-sherpa-muted">
-        {executable ? (
+        {mainnetEnabled ? (
+          <>
+            <p>
+              This action is live on Base mainnet through the verified SherpaRouter.
+              Start with tiny amounts and review every wallet prompt before signing.
+            </p>
+            <p>
+              Open the chat and try: <span className="font-mono text-sherpa-fg">{info.command}</span>
+            </p>
+          </>
+        ) : executable ? (
           <>
             <p>
               This action is enabled only on Base Sepolia with small demo amount caps.
-              Mainnet execution stays disabled until external audit is complete.
+              Mainnet production uses the separate Base mainnet flow.
             </p>
             <p>
               Open the chat and try: <span className="font-mono text-sherpa-fg">{info.command}</span>
@@ -114,12 +135,16 @@ export function Stage2ComingSoon({
           </>
         ) : (
           <p>
-            SherpaRouter and SherpaTreasury are verified on Base Sepolia for audit review.
-            Mainnet execution stays disabled until external audit is complete.
+            SherpaRouter and SherpaTreasury are verified on Base mainnet. Connect a wallet
+            to build a mainnet confirmation card from the chat.
           </p>
         )}
         <p>
-          {executable ? 'Testnet warning: use faucet assets only.' : 'Try the command later:'}{' '}
+          {mainnetEnabled
+            ? 'Mainnet warning: use small amounts first.'
+            : executable
+              ? 'Testnet warning: use faucet assets only.'
+              : 'Try after connecting:'}{' '}
           <span className="font-mono text-sherpa-fg">{info.command}</span>
         </p>
       </div>
@@ -127,11 +152,11 @@ export function Stage2ComingSoon({
       <div className="mt-5 flex flex-wrap gap-3 text-sm">
         <a
           className="rounded-full border border-sherpa-blue/40 px-3 py-1 text-sherpa-blue transition hover:border-sherpa-blue"
-          href="https://sepolia.basescan.org/address/0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032"
+          href={contractHref}
           rel="noopener noreferrer"
           target="_blank"
         >
-          Sepolia contracts
+          {showingTestnet ? 'Sepolia contracts' : 'Mainnet contracts'}
         </a>
         <a
           className="rounded-full border border-sherpa-surface2 px-3 py-1 text-sherpa-muted transition hover:border-sherpa-muted hover:text-sherpa-fg"

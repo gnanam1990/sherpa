@@ -323,8 +323,9 @@ function canRunStage2Testnet(config: SherpaConfig): boolean {
 
 function canRunStage2Mainnet(config: SherpaConfig, userAddress: `0x${string}` | undefined): boolean {
   if (!config.stage2Enabled || !userAddress) return false;
-  if (config.stage2BetaWallets.length === 0) return false;
-  const allowed = config.stage2BetaWallets.some((addr) => addr.toLowerCase() === userAddress.toLowerCase());
+  const allowed =
+    config.stage2PublicMainnetEnabled ||
+    config.stage2BetaWallets.some((addr) => addr.toLowerCase() === userAddress.toLowerCase());
   return Boolean(
     allowed &&
       config.sherpaRouterBaseMainnet &&

@@ -9,7 +9,7 @@ export default function WithdrawPage() {
           Back to Sherpa
         </Link>
         <div className="mt-6">
-          <Stage2ComingSoon feature="withdraw" />
+          <Stage2ComingSoon feature="withdraw" mainnetEnabled />
         </div>
       </div>
     </main>

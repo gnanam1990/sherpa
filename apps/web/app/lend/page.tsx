@@ -9,7 +9,7 @@ export default function LendPage() {
           Back to Sherpa
         </Link>
         <div className="mt-6">
-          <Stage2ComingSoon feature="lend" testnetEnabled />
+          <Stage2ComingSoon feature="lend" mainnetEnabled />
         </div>
       </div>
     </main>

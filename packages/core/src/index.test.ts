@@ -1668,7 +1668,7 @@ describe('core/executor', () => {
     expect(out.card.warnings.join(' ')).toMatch(/testnet only/i);
   });
 
-  it('SWAP mainnet beta targets SherpaRouter on Base mainnet', async () => {
+  it('SWAP mainnet targets SherpaRouter on Base mainnet', async () => {
     const me = '0x1111111111111111111111111111111111111111' as const;
     const router = '0x00bfef87DD352D48F8572BcfA52E57870B35DE8b' as const;
     const aave = createAave({
@@ -1693,17 +1693,17 @@ describe('core/executor', () => {
     expect(out.card.batch?.chainId).toBe('0x2105');
     expect(out.card.batch?.calls.at(-1)?.to).toBe(router);
     expect(out.card.gas_display).toBe('user pays');
-    expect(out.card.warnings.join(' ')).toMatch(/private beta/i);
+    expect(out.card.warnings.join(' ')).toMatch(/live on Base mainnet/i);
   });
 
-  it('REPAY and WITHDRAW stay blocked unless mainnet beta deps are present', async () => {
+  it('REPAY and WITHDRAW stay blocked unless mainnet deps are present', async () => {
     const me = '0x1111111111111111111111111111111111111111' as const;
     const repay = await plan(parseDeterministic('repay 1 usdc'), { userAddress: me });
     const withdraw = await plan(parseDeterministic('withdraw 1 usdc from aave'), { userAddress: me });
     expect(repay.ok).toBe(false);
     expect(withdraw.ok).toBe(false);
-    if (!repay.ok) expect(repay.error).toMatch(/private mainnet beta/i);
-    if (!withdraw.ok) expect(withdraw.error).toMatch(/private mainnet beta/i);
+    if (!repay.ok) expect(repay.error).toMatch(/pending mainnet enablement/i);
+    if (!withdraw.ok) expect(withdraw.error).toMatch(/pending mainnet enablement/i);
   });
 
   // ── BALANCE executor ───────────────────────────────────────────────

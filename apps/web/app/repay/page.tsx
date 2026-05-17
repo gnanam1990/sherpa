@@ -9,7 +9,7 @@ export default function RepayPage() {
           Back to Sherpa
         </Link>
         <div className="mt-6">
-          <Stage2ComingSoon feature="repay" />
+          <Stage2ComingSoon feature="repay" mainnetEnabled />
         </div>
       </div>
     </main>

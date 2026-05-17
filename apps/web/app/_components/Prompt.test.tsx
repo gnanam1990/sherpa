@@ -313,8 +313,8 @@ describe('Prompt', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
-    expect(await screen.findByText(/Swap - Coming soon/)).toBeTruthy();
-    expect(screen.getByText(/pending external audit/)).toBeTruthy();
+    expect(await screen.findByText(/Swap - Connect wallet to continue/)).toBeTruthy();
+    expect(screen.getByText(/Base mainnet contracts are deployed and verified/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Proceed' })).toBeNull();
   });
 
