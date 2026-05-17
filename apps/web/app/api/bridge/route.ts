@@ -40,15 +40,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Source and destination chains must differ' }, { status: 400 });
   }
 
-  // Stub response — real integration would call bridge-aggregator
-  return NextResponse.json({
-    ok: true,
-    protocol: 'across',
-    txHash: `0x${'0'.repeat(64)}`,
-    sourceChain,
-    destinationChain,
-    asset,
-    amount,
-    estimatedTime: 120,
-  });
+  return NextResponse.json(
+    {
+      ok: false,
+      error: 'bridge_execution_disabled',
+      details:
+        'Cross-chain execution is not live yet. The current multi-chain surface is read-only chain discovery.',
+      sourceChain,
+      destinationChain,
+      asset,
+      amount,
+    },
+    { status: 501 },
+  );
 }

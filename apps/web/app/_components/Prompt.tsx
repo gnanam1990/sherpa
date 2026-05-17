@@ -50,6 +50,51 @@ type PositionsResponse = {
   fetchedAt: string;
 };
 
+type AlertRuleResponse = {
+  id: string;
+  conditionType: string;
+  asset?: { symbol?: string } | null;
+  comparison: string;
+  threshold: number;
+  status: string;
+};
+
+type AlertListResponse = {
+  alerts: AlertRuleResponse[];
+};
+
+type DCAResponse = {
+  id: string;
+  fromAsset: { symbol?: string };
+  toAsset: { symbol?: string };
+  amountPerTick: string;
+  frequency: string;
+  status: string;
+  nextExecutionAt?: string;
+};
+
+type DCAListResponse = {
+  schedules: DCAResponse[];
+};
+
+type AutoRepayResponse = {
+  id: string;
+  triggerHF: number;
+  targetHF: number;
+  maxRepayPerExecution: string;
+  status: string;
+};
+
+type GovernanceResponse = {
+  proposals: Array<{ id: string; title?: string; state?: string; status?: string; source?: string }>;
+  errors?: Array<{ source: string; error: string }>;
+  status?: string;
+};
+
+type ChainListResponse = {
+  chains: Array<{ chainId: number; name: string; dex?: { name: string }; bridgeProtocols: string[] }>;
+};
+
 type ExecuteResponse =
   | {
       ok: true;
@@ -253,6 +298,112 @@ function positionsSummary(data: PositionsResponse): string {
   ].join('\n');
 }
 
+function slotString(slots: Record<string, unknown> | undefined, key: string): string | undefined {
+  const value = slots?.[key];
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  return undefined;
+}
+
+function slotNumber(slots: Record<string, unknown> | undefined, key: string): number | undefined {
+  const value = slots?.[key];
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function alertSummary(data: AlertRuleResponse): string {
+  const asset = data.asset?.symbol ? ` ${data.asset.symbol}` : '';
+  return [
+    'Alert saved',
+    `${data.conditionType}${asset} ${data.comparison} ${data.threshold}`,
+    `Status: ${data.status}`,
+    `ID: ${data.id}`,
+    'Delivery is beta and depends on configured notification channels.',
+  ].join('\n');
+}
+
+function alertListSummary(data: AlertListResponse): string {
+  if (data.alerts.length === 0) return 'No alerts saved yet.';
+  return [
+    'Saved alerts',
+    ...data.alerts.slice(0, 5).map((alert) => {
+      const asset = alert.asset?.symbol ? ` ${alert.asset.symbol}` : '';
+      return `${alert.conditionType}${asset} ${alert.comparison} ${alert.threshold} · ${alert.status}\nID: ${alert.id}`;
+    }),
+  ].join('\n\n');
+}
+
+function dcaSummary(data: DCAResponse): string {
+  return [
+    'DCA schedule saved',
+    `${data.amountPerTick} ${data.fromAsset.symbol ?? 'USDC'} to ${data.toAsset.symbol ?? 'asset'} · ${data.frequency}`,
+    `Status: ${data.status}`,
+    data.nextExecutionAt ? `Next: ${new Date(data.nextExecutionAt).toLocaleString()}` : undefined,
+    `ID: ${data.id}`,
+    'Execution remains beta/testnet-gated until audit and production worker setup.',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+function dcaListSummary(data: DCAListResponse): string {
+  if (data.schedules.length === 0) return 'No DCA schedules saved yet.';
+  return [
+    'Saved DCA schedules',
+    ...data.schedules.slice(0, 5).map((schedule) =>
+      [
+        `${schedule.amountPerTick} ${schedule.fromAsset.symbol ?? 'USDC'} to ${schedule.toAsset.symbol ?? 'asset'} · ${schedule.frequency}`,
+        `Status: ${schedule.status}`,
+        schedule.nextExecutionAt ? `Next: ${new Date(schedule.nextExecutionAt).toLocaleString()}` : undefined,
+        `ID: ${schedule.id}`,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    ),
+  ].join('\n\n');
+}
+
+function autoRepaySummary(data: AutoRepayResponse): string {
+  return [
+    'Auto-repay rule saved',
+    `Trigger HF: ${data.triggerHF}`,
+    `Target HF: ${data.targetHF}`,
+    `Max repay: ${data.maxRepayPerExecution} USDC`,
+    `Status: ${data.status}`,
+    `ID: ${data.id}`,
+    'Autonomous repayment execution remains audit-gated.',
+  ].join('\n');
+}
+
+function governanceSummary(data: GovernanceResponse): string {
+  const warning = data.errors?.length ? `\n\nWarnings: ${data.errors.length} upstream source(s) failed.` : '';
+  if (data.proposals.length === 0) return `No governance proposals loaded.${warning}`;
+  return [
+    'Governance proposals',
+    ...data.proposals.slice(0, 5).map((proposal) =>
+      [
+        proposal.title ?? proposal.id,
+        `${proposal.source ?? 'governance'} · ${proposal.state ?? proposal.status ?? 'unknown'}`,
+        `ID: ${proposal.id}`,
+      ].join('\n'),
+    ),
+  ].join('\n\n') + warning;
+}
+
+function chainSummary(data: ChainListResponse): string {
+  return [
+    'Supported chains (read-only)',
+    ...data.chains.map((chain) =>
+      `${chain.name} (${chain.chainId}) · DEX: ${chain.dex?.name ?? 'none'} · Bridges: ${chain.bridgeProtocols.join(', ')}`,
+    ),
+    'Cross-chain execution remains disabled until adapters are audited.',
+  ].join('\n');
+}
+
 function identitySummary(card: SerializedConfirmationCardProps): string {
   const source = card.recipient_metadata?.source;
   const query = card.recipient_metadata?.query;
@@ -378,6 +529,114 @@ export function Prompt({
         );
         chat.updateMessage(thinkingMessage.id, {
           content: { kind: 'text', text: positionsSummary(positions) },
+        });
+        return;
+      }
+      if (body.parsed?.intent === 'ALERT') {
+        const slots = body.parsed.slots;
+        const action = slotString(slots, 'alertAction');
+        if (action === 'list') {
+          const alerts = await readJson<AlertListResponse>(await fetch(`/api/alerts/${userAddress}`));
+          chat.updateMessage(thinkingMessage.id, {
+            content: { kind: 'text', text: alertListSummary(alerts) },
+          });
+          return;
+        }
+        if (action === 'cancel') {
+          const target = slotString(slots, 'alertTarget');
+          if (!target) throw new Error('Missing alert id to cancel');
+          await readJson<{ status: string }>(await fetch(`/api/alerts/${target}`, { method: 'DELETE' }));
+          chat.updateMessage(thinkingMessage.id, {
+            content: { kind: 'text', text: `Alert cancelled\nID: ${target}` },
+          });
+          return;
+        }
+        const comparison = slotString(slots, 'comparison') === 'cross' ? 'cross-above' : slotString(slots, 'comparison') ?? '>';
+        const alert = await readJson<AlertRuleResponse>(
+          await fetch('/api/alerts', {
+            body: JSON.stringify({
+              userAddress,
+              conditionType: slotString(slots, 'conditionType') ?? 'price',
+              asset: slotString(slots, 'asset') ?? 'ETH',
+              comparison,
+              threshold: slotNumber(slots, 'threshold') ?? 0,
+              notificationChannels: ['push'],
+              triggeredIntent: prompt,
+            }),
+            headers: { 'content-type': 'application/json' },
+            method: 'POST',
+          }),
+        );
+        chat.updateMessage(thinkingMessage.id, {
+          content: { kind: 'text', text: alertSummary(alert) },
+        });
+        return;
+      }
+      if (body.parsed?.intent === 'DCA') {
+        const slots = body.parsed.slots;
+        const dca = await readJson<DCAResponse>(
+          await fetch('/api/dca', {
+            body: JSON.stringify({
+              userAddress,
+              fromAsset: 'USDC',
+              toAsset: slotString(slots, 'dcaAsset') ?? 'ETH',
+              amountPerTick: slotString(slots, 'dcaAmount') ?? '10',
+              frequency: slotString(slots, 'frequency') ?? 'weekly',
+              hourOfDay: 12,
+            }),
+            headers: { 'content-type': 'application/json' },
+            method: 'POST',
+          }),
+        );
+        chat.updateMessage(thinkingMessage.id, {
+          content: { kind: 'text', text: dcaSummary(dca) },
+        });
+        return;
+      }
+      if (body.parsed?.intent === 'DCA_MANAGE') {
+        const schedules = await readJson<DCAListResponse>(await fetch(`/api/dca/${userAddress}`));
+        chat.updateMessage(thinkingMessage.id, {
+          content: { kind: 'text', text: dcaListSummary(schedules) },
+        });
+        return;
+      }
+      if (body.parsed?.intent === 'AUTO_REPAY') {
+        const slots = body.parsed.slots;
+        const triggerHF = slotNumber(slots, 'triggerHF') ?? 1.3;
+        const targetHF = Math.min(3, Math.max(triggerHF + 0.2, 1.5));
+        const repayAsset = (slotString(slots, 'repayAsset') ?? 'USDC').toLowerCase();
+        const rule = await readJson<AutoRepayResponse>(
+          await fetch('/api/auto-repay', {
+            body: JSON.stringify({
+              userAddress,
+              triggerHF,
+              targetHF,
+              maxRepayPerExecution: slotString(slots, 'maxRepay') ?? '100',
+              repaySource: repayAsset === 'dai' ? ['dai'] : ['usdc'],
+              maxPerDay: 3,
+            }),
+            headers: { 'content-type': 'application/json' },
+            method: 'POST',
+          }),
+        );
+        chat.updateMessage(thinkingMessage.id, {
+          content: { kind: 'text', text: autoRepaySummary(rule) },
+        });
+        return;
+      }
+      if (body.parsed?.intent === 'GOVERNANCE') {
+        const proposals = await readJson<GovernanceResponse>(
+          await fetch('/api/governance/proposals?source=snapshot'),
+        );
+        chat.updateMessage(thinkingMessage.id, {
+          content: { kind: 'text', text: governanceSummary(proposals) },
+        });
+        return;
+      }
+      if (body.parsed?.intent === 'CROSS_CHAIN') {
+        const chains = await readJson<ChainListResponse>(await fetch('/api/chains'));
+        chat.updateMessage(thinkingMessage.id, {
+          content: { kind: 'text', text: chainSummary(chains) },
         });
         return;
       }

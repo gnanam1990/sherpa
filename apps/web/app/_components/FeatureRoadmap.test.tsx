@@ -3,15 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { FeatureRoadmap } from './FeatureRoadmap';
 
 describe('FeatureRoadmap', () => {
-  it('shows live, read-only, testnet, and coming statuses', () => {
+  it('shows live, read-only, testnet, beta, and setup statuses', () => {
     render(<FeatureRoadmap />);
 
     expect(screen.getByText('Send tokens')).toBeTruthy();
     expect(screen.getByText('Live')).toBeTruthy();
     expect(screen.getByText('Aave positions')).toBeTruthy();
-    expect(screen.getByText('Read-only live')).toBeTruthy();
+    expect(screen.getAllByText('Read-only live').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Testnet live').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Coming soon').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Beta live').length).toBeGreaterThan(0);
+    expect(screen.getByText('Setup needed')).toBeTruthy();
   });
 
   it('links visible Stage 2 surfaces to their pages', () => {
@@ -21,6 +22,11 @@ describe('FeatureRoadmap', () => {
     expect(screen.getByText('Swap').closest('a')?.getAttribute('href')).toBe('/swap');
     expect(screen.getByText('Lend / Withdraw').closest('a')?.getAttribute('href')).toBe('/lend');
     expect(screen.getByText('Borrow / Repay').closest('a')?.getAttribute('href')).toBe('/borrow');
+    expect(screen.getByText('Alerts').closest('a')?.getAttribute('href')).toBe('/alerts');
+    expect(screen.getByText('DCA scheduler').closest('a')?.getAttribute('href')).toBe('/dca');
+    expect(screen.getByText('Auto-repay').closest('a')?.getAttribute('href')).toBe('/auto-repay');
+    expect(screen.getByText('Multi-chain').closest('a')?.getAttribute('href')).toBe('/multi-chain');
+    expect(screen.getByText('Governance').closest('a')?.getAttribute('href')).toBe('/governance');
   });
 
   it('links to source and Sepolia contracts', () => {

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-type FeatureStatus = 'live' | 'read-only' | 'testnet' | 'pending-audit' | 'coming';
+type FeatureStatus = 'live' | 'read-only' | 'testnet' | 'beta' | 'setup';
 
 const FEATURES: Array<{
   name: string;
@@ -39,33 +39,39 @@ const FEATURES: Array<{
   },
   {
     name: 'Alerts',
-    status: 'coming',
-    description: 'Price, balance, and health-factor notifications.',
+    status: 'beta',
+    description: 'Create price, balance, and health-factor rules.',
+    href: '/alerts',
   },
   {
     name: 'DCA scheduler',
-    status: 'coming',
-    description: 'Recurring swaps with pause and failure controls.',
+    status: 'beta',
+    description: 'Create and manage recurring buy schedules.',
+    href: '/dca',
   },
   {
     name: 'Auto-repay',
-    status: 'coming',
-    description: 'Liquidation protection with explicit safety caps.',
+    status: 'beta',
+    description: 'Configure protected rules. Execution stays audit-gated.',
+    href: '/auto-repay',
   },
   {
     name: 'Telegram bot',
-    status: 'coming',
-    description: 'Use Sherpa from chat surfaces.',
+    status: 'setup',
+    description: 'Bot service is built. Needs TELEGRAM_BOT_TOKEN to deploy.',
+    href: '/telegram',
   },
   {
     name: 'Multi-chain',
-    status: 'coming',
-    description: 'Polygon, Optimism, Arbitrum, and more.',
+    status: 'read-only',
+    description: 'Inspect supported chains, explorers, DEXs, and bridges.',
+    href: '/multi-chain',
   },
   {
     name: 'Governance',
-    status: 'coming',
-    description: 'Vote and delegate across supported protocols.',
+    status: 'read-only',
+    description: 'Browse proposals across Snapshot, Aave, Compound, and OP.',
+    href: '/governance',
   },
 ];
 
@@ -82,13 +88,13 @@ const STATUS_CONFIG: Record<FeatureStatus, { label: string; classes: string }> =
     label: 'Testnet live',
     classes: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
   },
-  'pending-audit': {
-    label: 'Audit pending',
-    classes: 'border-yellow-400/30 bg-yellow-400/10 text-yellow-300',
+  beta: {
+    label: 'Beta live',
+    classes: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
   },
-  coming: {
-    label: 'Coming soon',
-    classes: 'border-sherpa-surface2 bg-sherpa-surface text-sherpa-muted',
+  setup: {
+    label: 'Setup needed',
+    classes: 'border-violet-400/30 bg-violet-400/10 text-violet-300',
   },
 };
 
@@ -98,7 +104,7 @@ export function FeatureRoadmap() {
       <div className="mb-5">
         <h2 className="text-xl font-semibold tracking-[-0.02em]">What Sherpa can do</h2>
         <p className="mt-1 text-sm text-sherpa-muted">
-          Stage 1 is live. Stage 2 write actions are testnet-only until audit.
+          Stage 1 is live. Stage 2 writes are testnet-only; automation is beta-managed until audit.
         </p>
       </div>
 

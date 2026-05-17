@@ -45,32 +45,58 @@ const SnapshotVoteBody = z.object({
   reason: z.string().optional(),
 });
 
+type GovernanceSource = 'snapshot' | 'aave' | 'compound' | 'optimism';
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 export async function governanceRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/governance/proposals', async (req: FastifyRequest, reply: FastifyReply) => {
-    const { source, space } = req.query as { source?: string; space?: string };
-    try {
-      let proposals: unknown[] = [];
-      if (!source || source === 'snapshot') {
+    const { source, space } = req.query as { source?: GovernanceSource; space?: string };
+    const sources: GovernanceSource[] = source
+      ? [source]
+      : ['snapshot', 'aave', 'compound', 'optimism'];
+    const proposals: unknown[] = [];
+    const errors: Array<{ source: GovernanceSource; error: string }> = [];
+
+    await Promise.all(
+      sources.map(async (currentSource) => {
+        try {
+          if (currentSource === 'snapshot') {
         const snapshotSpace = space || snapshot.SNAPSHOT_SPACES.aave;
         const snapshotProposals = await snapshot.getProposals(snapshotSpace);
-        proposals = [...proposals, ...snapshotProposals.map((p: Record<string, unknown>) => ({ ...p, source: 'snapshot' }))];
-      }
-      if (!source || source === 'aave') {
+            proposals.push(
+              ...snapshotProposals.map((p: Record<string, unknown>) => ({ ...p, source: 'snapshot' })),
+            );
+          }
+          if (currentSource === 'aave') {
         const aaveProposals = await aaveGov.getProposals();
-        proposals = [...proposals, ...aaveProposals.map((p: Record<string, unknown>) => ({ ...p, source: 'aave' }))];
-      }
-      if (!source || source === 'compound') {
+            proposals.push(...aaveProposals.map((p: Record<string, unknown>) => ({ ...p, source: 'aave' })));
+          }
+          if (currentSource === 'compound') {
         const compoundProposals = await compoundGov.getProposals();
-        proposals = [...proposals, ...compoundProposals.map((p: Record<string, unknown>) => ({ ...p, source: 'compound' }))];
-      }
-      if (!source || source === 'optimism') {
+            proposals.push(
+              ...compoundProposals.map((p: Record<string, unknown>) => ({ ...p, source: 'compound' })),
+            );
+          }
+          if (currentSource === 'optimism') {
         const optimismProposals = await optimismGov.getProposals();
-        proposals = [...proposals, ...optimismProposals.map((p: Record<string, unknown>) => ({ ...p, source: 'optimism' }))];
-      }
-      return reply.send({ proposals });
-    } catch (err: any) {
-      return reply.status(500).send({ error: err.message });
-    }
+            proposals.push(
+              ...optimismProposals.map((p: Record<string, unknown>) => ({ ...p, source: 'optimism' })),
+            );
+          }
+        } catch (err) {
+          errors.push({ source: currentSource, error: errorMessage(err) });
+        }
+      }),
+    );
+
+    return reply.send({
+      proposals,
+      errors,
+      status: errors.length > 0 ? 'partial' : 'ok',
+    });
   });
 
   app.get('/api/governance/proposals/:id', async (req: FastifyRequest, reply: FastifyReply) => {

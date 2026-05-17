@@ -9,6 +9,20 @@ async function buildApp() {
   return app;
 }
 
+async function createRule(app: Awaited<ReturnType<typeof buildApp>>) {
+  const res = await app.inject({
+    method: 'POST',
+    url: '/api/auto-repay',
+    payload: {
+      userAddress: '0x1234567890123456789012345678901234567890',
+      triggerHF: 1.3,
+      targetHF: 1.5,
+      maxRepayPerExecution: '1000',
+    },
+  });
+  return JSON.parse(res.payload) as { id: string };
+}
+
 describe('auto-repay routes', () => {
   describe('POST /api/auto-repay', () => {
     test('creates rule with valid body', async () => {
@@ -161,9 +175,10 @@ describe('auto-repay routes', () => {
   describe('PATCH /api/auto-repay/:id', () => {
     test('updates rule', async () => {
       const app = await buildApp();
+      const rule = await createRule(app);
       const res = await app.inject({
         method: 'PATCH',
-        url: '/api/auto-repay/550e8400-e29b-41d4-a716-446655440000',
+        url: `/api/auto-repay/${rule.id}`,
         payload: { status: 'paused' },
       });
       expect(res.statusCode).toBe(200);
@@ -183,9 +198,10 @@ describe('auto-repay routes', () => {
 
     test('rejects invalid body fields', async () => {
       const app = await buildApp();
+      const rule = await createRule(app);
       const res = await app.inject({
         method: 'PATCH',
-        url: '/api/auto-repay/550e8400-e29b-41d4-a716-446655440000',
+        url: `/api/auto-repay/${rule.id}`,
         payload: { unknownField: 'bad' },
       });
       expect(res.statusCode).toBe(400);
@@ -193,9 +209,10 @@ describe('auto-repay routes', () => {
 
     test('accepts empty body', async () => {
       const app = await buildApp();
+      const rule = await createRule(app);
       const res = await app.inject({
         method: 'PATCH',
-        url: '/api/auto-repay/550e8400-e29b-41d4-a716-446655440000',
+        url: `/api/auto-repay/${rule.id}`,
         payload: {},
       });
       expect(res.statusCode).toBe(200);
@@ -205,9 +222,10 @@ describe('auto-repay routes', () => {
   describe('DELETE /api/auto-repay/:id', () => {
     test('disables rule', async () => {
       const app = await buildApp();
+      const rule = await createRule(app);
       const res = await app.inject({
         method: 'DELETE',
-        url: '/api/auto-repay/550e8400-e29b-41d4-a716-446655440000',
+        url: `/api/auto-repay/${rule.id}`,
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.payload);
@@ -227,9 +245,10 @@ describe('auto-repay routes', () => {
   describe('GET /api/auto-repay/:id/history', () => {
     test('returns execution history', async () => {
       const app = await buildApp();
+      const rule = await createRule(app);
       const res = await app.inject({
         method: 'GET',
-        url: '/api/auto-repay/550e8400-e29b-41d4-a716-446655440000/history',
+        url: `/api/auto-repay/${rule.id}/history`,
       });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.payload);

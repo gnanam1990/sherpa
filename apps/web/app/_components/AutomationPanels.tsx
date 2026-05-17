@@ -1,0 +1,524 @@
+'use client';
+
+import { FormEvent, useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useAccount } from 'wagmi';
+
+type AlertRule = {
+  id: string;
+  conditionType: string;
+  asset?: { symbol?: string } | null;
+  comparison: string;
+  threshold: number;
+  status: string;
+  triggerCount: number;
+  createdAt: string;
+};
+
+type DCASchedule = {
+  id: string;
+  fromAsset: { symbol?: string };
+  toAsset: { symbol?: string };
+  amountPerTick: string;
+  frequency: string;
+  status: string;
+  nextExecutionAt?: string;
+};
+
+type AutoRepayRule = {
+  id: string;
+  triggerHF: number;
+  targetHF: number;
+  maxRepayPerExecution: string;
+  status: string;
+  maxPerDay: number;
+};
+
+type ChainInfo = {
+  chainId: number;
+  name: string;
+  shortName: string;
+  explorerUrl: string;
+  dex?: { name: string; routerAddress: string };
+  aave?: { poolAddress: string };
+  bridgeProtocols: string[];
+};
+
+type GovernanceProposal = {
+  id: string;
+  title?: string;
+  state?: string;
+  status?: string;
+  source?: string;
+  link?: string;
+};
+
+const cardClass = 'rounded-lg border border-sherpa-surface2 bg-sherpa-surface p-4';
+const fieldClass =
+  'w-full rounded-md border border-sherpa-surface2 bg-sherpa-bg px-3 py-2 text-sm text-sherpa-fg outline-none transition focus:border-sherpa-blue';
+const buttonClass =
+  'rounded-md bg-sherpa-blue px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50';
+const ghostButtonClass =
+  'rounded-md border border-sherpa-surface2 px-3 py-2 text-sm text-sherpa-muted transition hover:border-sherpa-muted hover:text-sherpa-fg';
+
+async function readJson<T>(res: Response): Promise<T> {
+  const body = (await res.json()) as T & { error?: string; details?: string };
+  if (!res.ok) throw new Error(body.error ?? body.details ?? `Request failed: ${res.status}`);
+  return body;
+}
+
+function useWalletAddress() {
+  const { address, isConnected } = useAccount();
+  return { address, isConnected };
+}
+
+function SetupShell({
+  children,
+  description,
+  eyebrow,
+  title,
+}: {
+  children: ReactNode;
+  description: string;
+  eyebrow: string;
+  title: string;
+}) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-sherpa-blue">
+          {eyebrow}
+        </p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">{title}</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-sherpa-muted">{description}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function WalletRequired() {
+  return (
+    <div className={cardClass}>
+      <h2 className="font-medium">Connect wallet</h2>
+      <p className="mt-1 text-sm text-sherpa-muted">
+        Connect your wallet on the homepage, then return here to create user-scoped rules.
+      </p>
+    </div>
+  );
+}
+
+export function AlertsPanel() {
+  const { address, isConnected } = useWalletAddress();
+  const [asset, setAsset] = useState('ETH');
+  const [comparison, setComparison] = useState('>');
+  const [threshold, setThreshold] = useState('5000');
+  const [conditionType, setConditionType] = useState('price');
+  const [rules, setRules] = useState<AlertRule[]>([]);
+  const [status, setStatus] = useState<string>('Ready');
+  const canUse = Boolean(isConnected && address);
+
+  const loadRules = useCallback(async () => {
+    if (!address) return;
+    const data = await readJson<{ alerts: AlertRule[] }>(await fetch(`/api/alerts/${address}`));
+    setRules(data.alerts);
+  }, [address]);
+
+  useEffect(() => {
+    void loadRules().catch((err) => setStatus(err instanceof Error ? err.message : String(err)));
+  }, [loadRules]);
+
+  async function createRule(event: FormEvent) {
+    event.preventDefault();
+    if (!address) return;
+    setStatus('Saving alert...');
+    try {
+      await readJson<AlertRule>(
+        await fetch('/api/alerts', {
+          body: JSON.stringify({
+            userAddress: address,
+            conditionType,
+            asset: asset.toUpperCase(),
+            comparison,
+            threshold: Number(threshold),
+            notificationChannels: ['push'],
+          }),
+          headers: { 'content-type': 'application/json' },
+          method: 'POST',
+        }),
+      );
+      await loadRules();
+      setStatus('Alert saved. Delivery worker stays beta until notification credentials are configured.');
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <SetupShell
+      description="Create process-backed alert rules for price, balance, and health-factor conditions. Rules are real API records; notification delivery depends on configured channels."
+      eyebrow="Beta live"
+      title="Alerts"
+    >
+      {!canUse ? <WalletRequired /> : null}
+      <form className={cardClass} onSubmit={createRule}>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <select className={fieldClass} value={conditionType} onChange={(e) => setConditionType(e.target.value)}>
+            <option value="price">Price</option>
+            <option value="balance">Balance</option>
+            <option value="health-factor">Health factor</option>
+          </select>
+          <input className={fieldClass} value={asset} onChange={(e) => setAsset(e.target.value)} />
+          <select className={fieldClass} value={comparison} onChange={(e) => setComparison(e.target.value)}>
+            <option value=">">{'>'}</option>
+            <option value="<">{'<'}</option>
+            <option value=">=">{'>='}</option>
+            <option value="<=">{'<='}</option>
+          </select>
+          <input className={fieldClass} value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-sherpa-muted">{status}</p>
+          <button className={buttonClass} disabled={!canUse} type="submit">
+            Create alert
+          </button>
+        </div>
+      </form>
+      <RuleList
+        empty="No alerts yet."
+        items={rules.map((rule) => ({
+          id: rule.id,
+          title: `${rule.conditionType} ${rule.asset?.symbol ?? ''} ${rule.comparison} ${rule.threshold}`,
+          meta: `${rule.status} · triggered ${rule.triggerCount} times`,
+        }))}
+        onRefresh={loadRules}
+      />
+    </SetupShell>
+  );
+}
+
+export function DCAPanel() {
+  const { address, isConnected } = useWalletAddress();
+  const [amount, setAmount] = useState('10');
+  const [toAsset, setToAsset] = useState('ETH');
+  const [frequency, setFrequency] = useState('weekly');
+  const [schedules, setSchedules] = useState<DCASchedule[]>([]);
+  const [status, setStatus] = useState<string>('Ready');
+  const canUse = Boolean(isConnected && address);
+
+  const loadSchedules = useCallback(async () => {
+    if (!address) return;
+    const data = await readJson<{ schedules: DCASchedule[] }>(await fetch(`/api/dca/${address}`));
+    setSchedules(data.schedules);
+  }, [address]);
+
+  useEffect(() => {
+    void loadSchedules().catch((err) => setStatus(err instanceof Error ? err.message : String(err)));
+  }, [loadSchedules]);
+
+  async function createSchedule(event: FormEvent) {
+    event.preventDefault();
+    if (!address) return;
+    setStatus('Saving DCA schedule...');
+    try {
+      await readJson<DCASchedule>(
+        await fetch('/api/dca', {
+          body: JSON.stringify({
+            userAddress: address,
+            fromAsset: 'USDC',
+            toAsset: toAsset.toUpperCase(),
+            amountPerTick: amount,
+            frequency,
+            hourOfDay: 12,
+          }),
+          headers: { 'content-type': 'application/json' },
+          method: 'POST',
+        }),
+      );
+      await loadSchedules();
+      setStatus('DCA schedule saved. Execution worker remains testnet/audit gated.');
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <SetupShell
+      description="Create and manage recurring buy schedules. The scheduler API is live; unattended execution remains gated until audit and persistent production storage are complete."
+      eyebrow="Beta live"
+      title="DCA scheduler"
+    >
+      {!canUse ? <WalletRequired /> : null}
+      <form className={cardClass} onSubmit={createSchedule}>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <input className={fieldClass} value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <input className={fieldClass} value={toAsset} onChange={(e) => setToAsset(e.target.value)} />
+          <select className={fieldClass} value={frequency} onChange={(e) => setFrequency(e.target.value)}>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Biweekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-sherpa-muted">{status}</p>
+          <button className={buttonClass} disabled={!canUse} type="submit">
+            Create schedule
+          </button>
+        </div>
+      </form>
+      <RuleList
+        empty="No DCA schedules yet."
+        items={schedules.map((schedule) => ({
+          id: schedule.id,
+          title: `${schedule.amountPerTick} USDC to ${schedule.toAsset.symbol ?? 'asset'} ${schedule.frequency}`,
+          meta: `${schedule.status} · next ${schedule.nextExecutionAt ? new Date(schedule.nextExecutionAt).toLocaleString() : 'pending'}`,
+        }))}
+        onRefresh={loadSchedules}
+      />
+    </SetupShell>
+  );
+}
+
+export function AutoRepayPanel() {
+  const { address, isConnected } = useWalletAddress();
+  const [triggerHF, setTriggerHF] = useState('1.3');
+  const [targetHF, setTargetHF] = useState('1.6');
+  const [maxRepay, setMaxRepay] = useState('100');
+  const [rules, setRules] = useState<AutoRepayRule[]>([]);
+  const [status, setStatus] = useState<string>('Ready');
+  const canUse = Boolean(isConnected && address);
+
+  const loadRules = useCallback(async () => {
+    if (!address) return;
+    const data = await readJson<{ rules: AutoRepayRule[] }>(await fetch(`/api/auto-repay/${address}`));
+    setRules(data.rules);
+  }, [address]);
+
+  useEffect(() => {
+    void loadRules().catch((err) => setStatus(err instanceof Error ? err.message : String(err)));
+  }, [loadRules]);
+
+  async function createRule(event: FormEvent) {
+    event.preventDefault();
+    if (!address) return;
+    setStatus('Saving auto-repay rule...');
+    try {
+      await readJson<AutoRepayRule>(
+        await fetch('/api/auto-repay', {
+          body: JSON.stringify({
+            userAddress: address,
+            triggerHF: Number(triggerHF),
+            targetHF: Number(targetHF),
+            maxRepayPerExecution: maxRepay,
+            repaySource: ['usdc'],
+            maxPerDay: 3,
+          }),
+          headers: { 'content-type': 'application/json' },
+          method: 'POST',
+        }),
+      );
+      await loadRules();
+      setStatus('Rule saved. Automatic repayments remain disabled until audit and signer setup.');
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <SetupShell
+      description="Configure liquidation-protection rules with explicit health-factor targets and daily caps. This is a real rule manager; autonomous repayment execution remains audit gated."
+      eyebrow="Beta live"
+      title="Auto-repay"
+    >
+      {!canUse ? <WalletRequired /> : null}
+      <form className={cardClass} onSubmit={createRule}>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <input className={fieldClass} value={triggerHF} onChange={(e) => setTriggerHF(e.target.value)} />
+          <input className={fieldClass} value={targetHF} onChange={(e) => setTargetHF(e.target.value)} />
+          <input className={fieldClass} value={maxRepay} onChange={(e) => setMaxRepay(e.target.value)} />
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-sherpa-muted">{status}</p>
+          <button className={buttonClass} disabled={!canUse} type="submit">
+            Create rule
+          </button>
+        </div>
+      </form>
+      <RuleList
+        empty="No auto-repay rules yet."
+        items={rules.map((rule) => ({
+          id: rule.id,
+          title: `HF ${rule.triggerHF} -> ${rule.targetHF}`,
+          meta: `${rule.status} · max ${rule.maxRepayPerExecution} USDC · ${rule.maxPerDay}/day`,
+        }))}
+        onRefresh={loadRules}
+      />
+    </SetupShell>
+  );
+}
+
+function RuleList({
+  empty,
+  items,
+  onRefresh,
+}: {
+  empty: string;
+  items: Array<{ id: string; title: string; meta: string }>;
+  onRefresh: () => Promise<void>;
+}) {
+  return (
+    <div className={cardClass}>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="font-medium">Saved records</h2>
+        <button className={ghostButtonClass} onClick={() => void onRefresh()} type="button">
+          Refresh
+        </button>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-sm text-sherpa-muted">{empty}</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div className="rounded-md border border-sherpa-surface2 bg-sherpa-bg p-3" key={item.id}>
+              <div className="font-medium">{item.title}</div>
+              <div className="mt-1 text-xs text-sherpa-muted">{item.meta}</div>
+              <div className="mt-2 font-mono text-xs text-sherpa-muted">{item.id}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function MultiChainPanel() {
+  const [chains, setChains] = useState<ChainInfo[]>([]);
+  const [status, setStatus] = useState('Loading chains...');
+
+  useEffect(() => {
+    void fetch('/api/chains').then((res) => readJson<{ chains: ChainInfo[] }>(res)).then(
+      (data) => {
+        setChains(data.chains);
+        setStatus('Read-only chain registry loaded.');
+      },
+      (err) => setStatus(err instanceof Error ? err.message : String(err)),
+    );
+  }, []);
+
+  return (
+    <SetupShell
+      description="Sherpa can inspect supported chain metadata now. Bridge and cross-chain execution are deliberately disabled until adapters are fully audited."
+      eyebrow="Read-only live"
+      title="Multi-chain"
+    >
+      <div className={cardClass}>
+        <p className="text-sm text-sherpa-muted">{status}</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {chains.map((chain) => (
+          <div className={cardClass} key={chain.chainId}>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-medium">{chain.name}</h2>
+              <span className="rounded-full border border-sherpa-surface2 px-2 py-0.5 text-xs text-sherpa-muted">
+                {chain.chainId}
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-sherpa-muted">DEX: {chain.dex?.name ?? 'not configured'}</p>
+            <p className="mt-1 text-xs text-sherpa-muted">Aave pool: {chain.aave?.poolAddress ?? 'none'}</p>
+            <p className="mt-1 text-xs text-sherpa-muted">Bridges: {chain.bridgeProtocols.join(', ')}</p>
+            <a className="mt-3 inline-block text-sm text-sherpa-blue hover:underline" href={chain.explorerUrl} rel="noopener noreferrer" target="_blank">
+              Explorer
+            </a>
+          </div>
+        ))}
+      </div>
+    </SetupShell>
+  );
+}
+
+export function GovernancePanel() {
+  const [proposals, setProposals] = useState<GovernanceProposal[]>([]);
+  const [status, setStatus] = useState('Loading proposals...');
+
+  useEffect(() => {
+    void fetch('/api/governance/proposals?source=snapshot')
+      .then((res) =>
+        readJson<{ proposals: GovernanceProposal[]; errors?: Array<{ source: string; error: string }> }>(res),
+      )
+      .then(
+      (data) => {
+        setProposals(data.proposals.slice(0, 12));
+        setStatus(
+          data.errors && data.errors.length > 0
+            ? `Loaded with ${data.errors.length} upstream warning(s).`
+            : 'Snapshot proposal feed loaded.',
+        );
+      },
+      (err) => setStatus(err instanceof Error ? err.message : String(err)),
+    );
+  }, []);
+
+  return (
+    <SetupShell
+      description="Browse governance proposals from supported sources. Signing votes and delegation transactions stay explicit wallet actions and are not auto-executed."
+      eyebrow="Read-only live"
+      title="Governance"
+    >
+      <div className={cardClass}>
+        <p className="text-sm text-sherpa-muted">{status}</p>
+      </div>
+      <div className="space-y-3">
+        {proposals.length === 0 ? (
+          <div className={cardClass}>
+            <p className="text-sm text-sherpa-muted">No proposals loaded from the selected source.</p>
+          </div>
+        ) : (
+          proposals.map((proposal) => (
+            <div className={cardClass} key={`${proposal.source}-${proposal.id}`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="font-medium">{proposal.title ?? proposal.id}</h2>
+                <span className="rounded-full border border-sherpa-surface2 px-2 py-0.5 text-xs text-sherpa-muted">
+                  {proposal.source ?? 'governance'} · {proposal.state ?? proposal.status ?? 'unknown'}
+                </span>
+              </div>
+              <p className="mt-2 font-mono text-xs text-sherpa-muted">{proposal.id}</p>
+              {proposal.link ? (
+                <a className="mt-3 inline-block text-sm text-sherpa-blue hover:underline" href={proposal.link} rel="noopener noreferrer" target="_blank">
+                  Open proposal
+                </a>
+              ) : null}
+            </div>
+          ))
+        )}
+      </div>
+    </SetupShell>
+  );
+}
+
+export function TelegramPanel() {
+  return (
+    <SetupShell
+      description="The Telegram bot code is present and tested, but production needs a Telegram bot token and a separate Railway service. Farcaster/Base App surfaces are already live."
+      eyebrow="Setup needed"
+      title="Telegram bot"
+    >
+      <div className={cardClass}>
+        <h2 className="font-medium">Deployment blocker</h2>
+        <p className="mt-2 text-sm leading-6 text-sherpa-muted">
+          Add <span className="font-mono text-sherpa-fg">TELEGRAM_BOT_TOKEN</span> from BotFather, deploy
+          <span className="font-mono text-sherpa-fg"> apps/telegram-bot</span> as its own Railway service,
+          then this card can flip to live.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <a className={ghostButtonClass} href="https://sherpa-miniapp.vercel.app" rel="noopener noreferrer" target="_blank">
+            Open Mini App
+          </a>
+          <a className={ghostButtonClass} href="https://farcaster.xyz/sherpaonbase" rel="noopener noreferrer" target="_blank">
+            Farcaster profile
+          </a>
+        </div>
+      </div>
+    </SetupShell>
+  );
+}

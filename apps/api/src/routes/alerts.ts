@@ -1,4 +1,9 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import {
+  InMemoryAlertStore,
+  type AlertRow,
+  type AlertStore,
+} from '@sherpa/memory';
 import { z } from 'zod';
 
 const CreateAlertBody = z.object({
@@ -42,21 +47,56 @@ const UpdateAlertBody = z
   })
   .strict();
 
-export async function alertRoutes(app: FastifyInstance): Promise<void> {
+const defaultStore: AlertStore = new InMemoryAlertStore();
+
+function serializeAlert(alert: AlertRow) {
+  return {
+    id: alert.id,
+    userAddress: alert.user_address,
+    conditionType: alert.condition_type,
+    asset: alert.asset,
+    comparison: alert.comparison,
+    threshold: Number(alert.threshold),
+    thresholdAsset: alert.threshold_asset,
+    notificationChannels: alert.notification_channels,
+    triggeredIntent: alert.triggered_intent,
+    status: alert.status,
+    createdAt: alert.created_at,
+    lastEvaluatedAt: alert.last_evaluated_at,
+    triggeredAt: alert.triggered_at,
+    triggerCount: alert.trigger_count,
+    lastValue: alert.last_value,
+    params: alert.params,
+    oneShot: alert.one_shot,
+    cooldownSeconds: alert.cooldown_seconds,
+    lastTriggeredAt: alert.last_triggered_at,
+  };
+}
+
+export async function alertRoutes(
+  app: FastifyInstance,
+  maybeStore: AlertStore = defaultStore,
+): Promise<void> {
+  const store = 'create' in maybeStore ? maybeStore : defaultStore;
+
   app.post('/api/alerts', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = CreateAlertBody.safeParse(req.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: parsed.error.message });
     }
-    const { params, ...rest } = parsed.data;
-    return reply.status(201).send({
-      id: crypto.randomUUID(),
-      ...rest,
-      params: params ?? {},
-      status: 'active',
-      triggerCount: 0,
-      createdAt: new Date().toISOString(),
+    const alert = await store.create({
+      userAddress: parsed.data.userAddress,
+      conditionType: parsed.data.conditionType,
+      asset: parsed.data.asset ? { symbol: parsed.data.asset.toUpperCase() } : undefined,
+      comparison: parsed.data.comparison,
+      threshold: parsed.data.threshold,
+      notificationChannels: parsed.data.notificationChannels,
+      triggeredIntent: parsed.data.triggeredIntent,
+      params: parsed.data.params,
+      oneShot: parsed.data.oneShot,
+      cooldownSeconds: parsed.data.cooldownSeconds,
     });
+    return reply.status(201).send(serializeAlert(alert));
   });
 
   app.get('/api/alerts/:userAddress', async (req: FastifyRequest, reply: FastifyReply) => {
@@ -64,7 +104,12 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
     if (!params.success) {
       return reply.status(400).send({ error: 'invalid userAddress' });
     }
-    return reply.send({ alerts: [], userAddress: params.data.userAddress });
+    const alerts = await store.getByUser(params.data.userAddress);
+    return reply.send({
+      alerts: alerts.map(serializeAlert),
+      userAddress: params.data.userAddress,
+      persistence: 'process-memory',
+    });
   });
 
   app.get('/api/alerts/:id/history', async (req: FastifyRequest, reply: FastifyReply) => {
@@ -72,7 +117,12 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
     if (!params.success) {
       return reply.status(400).send({ error: 'invalid id' });
     }
-    return reply.send({ evaluations: [], alertId: params.data.id });
+    const alert = await store.getById(params.data.id);
+    if (!alert) {
+      return reply.status(404).send({ error: 'Alert not found' });
+    }
+    const evaluations = await store.getEvaluationHistory(params.data.id);
+    return reply.send({ evaluations, alertId: params.data.id });
   });
 
   app.patch('/api/alerts/:id', async (req: FastifyRequest, reply: FastifyReply) => {
@@ -84,19 +134,28 @@ export async function alertRoutes(app: FastifyInstance): Promise<void> {
     if (!body.success) {
       return reply.status(400).send({ error: 'invalid body' });
     }
-    const status = body.data.status === 'cancelled' ? 'completed' : body.data.status;
-    return reply.send({
-      id: params.data.id,
-      ...body.data,
-      status: status ?? 'updated',
-      updatedAt: new Date().toISOString(),
+    const alert = await store.update(params.data.id, {
+      status: body.data.status === 'cancelled' ? 'completed' : body.data.status,
+      threshold: body.data.threshold,
+      comparison: body.data.comparison,
+      notificationChannels: body.data.notificationChannels,
+      oneShot: body.data.oneShot,
+      cooldownSeconds: body.data.cooldownSeconds,
     });
+    if (!alert) {
+      return reply.status(404).send({ error: 'Alert not found' });
+    }
+    return reply.send(serializeAlert(alert));
   });
 
   app.delete('/api/alerts/:id', async (req: FastifyRequest, reply: FastifyReply) => {
     const params = IdParams.safeParse(req.params);
     if (!params.success) {
       return reply.status(400).send({ error: 'invalid id' });
+    }
+    const deleted = await store.delete(params.data.id);
+    if (!deleted) {
+      return reply.status(404).send({ error: 'Alert not found' });
     }
     return reply.send({ id: params.data.id, status: 'cancelled' });
   });

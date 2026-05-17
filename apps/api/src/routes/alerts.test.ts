@@ -9,6 +9,20 @@ async function buildApp() {
   return app;
 }
 
+async function createAlert(app: Awaited<ReturnType<typeof buildApp>>) {
+  const resp = await app.inject({
+    method: 'POST',
+    url: '/api/alerts',
+    payload: {
+      userAddress: '0x1234567890123456789012345678901234567890',
+      conditionType: 'price',
+      comparison: '>',
+      threshold: 5000,
+    },
+  });
+  return resp.json() as { id: string };
+}
+
 describe('alertRoutes', () => {
   describe('POST /api/alerts', () => {
     test('creates alert with valid body', async () => {
@@ -155,9 +169,10 @@ describe('alertRoutes', () => {
   describe('GET /api/alerts/:id/history', () => {
     test('returns evaluation history', async () => {
       const app = await buildApp();
+      const alert = await createAlert(app);
       const resp = await app.inject({
         method: 'GET',
-        url: '/api/alerts/test-alert-1/history',
+        url: `/api/alerts/${alert.id}/history`,
       });
       expect(resp.statusCode).toBe(200);
       expect(resp.json()).toHaveProperty('evaluations');
@@ -167,9 +182,10 @@ describe('alertRoutes', () => {
   describe('PATCH /api/alerts/:id', () => {
     test('updates alert status', async () => {
       const app = await buildApp();
+      const alert = await createAlert(app);
       const resp = await app.inject({
         method: 'PATCH',
-        url: '/api/alerts/test-id',
+        url: `/api/alerts/${alert.id}`,
         payload: { status: 'paused' },
       });
       expect(resp.statusCode).toBe(200);
@@ -178,9 +194,10 @@ describe('alertRoutes', () => {
 
     test('updates threshold', async () => {
       const app = await buildApp();
+      const alert = await createAlert(app);
       const resp = await app.inject({
         method: 'PATCH',
-        url: '/api/alerts/test-id',
+        url: `/api/alerts/${alert.id}`,
         payload: { threshold: 6000 },
       });
       expect(resp.statusCode).toBe(200);
@@ -189,9 +206,10 @@ describe('alertRoutes', () => {
 
     test('rejects invalid body fields', async () => {
       const app = await buildApp();
+      const alert = await createAlert(app);
       const resp = await app.inject({
         method: 'PATCH',
-        url: '/api/alerts/test-id',
+        url: `/api/alerts/${alert.id}`,
         payload: { invalidField: true },
       });
       expect(resp.statusCode).toBe(400);
@@ -199,9 +217,10 @@ describe('alertRoutes', () => {
 
     test('maps cancelled to completed', async () => {
       const app = await buildApp();
+      const alert = await createAlert(app);
       const resp = await app.inject({
         method: 'PATCH',
-        url: '/api/alerts/test-id',
+        url: `/api/alerts/${alert.id}`,
         payload: { status: 'cancelled' },
       });
       expect(resp.json().status).toBe('completed');
@@ -209,9 +228,10 @@ describe('alertRoutes', () => {
 
     test('accepts comparison update', async () => {
       const app = await buildApp();
+      const alert = await createAlert(app);
       const resp = await app.inject({
         method: 'PATCH',
-        url: '/api/alerts/test-id',
+        url: `/api/alerts/${alert.id}`,
         payload: { comparison: '<' },
       });
       expect(resp.statusCode).toBe(200);
@@ -222,9 +242,10 @@ describe('alertRoutes', () => {
   describe('DELETE /api/alerts/:id', () => {
     test('deletes alert', async () => {
       const app = await buildApp();
+      const alert = await createAlert(app);
       const resp = await app.inject({
         method: 'DELETE',
-        url: '/api/alerts/test-id',
+        url: `/api/alerts/${alert.id}`,
       });
       expect(resp.statusCode).toBe(200);
       expect(resp.json().status).toBe('cancelled');
