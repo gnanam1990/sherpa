@@ -6,7 +6,7 @@ export function createRequireStage2(config: SherpaConfig) {
     if (!config.stage2Enabled) {
       reply.code(503).send({
         error: 'feature_not_available',
-        details: 'Stage 2 features are pending audit.',
+        details: 'Stage 2 features are disabled in this environment.',
       });
     }
   };

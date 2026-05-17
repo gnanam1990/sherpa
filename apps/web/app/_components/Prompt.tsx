@@ -291,7 +291,7 @@ function positionsSummary(data: PositionsResponse): string {
   if (!data.hasPosition) {
     return [
       'No Aave V3 positions on Base.',
-      'Lend, borrow, withdraw, and repay through Sherpa are coming soon after audit.',
+      'Lend, borrow, withdraw, and repay through Sherpa are live on Base mainnet with guarded amount caps.',
     ].join('\n');
   }
   return [

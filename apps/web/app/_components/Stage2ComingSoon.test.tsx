@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Stage2ComingSoon, stage2ComingSoonText } from './Stage2ComingSoon';
 
 describe('Stage2ComingSoon', () => {
-  it('renders honest audit-pending copy for swap', () => {
+  it('renders connected-wallet gating copy for swap', () => {
     render(<Stage2ComingSoon feature="swap" parsedIntent={{ intent: 'SWAP' }} />);
 
     expect(screen.getByText('Swap needs a connected wallet')).toBeTruthy();

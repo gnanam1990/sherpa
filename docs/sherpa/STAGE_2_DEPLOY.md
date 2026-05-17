@@ -1,6 +1,15 @@
 # Stage 2 Deployment Guide
 
-Stage 2 features (swap, lend, borrow, repay, withdraw, positions) are gated behind feature flags that default to **off**.
+Stage 2 write features (swap, lend, borrow, repay, withdraw) are deployed on Base
+mainnet and controlled by environment flags. Positions are read-only and query Aave
+directly.
+
+Current production state:
+
+- Web/API: Stage 2 Base mainnet cards are public.
+- Contracts: verified, Safe-owned Base mainnet Router and Treasury.
+- Telegram: can create web signing links when `SHERPA_STAGE_2_PUBLIC_MAINNET=true`
+  is enabled on the bot service; otherwise it points users to the web app.
 
 ## Local Development
 
@@ -17,14 +26,16 @@ NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED=true
 NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED=true
 
 # apps/telegram-bot/.env
-NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED=true
+SHERPA_STAGE_2_PUBLIC_MAINNET=true
 ```
 
-## Production (After Audit)
+## Production
 
 1. Set the environment variables in your deployment platform (Vercel, Railway, etc.):
    - `SHERPA_STAGE_2_ENABLED=true` on the API service
+   - `SHERPA_STAGE_2_PUBLIC_MAINNET=true` on the API service
    - `NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED=true` on web, miniapp, and telegram-bot
+   - `SHERPA_STAGE_2_PUBLIC_MAINNET=true` on telegram-bot only if Telegram should create Stage 2 web signing links
 
 2. Verify the API returns 200 for Stage 2 endpoints:
    ```bash
@@ -38,11 +49,12 @@ NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED=true
 
 To disable Stage 2 features immediately:
 
-1. Set `SHERPA_STAGE_2_ENABLED=false` and `NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED=false` in all environments.
+1. Set `SHERPA_STAGE_2_ENABLED=false`, `SHERPA_STAGE_2_PUBLIC_MAINNET=false`,
+   and `NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED=false` in all environments.
 2. Redeploy or restart services.
-3. Stage 2 API routes will return 503 with `{ error: 'feature_not_available', details: 'Stage 2 features are pending audit.' }`.
-4. Telegram bot will reply with "Stage 2 features are pending audit" for swap/lend/borrow/repay/withdraw intents.
-5. Web app will show "Coming Soon" placeholder for Stage 2 pages.
+3. Stage 2 API routes return 503 with `{ error: 'feature_not_available', details: 'Stage 2 features are disabled in this environment.' }`.
+4. Telegram bot points users to the web app instead of creating Stage 2 signing links.
+5. Web app shows the environment-disabled placeholder for Stage 2 pages.
 
 ## What Is Gated
 
@@ -56,7 +68,7 @@ To disable Stage 2 features immediately:
 | `/api/borrow` | POST | Execute borrow |
 | `/api/borrow/preview` | GET | Preview borrow |
 | `/api/repay` | POST | Execute repay |
-| `/api/positions/:address` | GET | Get positions |
+| `/api/positions/:address` | GET | Get positions (read-only; safe when Stage 2 writes are disabled) |
 
 Stage 1 routes are **never** affected by this flag:
 

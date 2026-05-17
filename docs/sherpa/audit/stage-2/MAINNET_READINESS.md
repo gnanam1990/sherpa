@@ -72,8 +72,8 @@ Latest mainnet dry-run:
 | Mainnet dry-run | Ready | Normal dry-run completed with no override and no broadcast. |
 | Explicit operator approval | Complete | User provided exact phrase: `yes broadcast Stage 2 mainnet`. |
 | Contract broadcast | Complete | Router and Treasury deployed, verified, allowlisted, and transferred to Safe. |
-| Production simulation/monitoring | Blocked for app flip | Confirm Tenderly, Sentry, Railway logs, and rollback ownership procedures before enabling production write traffic. |
-| Production app env | Blocked for app flip | Railway/Vercel must keep mainnet write flags disabled until post-deployment smoke tests pass. |
+| Production simulation/monitoring | Active | Post-deploy smoke checks passed; continue monitoring Tenderly/Sentry/Railway after public traffic. |
+| Production app env | Complete | Railway and Vercel were flipped to public Stage 2 mainnet after smoke tests passed. |
 
 ## Mainnet deployment record
 

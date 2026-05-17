@@ -56,7 +56,8 @@ Required:
 
 Optional:
 
-- `SHERPA_STAGE_2_TESTNET_ENABLED=true` — lets the bot surface Stage 2 testnet write demos. Keep false for normal production.
+- `SHERPA_STAGE_2_PUBLIC_MAINNET=true` — lets the bot create web signing links for Stage 2 Base mainnet cards after API/web smoke tests pass.
+- `SHERPA_STAGE_2_TESTNET_ENABLED=true` — local Base Sepolia write demos only. Keep false for normal production.
 
 ## Deployment
 

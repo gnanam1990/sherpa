@@ -9,7 +9,8 @@ export function ComingSoonPlaceholder({ feature }: ComingSoonPlaceholderProps) {
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
       <h1 className="text-2xl font-semibold">{feature} — Coming Soon</h1>
       <p className="max-w-md text-muted-foreground">
-        This feature is pending security audit and will be available once Stage 2 is enabled.
+        This feature is not enabled in this environment yet. Stage 2 mainnet actions
+        are live from the connected web app when the production flags are enabled.
       </p>
       <Link
         href="/"

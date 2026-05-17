@@ -285,7 +285,7 @@ describe('Prompt', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
     expect(await screen.findByText(/No Aave V3 positions on Base/)).toBeTruthy();
-    expect(screen.getByText(/coming soon after audit/)).toBeTruthy();
+    expect(screen.getByText(/live on Base mainnet with guarded amount caps/)).toBeTruthy();
   });
 
   it('renders Stage 2 coming-soon results without a confirmation card', async () => {
@@ -300,7 +300,7 @@ describe('Prompt', () => {
             confidence: 0.9,
             slots: { fromAmount: '1', fromAsset: 'USDC', toAsset: 'ETH' },
           },
-          stage2: { status: 'coming_soon', reason: 'pending_external_audit' },
+          stage2: { status: 'coming_soon', reason: 'stage2_not_enabled' },
         });
       }
       throw new Error(`unexpected fetch ${url}`);

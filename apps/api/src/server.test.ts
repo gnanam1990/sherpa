@@ -133,7 +133,7 @@ describe('apps/api', () => {
     };
     expect(body.parsed?.intent).toBe('SWAP');
     expect(body.card).toBeUndefined();
-    expect(body.stage2).toEqual({ status: 'coming_soon', reason: 'pending_external_audit' });
+    expect(body.stage2).toEqual({ status: 'coming_soon', reason: 'stage2_not_enabled' });
     await app.close();
   });
 
@@ -243,7 +243,7 @@ describe('apps/api', () => {
     await app.close();
   });
 
-  it('POST /api/execute blocks Stage 2 write intents while audit is pending', async () => {
+  it('POST /api/execute blocks Stage 2 write intents when disabled for the wallet', async () => {
     const app = buildServer({ config: offlineConfig });
     const res = await app.inject({
       method: 'POST',
@@ -253,7 +253,7 @@ describe('apps/api', () => {
     expect(res.statusCode).toBe(400);
     expect(res.json()).toMatchObject({
       ok: false,
-      error: expect.stringContaining('pending external audit'),
+      error: expect.stringContaining('not enabled for this wallet or environment'),
     });
     await app.close();
   });

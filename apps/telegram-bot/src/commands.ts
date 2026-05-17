@@ -205,7 +205,7 @@ function formatPositions(address: string, positions: PositionsResponse): string 
       `🔗 Linked wallet: ${address}`,
       '',
       'No active Aave V3 positions on Base.',
-      'Lend, borrow, withdraw, and repay through Sherpa are testnet-only until audit.',
+      'Lend, borrow, withdraw, and repay are live in the Sherpa web app on Base mainnet.',
     ].join('\n');
   }
 

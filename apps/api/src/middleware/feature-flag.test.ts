@@ -43,7 +43,7 @@ describe('requireStage2 middleware', () => {
     expect(res.statusCode).toBe(503);
     const body = res.json() as { error: string; details: string };
     expect(body.error).toBe('feature_not_available');
-    expect(body.details).toBe('Stage 2 features are pending audit.');
+    expect(body.details).toBe('Stage 2 features are disabled in this environment.');
     await app.close();
   });
 

@@ -445,7 +445,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     if (isStage2ComingSoonIntent(parsedIntent.intent) && !canRunStage2Intent(config, parsedIntent.intent, userAddress)) {
       return reply.send({
         parsed: parsedIntent,
-        stage2: { status: 'coming_soon', reason: 'pending_external_audit' },
+        stage2: { status: 'coming_soon', reason: 'stage2_not_enabled' },
       });
     }
     const planResult = await plan(parsedIntent, {
@@ -478,7 +478,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     if (isStage2ComingSoonIntent(parsedIntent.intent) && !canRunStage2Intent(config, parsedIntent.intent, parsed.data.userAddress)) {
       return reply.code(400).send({
         ok: false,
-        error: `Stage 2 ${parsedIntent.intent.toLowerCase()} is pending external audit.`,
+        error: `Stage 2 ${parsedIntent.intent.toLowerCase()} is not enabled for this wallet or environment.`,
       });
     }
     const planResult = await plan(parsedIntent, {

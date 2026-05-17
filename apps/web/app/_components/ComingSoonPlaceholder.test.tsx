@@ -15,9 +15,9 @@ describe('ComingSoonPlaceholder', () => {
     expect(screen.getByText(/Swap — Coming Soon/)).toBeTruthy();
   });
 
-  it('renders audit pending message', () => {
+  it('renders environment availability message', () => {
     render(<ComingSoonPlaceholder feature="Lend" />);
-    expect(screen.getByText(/pending security audit/)).toBeTruthy();
+    expect(screen.getByText(/not enabled in this environment/)).toBeTruthy();
   });
 
   it('renders a link back to home', () => {
@@ -36,6 +36,6 @@ describe('ComingSoonPlaceholder', () => {
 
   it('renders stage 2 availability note', () => {
     render(<ComingSoonPlaceholder feature="Positions" />);
-    expect(screen.getByText(/Stage 2 is enabled/)).toBeTruthy();
+    expect(screen.getByText(/production flags are enabled/)).toBeTruthy();
   });
 });

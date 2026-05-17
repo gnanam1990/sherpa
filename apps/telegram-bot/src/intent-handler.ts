@@ -27,6 +27,7 @@ const STAGE_2_INTENTS = new Set(['SWAP', 'LEND', 'BORROW', 'REPAY', 'WITHDRAW'])
 
 function stage2Enabled(): boolean {
   return (
+    process.env.SHERPA_STAGE_2_PUBLIC_MAINNET === 'true' ||
     process.env.SHERPA_STAGE_2_TESTNET_ENABLED === 'true' ||
     process.env.SHERPA_STAGE_2_ENABLED === 'true' ||
     process.env.NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED === 'true'
@@ -74,7 +75,9 @@ export async function handleMessage(ctx: Context): Promise<void> {
     }
 
     if (!stage2Enabled() && STAGE_2_INTENTS.has(intent)) {
-      await ctx.reply('Stage 2 features (swap, lend, borrow, repay, withdraw) are pending audit and not yet available.');
+      await ctx.reply(
+        'Stage 2 swap, lend, borrow, repay, and withdraw are live in the Sherpa web app on Base mainnet. Telegram signing is not enabled for this bot environment yet. Open https://sherpa-web.vercel.app to continue.',
+      );
       return;
     }
 

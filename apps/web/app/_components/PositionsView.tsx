@@ -107,7 +107,8 @@ export function PositionsView({ initialData, addressOverride }: PositionsViewPro
           This wallet has no supplied collateral or borrowed debt on Aave V3 Base yet.
         </p>
         <p className="mt-2 text-xs text-sherpa-muted">
-          Lending and borrowing through Sherpa are coming soon after audit.
+          Lending and borrowing through Sherpa are live on Base mainnet with guarded amount caps.
+          Start with a tiny transaction and review every wallet prompt before signing.
         </p>
         <button
           className="mt-4 rounded-full border border-sherpa-surface2 px-3 py-1 text-sm text-sherpa-muted transition hover:border-sherpa-muted hover:text-sherpa-fg"
@@ -173,7 +174,8 @@ export function PositionsView({ initialData, addressOverride }: PositionsViewPro
       </div>
 
       <p className="mt-4 text-xs text-sherpa-muted">
-        Lend, borrow, withdraw, and repay through Sherpa are audit pending.
+        Lend, borrow, withdraw, and repay through Sherpa are live on Base mainnet
+        through verified, Safe-owned contracts.
       </p>
     </div>
   );
