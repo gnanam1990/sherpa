@@ -74,7 +74,9 @@ vercel --prod --cwd apps/miniapp
 
 ```bash
 # Create new Railway service
-railway up --name sherpa-bot
+# Source: GitHub repo gnanam1990/sherpa
+# Config file path: /apps/telegram-bot/railway.json
+# Root directory: repository root
 
 # Set env vars in Railway dashboard:
 # TELEGRAM_BOT_TOKEN (from @BotFather)

@@ -63,10 +63,12 @@ Optional:
 Deploy as a dedicated Railway service, separate from `@sherpa/api`.
 
 1. Railway dashboard → Sherpa project → New Service → GitHub Repo
-2. Select this repo and use `apps/telegram-bot/Dockerfile`
-3. Set the environment variables above
-4. Deploy
-5. DM the bot in Telegram and test `/start`, `/link`, `/positions`, `/balance`, `/history`
+2. Select this repo
+3. Service settings → Deploy → Config file path: `/apps/telegram-bot/railway.json`
+4. Keep the service root at the repository root. The bot Dockerfile needs workspace packages.
+5. Set the environment variables above
+6. Deploy
+7. DM the bot in Telegram and test `/start`, `/link`, `/positions`, `/balance`, `/history`
 
 Linking and signing require the API surface routes to have real database backing (`SHERPA_USE_REAL_DB=true` on the API service). If `/link` fails, check the API service database env first.
 
