@@ -63,8 +63,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body className="m-0 bg-sherpa-bg font-sans text-sherpa-fg">
+    <html lang="en" suppressHydrationWarning>
+      <body className="m-0 bg-background font-sans text-foreground">
         <RegisterSW />
         <a href="#main-content" className="skip-to-content">
           Skip to content

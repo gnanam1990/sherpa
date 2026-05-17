@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { WagmiProvider } from 'wagmi';
 import { Toaster } from 'sonner';
 import { wagmiConfig } from '../lib/wagmi';
+import { ThemeProvider } from './_components/theme-provider';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -29,17 +30,19 @@ export function Providers({ children }: { children: ReactNode }) {
             fontStack: 'system',
           })}
         >
-          {children}
-          <Toaster
-            position="top-center"
-            toastOptions={{
-              style: {
-                background: '#1A1A1A',
-                color: '#FFFFFF',
-                border: '1px solid #333',
-              },
-            }}
-          />
+          <ThemeProvider>
+            {children}
+            <Toaster
+              position="top-center"
+              toastOptions={{
+                style: {
+                  background: '#1A1A1A',
+                  color: '#FFFFFF',
+                  border: '1px solid #333',
+                },
+              }}
+            />
+          </ThemeProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

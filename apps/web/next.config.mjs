@@ -1,10 +1,22 @@
 import { withSentryConfig } from '@sentry/nextjs';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+const require = createRequire(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@sherpa/ui', '@sherpa/core', '@sherpa/safety'],
   webpack(config) {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@rainbow-me/rainbowkit$': require.resolve('@rainbow-me/rainbowkit'),
+      'react$': require.resolve('react'),
+      'react-dom$': require.resolve('react-dom'),
+      'wagmi$': require.resolve('wagmi'),
+      'wagmi/connectors$': require.resolve('wagmi/connectors'),
+    };
     config.resolve.fallback = {
       ...config.resolve.fallback,
       '@react-native-async-storage/async-storage': false,
