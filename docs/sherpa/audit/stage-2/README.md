@@ -44,9 +44,15 @@ This folder contains everything needed to audit Stage 2 of Sherpa.
 
 ## Mainnet readiness
 
-Mainnet deployment is prepared but **not yet authorized for broadcast**. The
-guarded script lives at `packages/contracts/script/DeployMainnet.s.sol`, and the
-go/no-go checklist lives in `MAINNET_READINESS.md`.
+Mainnet contract deployment is complete. The guarded script lives at
+`packages/contracts/script/DeployMainnet.s.sol`, the go/no-go and post-deploy
+record lives in `MAINNET_READINESS.md`, and the deployment artifact is
+`deployments/base-mainnet.json`.
+
+| Contract | Address | Basescan |
+|---|---|---|
+| SherpaRouter | `0x00bfef87DD352D48F8572BcfA52E57870B35DE8b` | https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b |
+| SherpaTreasury | `0xF4e72beAA559E1815f4671e39EDb1295aD975918` | https://basescan.org/address/0xF4e72beAA559E1815f4671e39EDb1295aD975918 |
 
 ## Test the build
 

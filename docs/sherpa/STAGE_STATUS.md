@@ -19,7 +19,7 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what is
 | Stage       | Description                                           | Status                 | Target / Gate                                                   |
 | ----------- | ----------------------------------------------------- | ---------------------- | --------------------------------------------------------------- |
 | **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP               | ✅ Live                | Live on Base Sepolia                                            |
-| **Stage 2** | DeFi positions + writes                               | 🟡 Testnet / Read-only | Audit + multisig + mainnet deploy before production writes      |
+| **Stage 2** | DeFi positions + writes                               | 🟡 Mainnet contracts deployed | Post-deploy smoke tests + monitoring before app write traffic   |
 | **Stage 3** | Multi-surface (Farcaster/Base Mini App, Telegram bot) | ✅ Live                | Ongoing listing/discovery polish                                |
 | **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta / Partial      | Production workers + notifications + execution audit            |
 | **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace       | 🔵 Partial             | Read-only chain explorer live; session keys/marketplace pending |
@@ -57,27 +57,30 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what is
 - SWAP: Base Sepolia testnet demo through verified mock Aerodrome router
 - LEND: Base Sepolia testnet supply flow
 - BORROW: Base Sepolia testnet borrow flow
+- Base mainnet contracts deployed and verified
 
 **What's built but still gated**:
 
 - REPAY: Visible, audit-gated
 - WITHDRAW: Visible, audit-gated
-- Mainnet swap/lend/borrow/repay/withdraw
+- App-level mainnet swap/lend/borrow/repay/withdraw traffic
 
 **Contracts**:
 
 - Base Sepolia SherpaRouter: https://sepolia.basescan.org/address/0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032
 - Base Sepolia SherpaTreasury: https://sepolia.basescan.org/address/0x70A58169BF96587E55F500c4b5cb9d956Ef826ee
+- Base Mainnet SherpaRouter: https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b
+- Base Mainnet SherpaTreasury: https://basescan.org/address/0xF4e72beAA559E1815f4671e39EDb1295aD975918
 - Deployment artifact: `deployments/base-sepolia.json`
+- Mainnet deployment artifact: `deployments/base-mainnet.json`
 
-**What's blocking production writes**:
+**What's blocking app-level production writes**:
 
-- External smart contract audit
-- Mainnet deployment
-- Multisig ownership transfer
-- Production token allowlist configuration
+- Post-deployment smoke tests
+- Production monitoring and rollback verification
+- Mainnet app/write-flag rollout
 
-**Dependencies**: Stage 1 live, audit complete
+**Dependencies**: Stage 1 live, post-deploy verification complete
 
 ---
 
@@ -204,18 +207,18 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what is
 - Stage 1 intents: SEND, BALANCE, HISTORY, IDENTITY_LOOKUP
 - Aave positions read-only on Base mainnet
 - Stage 2 swap/lend/borrow demos on Base Sepolia
+- Stage 2 contracts deployed and verified on Base mainnet
 - Farcaster/Base Mini App
 - Telegram bot
 - Coinbase Smart Wallet integration
 - Sponsored gas
 - Read-only multi-chain and governance views
 
-### Pending Audit / Mainnet
+### Pending Post-Deploy Rollout
 
-- Stage 2 mainnet DeFi writes
+- Stage 2 app-level mainnet DeFi writes
 - Repay and withdraw execution
-- Multisig ownership transfer
-- Mainnet token allowlists
+- Production monitoring/rollback checks
 
 ### Pending Production Hardening
 

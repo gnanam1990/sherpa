@@ -2,8 +2,8 @@
 
 ## Current Status
 
-Stage 2 mainnet deployment is **prepared but not authorized**. Do not broadcast
-until every prerequisite below is complete and recorded in
+Stage 2 mainnet deployment is complete. The broadcast and verification record is
+in `deployments/base-mainnet.json` and
 `docs/sherpa/audit/stage-2/MAINNET_READINESS.md`.
 
 ## Prerequisites
@@ -161,8 +161,8 @@ cast call <TREASURY_ADDRESS> \
 
 | Contract | Address | Basescan |
 |---|---|---|
-| SherpaRouter | `<to be filled>` | `<link>` |
-| SherpaTreasury | `<to be filled>` | `<link>` |
+| SherpaRouter | `0x00bfef87DD352D48F8572BcfA52E57870B35DE8b` | https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b |
+| SherpaTreasury | `0xF4e72beAA559E1815f4671e39EDb1295aD975918` | https://basescan.org/address/0xF4e72beAA559E1815f4671e39EDb1295aD975918 |
 
 ## Contract Addresses (Base Sepolia)
 

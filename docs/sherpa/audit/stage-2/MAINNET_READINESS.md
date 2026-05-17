@@ -4,11 +4,11 @@ Date: 2026-05-17
 
 ## Decision
 
-**Status: GO for guarded Stage 2 contract broadcast after explicit operator approval.**
+**Status: BROADCAST COMPLETE.**
 
-Sherpa Stage 2 contracts are prepared for guarded Base mainnet deployment.
-Production app write-flags remain blocked until post-deployment smoke tests,
-monitoring, and rollback procedures are complete.
+Sherpa Stage 2 contracts are deployed and verified on Base mainnet. Production
+app write-flags remain blocked until post-deployment smoke tests, monitoring,
+and rollback procedures are complete.
 
 ## What is ready
 
@@ -21,6 +21,7 @@ monitoring, and rollback procedures are complete.
 | Mainnet env template | Prepared | `packages/contracts/.env.example` |
 | Mainnet deployment guide | Prepared | `docs/sherpa/audit/05_mainnet_deployment.md` |
 | Final reviewer acknowledgement | Recorded | Screenshot provided 2026-05-17 |
+| Base mainnet deployment | Complete | `deployments/base-mainnet.json` |
 
 ## Final reviewer acknowledgement
 
@@ -69,9 +70,27 @@ Latest mainnet dry-run:
 | Safe multisig | Ready | `0x53918b7635d2d2c2882b213E3321c03887C98D73` has code on Base mainnet. |
 | Deployer funding | Ready | `0.011 ETH` observed before final dry-run. |
 | Mainnet dry-run | Ready | Normal dry-run completed with no override and no broadcast. |
-| Explicit operator approval | Pending | Required exact phrase: `yes broadcast Stage 2 mainnet`. |
+| Explicit operator approval | Complete | User provided exact phrase: `yes broadcast Stage 2 mainnet`. |
+| Contract broadcast | Complete | Router and Treasury deployed, verified, allowlisted, and transferred to Safe. |
 | Production simulation/monitoring | Blocked for app flip | Confirm Tenderly, Sentry, Railway logs, and rollback ownership procedures before enabling production write traffic. |
 | Production app env | Blocked for app flip | Railway/Vercel must keep mainnet write flags disabled until post-deployment smoke tests pass. |
+
+## Mainnet deployment record
+
+| Item | Value |
+|---|---|
+| Network | Base mainnet (`8453`) |
+| Block | `46110699` |
+| SherpaRouter | `0x00bfef87DD352D48F8572BcfA52E57870B35DE8b` |
+| SherpaTreasury | `0xF4e72beAA559E1815f4671e39EDb1295aD975918` |
+| Safe owner | `0x53918b7635d2d2c2882b213E3321c03887C98D73` |
+| Router deploy tx | `0x2a583197ab5280c35d943dcf57a248ab87e09373d31d472fa6c9d32c3e82de80` |
+| Treasury deploy tx | `0x9b4ee6c4820f124c6bc21ef1e7182878e43ce31d349d0a392bd1c2220a694345` |
+| Allowlist tx | `0xb2c60eaf0717c728c10c2fe2cf06cf91c3ad8422e24a229df8ccabf9cfed0f6c` |
+| Router ownership tx | `0x4819954dc92a470fd9744996d39993e64c9ca14df19e51ac1942b5c2ab83ea77` |
+| Treasury ownership tx | `0x86d121b81d7f3a80f9a2992154530d3df1686fd4d758bf1ad24a81377e5d00b1` |
+| Verification | Both contracts verified on Basescan |
+| Deployment artifact | `deployments/base-mainnet.json` |
 
 ## Verified mainnet external addresses
 

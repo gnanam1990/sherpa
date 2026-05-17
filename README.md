@@ -15,12 +15,12 @@ Sherpa is a natural-language agent for the Base L2 blockchain. Users type intent
 
 ## Status
 
-Sherpa is live, but the safety boundary is deliberate: mainnet DeFi writes stay disabled until the Stage 2 contracts finish external audit and mainnet deployment.
+Sherpa is live, but the safety boundary is deliberate: mainnet DeFi writes stay disabled in the app until post-deployment smoke tests, monitoring, and rollback procedures are complete.
 
 | Stage       | Description                                           | Status                      | Details                                                                                                                                      |
 | ----------- | ----------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP               | ✅ Live (Base Sepolia)      | Web app, Smart Wallet, sponsored gas, identity resolution, balance/history                                                                   |
-| **Stage 2** | Positions + DeFi writes                               | 🟡 Read-only + testnet live | Aave positions are read-only on Base mainnet. Swap/lend/borrow demos are Base Sepolia only. Repay/withdraw/mainnet writes remain audit-gated |
+| **Stage 2** | Positions + DeFi writes                               | 🟡 Mainnet contracts deployed | Aave positions are read-only on Base mainnet. Stage 2 contracts are deployed and verified on Base mainnet. App write flags remain post-deploy gated |
 | **Stage 3** | Multi-surface (Farcaster/Base Mini App, Telegram bot) | ✅ Live                     | Mini App deployed at `sherpa-miniapp.vercel.app`; Telegram bot online at `@sherpaonbasebot`                                                  |
 | **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta surfaces live       | Alert/DCA/auto-repay setup screens exist. Production workers, notification delivery, and execution remain gated                              |
 | **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace       | 🔵 Partial                  | Multi-chain explorer is read-only. Session keys and strategy marketplace remain pending                                                      |
@@ -46,7 +46,7 @@ See [Stage Status](docs/sherpa/STAGE_STATUS.md) for the fuller breakdown.
 | Network      | Contracts                                                                                                                                                                                          | Status                                                 |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | Base Sepolia | [SherpaRouter](https://sepolia.basescan.org/address/0x7CfdE6a4D1A85236419d4343a3A466d0677A0056), [SherpaTreasury](https://sepolia.basescan.org/address/0x70A58169BF96587E55F500c4b5cb9d956Ef826ee) | Patched deployment 2026-05-17, verified, external reviews remediated |
-| Base Mainnet | SherpaRouter, SherpaTreasury                                                                                                                                                                       | Blocked pending final sign-off + multisig             |
+| Base Mainnet | [SherpaRouter](https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b), [SherpaTreasury](https://basescan.org/address/0xF4e72beAA559E1815f4671e39EDb1295aD975918)                  | Deployed 2026-05-17, verified, owned by Safe          |
 
 Base Sepolia uses a verified mock Aerodrome router for swap-path testing because Aerodrome does not provide an official Base Sepolia router. Deployment details are recorded in `deployments/base-sepolia.json`.
 
@@ -75,7 +75,7 @@ Sherpa does not have a token. Any SHERPA token claiming to be affiliated with th
 | Repay / withdraw          | Visible, but still audit-gated                               |
 | Alerts / DCA / auto-repay | Beta setup surfaces; production execution pending            |
 | Multi-chain / governance  | Read-only discovery views                                    |
-| Mainnet DeFi writes       | Not enabled until external audit + multisig + mainnet deploy |
+| Mainnet DeFi writes       | Contracts deployed; app write flags stay off until smoke tests + monitoring |
 
 ## Quick Start
 

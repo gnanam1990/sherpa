@@ -24,7 +24,7 @@
 - [ ] SHERPA_CHAIN=base-mainnet set in Railway
 - [ ] SHERPA_CHAIN=base-mainnet set in Vercel
 - [ ] Paymaster URL matches mainnet
-- [ ] Fee treasury address set
+- [x] Fee treasury address set
 - [x] `MAINNET_SAFE_OWNER_ADDRESS` set for contract deployment
 - [ ] Admin API key set
 
@@ -36,6 +36,15 @@
 - [ ] All 38 intents parse correctly
 
 ## Deployment Day
+
+### Step 0: Contracts
+1. [x] Deploy SherpaTreasury to Base mainnet
+2. [x] Deploy SherpaRouter to Base mainnet
+3. [x] Configure USDC/WETH/DAI allowlist
+4. [x] Transfer Router ownership to Safe
+5. [x] Transfer Treasury ownership to Safe
+6. [x] Verify both contracts on Basescan
+7. [x] Record deployment in `deployments/base-mainnet.json`
 
 ### Step 1: Railway API
 1. Set SHERPA_CHAIN=base-mainnet in Railway env

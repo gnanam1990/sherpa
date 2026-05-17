@@ -1,0 +1,82 @@
+{
+  "chainId": 8453,
+  "network": "base-mainnet",
+  "deploymentDate": "2026-05-17T09:40:21Z",
+  "deployer": "0xFf525D6940Ad0e308ed6eda443c792694353F9Da",
+  "safeOwner": "0x53918b7635d2d2c2882b213E3321c03887C98D73",
+  "deployerStartingBalanceWei": "11000000000000000",
+  "deployerRemainingBalanceWei": "10987369834727679",
+  "totalGasPaidWei": "12630165272321",
+  "blockNumber": 46110699,
+  "treasury": {
+    "address": "0xF4e72beAA559E1815f4671e39EDb1295aD975918",
+    "deployTx": "0x9b4ee6c4820f124c6bc21ef1e7182878e43ce31d349d0a392bd1c2220a694345",
+    "block": 46110699,
+    "gasUsed": 456445,
+    "verified": true,
+    "basescanUrl": "https://basescan.org/address/0xF4e72beAA559E1815f4671e39EDb1295aD975918"
+  },
+  "router": {
+    "address": "0x00bfef87DD352D48F8572BcfA52E57870B35DE8b",
+    "deployTx": "0x2a583197ab5280c35d943dcf57a248ab87e09373d31d472fa6c9d32c3e82de80",
+    "block": 46110699,
+    "gasUsed": 1671101,
+    "verified": true,
+    "basescanUrl": "https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b",
+    "constructorArgs": {
+      "owner": "0xFf525D6940Ad0e308ed6eda443c792694353F9Da",
+      "aerodromeRouter": "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43",
+      "aavePool": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5",
+      "treasury": "0xF4e72beAA559E1815f4671e39EDb1295aD975918"
+    }
+  },
+  "transactions": {
+    "allowlist": {
+      "tx": "0xb2c60eaf0717c728c10c2fe2cf06cf91c3ad8422e24a229df8ccabf9cfed0f6c",
+      "gasUsed": 100758
+    },
+    "transferRouterOwnership": {
+      "tx": "0x4819954dc92a470fd9744996d39993e64c9ca14df19e51ac1942b5c2ab83ea77",
+      "gasUsed": 28864
+    },
+    "transferTreasuryOwnership": {
+      "tx": "0x86d121b81d7f3a80f9a2992154530d3df1686fd4d758bf1ad24a81377e5d00b1",
+      "gasUsed": 28491
+    }
+  },
+  "externalDependencies": {
+    "aerodromeRouter": "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43",
+    "aavePool": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5"
+  },
+  "allowlist": {
+    "tokens": [
+      {
+        "symbol": "USDC",
+        "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "allowed": true
+      },
+      {
+        "symbol": "WETH",
+        "address": "0x4200000000000000000000000000000000000006",
+        "allowed": true
+      },
+      {
+        "symbol": "DAI",
+        "address": "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
+        "allowed": true
+      }
+    ],
+    "configured": true
+  },
+  "postDeployChecks": {
+    "routerOwner": "0x53918b7635d2d2c2882b213E3321c03887C98D73",
+    "treasuryOwner": "0x53918b7635d2d2c2882b213E3321c03887C98D73",
+    "sherpaTreasury": "0xF4e72beAA559E1815f4671e39EDb1295aD975918",
+    "aerodromeRouter": "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43",
+    "aavePool": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5",
+    "feeBps": "10",
+    "minHealthFactor": "1500000000000000000",
+    "minWithdrawHealthFactor": "1500000000000000000",
+    "paused": false
+  }
+}
