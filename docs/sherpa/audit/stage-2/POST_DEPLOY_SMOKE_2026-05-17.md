@@ -2,7 +2,7 @@
 
 Date: 2026-05-17
 Network: Base mainnet (`8453`)
-Run mode: non-destructive contract and owner-control verification
+Run mode: contract verification, owner-control simulation, and tiny mainnet write smoke
 
 ## Contracts
 
@@ -54,19 +54,35 @@ The following checks used `eth_call` only.
 | `supply(nonAllowedToken, 1)` reverts | PASS |
 | `supply(USDC, 0)` reverts | PASS |
 
-## Not executed
+## Tiny write smoke
 
-Tiny mainnet write tests were not executed in this run because no dedicated
-funded disposable smoke wallet was configured. The deployer wallet had ETH but
-zero USDC/WETH/DAI and should not be reused for product smoke activity.
+Disposable smoke wallet: `0x8cEb9816e0fc666050d44216aE19690e02676BE1`
 
-Before enabling app-level mainnet writes, run:
+| Step | Hash | Status | Gas |
+|---|---|---|---:|
+| Fund disposable wallet with `0.001 ETH` | `0x356f3348edc6c3c416bdc11d834857e2126041061a9c78ad650720c588692f74` | success | 21,000 |
+| Wrap `0.0002 ETH` to WETH | `0xdccd9125929fd692c5e64516318d0aa3a189847a288192ffc034c888a1b81852` | success | 44,866 |
+| Approve Router for WETH supply | `0x93072e03e4991e91e4d933dcd48092d6b0c9310f4a036c80fb9b3ce0069dde28` | success | 46,007 |
+| Router `supply(WETH, 0.00005)` | `0x753ca05446bb7407fc7c86d2d368908e9d35d4da756cdff41b2e52c854902bd5` | success | 212,450 |
+| Approve Router for aWETH withdraw | `0x6fb70886f8ed6644f554546e039f0d95e0d95cb7976d7ea6ca6e6a977f36294d` | success | 51,373 |
+| Router `withdraw(WETH, 0.00005)` | `0xe8cbc0cf8d3be5d2edc3d410e56c16d4802f40ce200e22498a81783265e0886d` | success | 275,372 |
+| Approve Router for WETH swap | `0x91b69b4854897ee28fd03f8a0fc50386ef96a227160c425eec5439398c56aa90` | success | 46,007 |
+| Router `swap(WETH -> USDC, 0.00005)` | `0xcd63bdd502fb36b2dab99a8b84425c082878d8e31d343d3a4f0d8ba2823db962` | success | 272,825 |
 
-1. A tiny swap through SherpaRouter with a disposable wallet.
-2. A tiny Aave supply through SherpaRouter with the same disposable wallet.
-3. A health-factor read after supply.
-4. Treasury fee balance verification after swap.
-5. Railway/Vercel/Sentry log checks during each write.
+## Tiny write outcomes
 
-Production flags remain gated until the write smoke tests and monitoring checks
-are complete.
+| Check | Result |
+|---|---|
+| WETH after wrap | `200000000000000` |
+| Aave position after supply | Collateral `10962094`, debt `0`, health factor max uint |
+| aWETH dust after withdraw | `410270` |
+| Aave position after withdraw | Collateral `0`, debt `0`, health factor max uint |
+| WETH after swap | `150000000000000` |
+| USDC received from swap | `108985` |
+| Treasury WETH fee after swap | `50000000000` |
+
+## Remaining rollout gates
+
+The contract-level smoke passed, including real tiny writes. Production app flags
+remain gated until Railway/Vercel/Sentry monitoring is watched during an
+end-to-end app write from a private beta wallet.
