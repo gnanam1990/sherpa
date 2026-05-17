@@ -36,7 +36,12 @@ type MessageBubbleProps = {
   onConfirmMessage?: (messageId: string) => void;
 };
 
-const BASESCAN_TX_PREFIX = 'https://sepolia.basescan.org/tx/';
+const EXPLORER_TX_PREFIX: Record<string, string> = {
+  '0x2105': 'https://basescan.org/tx/',
+  '8453': 'https://basescan.org/tx/',
+  '0x14a34': 'https://sepolia.basescan.org/tx/',
+  '84532': 'https://sepolia.basescan.org/tx/',
+};
 
 function cx(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -87,7 +92,10 @@ function ActionSummaryView({
   summary: ActionSummary;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const txHref = summary.txHash ? `${BASESCAN_TX_PREFIX}${summary.txHash}` : undefined;
+  const explorerPrefix =
+    (card?.batch?.chainId && EXPLORER_TX_PREFIX[card.batch.chainId.toLowerCase()]) ??
+    EXPLORER_TX_PREFIX['0x14a34']!;
+  const txHref = summary.txHash ? `${explorerPrefix}${summary.txHash}` : undefined;
   const compactContent = (
     <>
       <span className="min-w-0">

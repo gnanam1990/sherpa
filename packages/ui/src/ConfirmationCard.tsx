@@ -57,7 +57,13 @@ type SuccessCardProps = ResultCardProps & {
   txHash?: string;
 };
 
-const BASESCAN_TX_PREFIX = 'https://sepolia.basescan.org/tx/';
+const CHAIN_DISPLAY: Record<string, { explorerTxPrefix: string; name: string }> = {
+  '0x2105': { explorerTxPrefix: 'https://basescan.org/tx/', name: 'Base' },
+  '8453': { explorerTxPrefix: 'https://basescan.org/tx/', name: 'Base' },
+  '0x14a34': { explorerTxPrefix: 'https://sepolia.basescan.org/tx/', name: 'Base Sepolia' },
+  '84532': { explorerTxPrefix: 'https://sepolia.basescan.org/tx/', name: 'Base Sepolia' },
+};
+const BASESCAN_TX_PREFIX = CHAIN_DISPLAY['0x14a34']!.explorerTxPrefix;
 
 const intentVerb: Record<string, string> = {
   SEND: 'Send',
@@ -105,6 +111,11 @@ function formatEta(ms: number): string {
 
 function isSponsored(card: SerializedConfirmationCardProps): boolean {
   return /sponsored/i.test(card.gas_display) || !!card.batch?.capabilities?.paymasterService;
+}
+
+function chainDisplayName(card: SerializedConfirmationCardProps): string {
+  if (!card.batch?.chainId) return 'Base Sepolia';
+  return CHAIN_DISPLAY[card.batch.chainId.toLowerCase()]?.name ?? `Chain ${card.batch.chainId}`;
 }
 
 function normalizeRisk(indicator: SerializedRiskIndicator) {
@@ -194,7 +205,7 @@ export function ConfirmationCard({
           <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-sherpa-muted">
             Network
           </dt>
-          <dd className="mt-1 text-sherpa-fg">Base Sepolia</dd>
+          <dd className="mt-1 text-sherpa-fg">{chainDisplayName(card)}</dd>
         </div>
         {card.recipient_display ? (
           <div className="col-span-2">

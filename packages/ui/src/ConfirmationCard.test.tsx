@@ -111,11 +111,33 @@ describe('ConfirmationCard', () => {
     render(<ConfirmationCard card={makeCard('SEND')} onConfirm={vi.fn()} onCancel={vi.fn()} />);
 
     expect(screen.getByRole('heading', { name: 'Send 5 USDC' })).toBeTruthy();
+    expect(screen.getByText('Base Sepolia')).toBeTruthy();
     expect(screen.getByText('alice.base.eth')).toBeTruthy();
     expect(screen.getByText('basename')).toBeTruthy();
     expect(screen.getByText('basename: alice.base.eth')).toBeTruthy();
     expect(screen.getByText('New recipient')).toBeTruthy();
     expect(screen.getByText('Sponsored')).toBeTruthy();
+  });
+
+  it('renders Base mainnet when the batch targets chain 8453', () => {
+    render(
+      <ConfirmationCard
+        card={{
+          ...makeCard('BUY'),
+          batch: {
+            version: '1.0',
+            chainId: '0x2105',
+            calls: [{ to: baseStep.to, data: baseStep.data, value: baseStep.value }],
+          },
+          gas_display: 'user pays',
+        }}
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Base')).toBeTruthy();
+    expect(screen.queryByText('Base Sepolia')).toBeNull();
   });
 
   it('renders all multi-step plan rows without collapse', () => {

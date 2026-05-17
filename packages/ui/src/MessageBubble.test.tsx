@@ -108,6 +108,23 @@ describe('MessageBubble', () => {
     );
   });
 
+  it('links successful Base mainnet actions to basescan.org', () => {
+    const message = actionMessage();
+    if (message.content.kind !== 'action' || !message.content.card) {
+      throw new Error('actionMessage fixture must include a card');
+    }
+    message.content.card.batch = {
+      version: '1.0',
+      chainId: '0x2105',
+      calls: [{ to: '0x00bfef87DD352D48F8572BcfA52E57870B35DE8b', data: '0x1234', value: '0x0' }],
+    };
+    render(<MessageBubble message={message} now={now} />);
+
+    expect(screen.getByRole('link', { name: /view on basescan/i }).getAttribute('href')).toBe(
+      `https://basescan.org/tx/${txHash}`,
+    );
+  });
+
   it('expands a compact action summary inline with the full ConfirmationCard', () => {
     render(<MessageBubble message={actionMessage()} now={now} />);
 
