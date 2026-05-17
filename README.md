@@ -11,30 +11,42 @@
 
 Type plain English. Sherpa does it onchain.
 
-Sherpa is a natural-language operating system for the Base L2 blockchain. Users type intent in English; Sherpa parses, validates, simulates, and executes onchain transactions via Coinbase Smart Wallet with sponsored gas.
+Sherpa is a natural-language agent for the Base L2 blockchain. Users type intent in English; Sherpa parses and validates the request, then either executes supported Base Sepolia actions through Coinbase Smart Wallet with sponsored gas, returns safe read-only data, or clearly marks unaudited flows as testnet/audit-gated.
 
 ## Status
 
-| Stage | Description | Status | Details |
-|---|---|---|---|
-| **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP | ✅ Live (Base Sepolia) | [Stage Status](docs/sherpa/STAGE_STATUS.md) |
-| **Stage 2** | DeFi (SWAP, LEND, BORROW, STAKE, BRIDGE, LP) | 🟡 Base Sepolia Deployed | Testnet audit target deployed 2026-05-16; gated behind audit + mainnet deploy |
-| **Stage 3** | Multi-surface (Farcaster Mini App, Telegram bot) | 🟡 Code Complete | Pending platform account setup |
-| **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY) | 🔵 In Progress | Scheduler code present, not in production |
-| **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace | ⚪ Planned | Scaffolded |
-| **Stage 6** | Portfolio Dashboard, Notifications, Fee Taker | ⚪ Planned | Scaffolded |
-| **Stage 7** | Governance, Social, Automation Deep Dive | ⚪ Planned | Scaffolded |
-| **Stage 8** | Developer API, Cross-chain, Mobile | ⚪ Planned | Scaffolded |
-| **Stage 9** | Risk & Compliance | ⚪ Planned | Scaffolded |
+Sherpa is live, but the safety boundary is deliberate: mainnet DeFi writes stay disabled until the Stage 2 contracts finish external audit and mainnet deployment.
 
-**Stage 1 web is live on Base Sepolia.** Future stages are intentionally gated behind production config, audits, or separate deployments for safety.
+| Stage       | Description                                           | Status                      | Details                                                                                                                                      |
+| ----------- | ----------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP               | ✅ Live (Base Sepolia)      | Web app, Smart Wallet, sponsored gas, identity resolution, balance/history                                                                   |
+| **Stage 2** | Positions + DeFi writes                               | 🟡 Read-only + testnet live | Aave positions are read-only on Base mainnet. Swap/lend/borrow demos are Base Sepolia only. Repay/withdraw/mainnet writes remain audit-gated |
+| **Stage 3** | Multi-surface (Farcaster/Base Mini App, Telegram bot) | ✅ Live                     | Mini App deployed at `sherpa-miniapp.vercel.app`; Telegram bot online at `@sherpaonbasebot`                                                  |
+| **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta surfaces live       | Alert/DCA/auto-repay setup screens exist. Production workers, notification delivery, and execution remain gated                              |
+| **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace       | 🔵 Partial                  | Multi-chain explorer is read-only. Session keys and strategy marketplace remain pending                                                      |
+| **Stage 6** | Portfolio Dashboard, Notifications, Fee Taker         | 🔵 Partial                  | Portfolio/notification scaffolds exist. Production notification channels and fee taker remain pending                                        |
+| **Stage 7** | Governance, Social, Automation Deep Dive              | 🔵 Partial                  | Governance proposal browser is read-only. Voting/delegation/social writes remain pending                                                     |
+| **Stage 8** | Developer API, Cross-chain, Mobile                    | ⚪ Planned                  | Scaffolded                                                                                                                                   |
+| **Stage 9** | Risk & Compliance                                     | ⚪ Planned                  | Scaffolded                                                                                                                                   |
+
+See [Stage Status](docs/sherpa/STAGE_STATUS.md) for the fuller breakdown.
+
+## Live Surfaces
+
+| Surface                 | URL                                         | Status                                             |
+| ----------------------- | ------------------------------------------- | -------------------------------------------------- |
+| Web app                 | https://sherpa-web.vercel.app               | Live                                               |
+| API                     | https://sherpaapi-production.up.railway.app | Live behind the web app                            |
+| Farcaster/Base Mini App | https://sherpa-miniapp.vercel.app           | Live app surface; discovery/listing polish ongoing |
+| Farcaster profile       | https://farcaster.xyz/sherpaonbase          | Live                                               |
+| Telegram bot            | https://t.me/sherpaonbasebot                | Live on Railway                                    |
 
 ## Deployment
 
-| Network | Contracts | Status |
-|---|---|---|
+| Network      | Contracts                                                                                                                                                                                          | Status                                                 |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | Base Sepolia | [SherpaRouter](https://sepolia.basescan.org/address/0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032), [SherpaTreasury](https://sepolia.basescan.org/address/0x70A58169BF96587E55F500c4b5cb9d956Ef826ee) | Deployed 2026-05-16, verified, pending Code4rena audit |
-| Base Mainnet | SherpaRouter, SherpaTreasury | Pending audit |
+| Base Mainnet | SherpaRouter, SherpaTreasury                                                                                                                                                                       | Pending audit                                          |
 
 Base Sepolia uses a verified mock Aerodrome router for swap-path testing because Aerodrome does not provide an official Base Sepolia router. Deployment details are recorded in `deployments/base-sepolia.json`.
 
@@ -53,16 +65,17 @@ Sherpa does not have a token. Any SHERPA token claiming to be affiliated with th
 | HISTORY         | `show my recent transactions`     |
 | IDENTITY_LOOKUP | `who is vitalik.base.eth`         |
 
-## Launch Links
+## Current Feature Boundary
 
-| Item                  | Status                                      |
-| --------------------- | ------------------------------------------- |
-| Web URL               | https://sherpa-web.vercel.app               |
-| API URL               | Railway deployment behind the web app proxy |
-| First public smoke tx | Verified on Base Sepolia                    |
-| Demo video            | Pending live URL smoke test                 |
-| Farcaster Mini App    | Deployment pending account association      |
-| Telegram bot          | Deployment pending BotFather token          |
+| Feature                   | Current behavior                                             |
+| ------------------------- | ------------------------------------------------------------ |
+| Send tokens               | Live on Base Sepolia with sponsored gas                      |
+| Aave positions            | Read-only live against Base mainnet Aave V3                  |
+| Swap / lend / borrow      | Testnet-only demos on Base Sepolia                           |
+| Repay / withdraw          | Visible, but still audit-gated                               |
+| Alerts / DCA / auto-repay | Beta setup surfaces; production execution pending            |
+| Multi-chain / governance  | Read-only discovery views                                    |
+| Mainnet DeFi writes       | Not enabled until external audit + multisig + mainnet deploy |
 
 ## Quick Start
 
@@ -88,29 +101,32 @@ See `apps/api/.env.example` and `apps/web/.env.example`.
 ## Documentation
 
 ### Audit & Launch
-| Document | Description |
-|---|---|
+
+| Document                                                             | Description                                       |
+| -------------------------------------------------------------------- | ------------------------------------------------- |
 | [Audit Firm Selection](docs/sherpa/audit/01_audit_firm_selection.md) | Code4rena vs Spearbit vs Trail of Bits comparison |
-| [Audit Scope](docs/sherpa/audit/02_audit_scope_document.md) | Contracts and functions in scope |
-| [Threat Model](docs/sherpa/audit/03_threat_model.md) | Security threat analysis |
-| [Known Issues](docs/sherpa/audit/04_known_issues.md) | Static analysis findings and accepted risks |
-| [Mainnet Deployment](docs/sherpa/audit/05_mainnet_deployment.md) | Step-by-step deployment guide |
-| [Safe Multisig Setup](docs/sherpa/audit/06_safe_multisig_setup.md) | 2-of-3 Safe configuration |
-| [Smoke Testing](docs/sherpa/audit/07_smoke_testing.md) | Post-deployment verification |
-| [Internal Beta](docs/sherpa/audit/08_internal_beta.md) | Beta user onboarding and feedback |
+| [Audit Scope](docs/sherpa/audit/02_audit_scope_document.md)          | Contracts and functions in scope                  |
+| [Threat Model](docs/sherpa/audit/03_threat_model.md)                 | Security threat analysis                          |
+| [Known Issues](docs/sherpa/audit/04_known_issues.md)                 | Static analysis findings and accepted risks       |
+| [Mainnet Deployment](docs/sherpa/audit/05_mainnet_deployment.md)     | Step-by-step deployment guide                     |
+| [Safe Multisig Setup](docs/sherpa/audit/06_safe_multisig_setup.md)   | 2-of-3 Safe configuration                         |
+| [Smoke Testing](docs/sherpa/audit/07_smoke_testing.md)               | Post-deployment verification                      |
+| [Internal Beta](docs/sherpa/audit/08_internal_beta.md)               | Beta user onboarding and feedback                 |
 
 ### Press & Launch
-| Document | Description |
-|---|---|
-| [Press Kit](docs/sherpa/press/README.md) | Project description, screenshots, links |
-| [Elevator Pitch](docs/sherpa/press/ELEVATOR_PITCH.md) | 30-second pitch |
-| [Technical Overview](docs/sherpa/press/TECHNICAL_OVERVIEW.md) | Architecture for technical audience |
-| [Announcement](docs/sherpa/launch/ANNOUNCEMENT.md) | Launch announcement draft |
-| [Changelog](docs/sherpa/launch/CHANGELOG.md) | What's new in this release |
-| [Migration Guide](docs/sherpa/launch/MIGRATION_GUIDE.md) | For existing users |
-| [Stage Status](docs/sherpa/STAGE_STATUS.md) | Status of each development stage |
+
+| Document                                                      | Description                             |
+| ------------------------------------------------------------- | --------------------------------------- |
+| [Press Kit](docs/sherpa/press/README.md)                      | Project description, screenshots, links |
+| [Elevator Pitch](docs/sherpa/press/ELEVATOR_PITCH.md)         | 30-second pitch                         |
+| [Technical Overview](docs/sherpa/press/TECHNICAL_OVERVIEW.md) | Architecture for technical audience     |
+| [Announcement](docs/sherpa/launch/ANNOUNCEMENT.md)            | Launch announcement draft               |
+| [Changelog](docs/sherpa/launch/CHANGELOG.md)                  | What's new in this release              |
+| [Migration Guide](docs/sherpa/launch/MIGRATION_GUIDE.md)      | For existing users                      |
+| [Stage Status](docs/sherpa/STAGE_STATUS.md)                   | Status of each development stage        |
 
 ### Existing
+
 - [Deployment Checklist](docs/sherpa/DEPLOYMENT_CHECKLIST.md)
 - [Audit Preparation](docs/sherpa/AUDIT_PREPARATION.md)
 - [Threat Model](docs/sherpa/THREAT_MODEL.md)
@@ -136,7 +152,7 @@ sherpa/
 │   ├── identity/     Farcaster + ENS + Basenames
 │   ├── logger/       Structured logging
 │   └── ui/           Shared components
-└── scripts/db/       14 migrations
+└── scripts/db/       Database migrations
 ```
 
 ## License

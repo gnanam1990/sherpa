@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-type FeatureStatus = 'live' | 'read-only' | 'testnet' | 'beta' | 'setup';
+type FeatureStatus = 'live' | 'read-only' | 'testnet' | 'beta';
 
 const FEATURES: Array<{
   name: string;
@@ -57,8 +57,8 @@ const FEATURES: Array<{
   },
   {
     name: 'Telegram bot',
-    status: 'setup',
-    description: 'Bot service is built. Needs TELEGRAM_BOT_TOKEN to deploy.',
+    status: 'live',
+    description: 'Chat with @sherpaonbasebot; signing routes through web confirmation.',
     href: '/telegram',
   },
   {
@@ -91,10 +91,6 @@ const STATUS_CONFIG: Record<FeatureStatus, { label: string; classes: string }> =
   beta: {
     label: 'Beta live',
     classes: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
-  },
-  setup: {
-    label: 'Setup needed',
-    classes: 'border-violet-400/30 bg-violet-400/10 text-violet-300',
   },
 };
 

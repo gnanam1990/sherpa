@@ -148,7 +148,9 @@ export function AlertsPanel() {
         }),
       );
       await loadRules();
-      setStatus('Alert saved. Delivery worker stays beta until notification credentials are configured.');
+      setStatus(
+        'Alert saved. Delivery worker stays beta until notification credentials are configured.',
+      );
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
     }
@@ -163,19 +165,31 @@ export function AlertsPanel() {
       {!canUse ? <WalletRequired /> : null}
       <form className={cardClass} onSubmit={createRule}>
         <div className="grid gap-3 sm:grid-cols-4">
-          <select className={fieldClass} value={conditionType} onChange={(e) => setConditionType(e.target.value)}>
+          <select
+            className={fieldClass}
+            value={conditionType}
+            onChange={(e) => setConditionType(e.target.value)}
+          >
             <option value="price">Price</option>
             <option value="balance">Balance</option>
             <option value="health-factor">Health factor</option>
           </select>
           <input className={fieldClass} value={asset} onChange={(e) => setAsset(e.target.value)} />
-          <select className={fieldClass} value={comparison} onChange={(e) => setComparison(e.target.value)}>
+          <select
+            className={fieldClass}
+            value={comparison}
+            onChange={(e) => setComparison(e.target.value)}
+          >
             <option value=">">{'>'}</option>
             <option value="<">{'<'}</option>
             <option value=">=">{'>='}</option>
             <option value="<=">{'<='}</option>
           </select>
-          <input className={fieldClass} value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+          <input
+            className={fieldClass}
+            value={threshold}
+            onChange={(e) => setThreshold(e.target.value)}
+          />
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-xs text-sherpa-muted">{status}</p>
@@ -213,7 +227,9 @@ export function DCAPanel() {
   }, [address]);
 
   useEffect(() => {
-    void loadSchedules().catch((err) => setStatus(err instanceof Error ? err.message : String(err)));
+    void loadSchedules().catch((err) =>
+      setStatus(err instanceof Error ? err.message : String(err)),
+    );
   }, [loadSchedules]);
 
   async function createSchedule(event: FormEvent) {
@@ -251,9 +267,21 @@ export function DCAPanel() {
       {!canUse ? <WalletRequired /> : null}
       <form className={cardClass} onSubmit={createSchedule}>
         <div className="grid gap-3 sm:grid-cols-3">
-          <input className={fieldClass} value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <input className={fieldClass} value={toAsset} onChange={(e) => setToAsset(e.target.value)} />
-          <select className={fieldClass} value={frequency} onChange={(e) => setFrequency(e.target.value)}>
+          <input
+            className={fieldClass}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+          <input
+            className={fieldClass}
+            value={toAsset}
+            onChange={(e) => setToAsset(e.target.value)}
+          />
+          <select
+            className={fieldClass}
+            value={frequency}
+            onChange={(e) => setFrequency(e.target.value)}
+          >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="biweekly">Biweekly</option>
@@ -291,7 +319,9 @@ export function AutoRepayPanel() {
 
   const loadRules = useCallback(async () => {
     if (!address) return;
-    const data = await readJson<{ rules: AutoRepayRule[] }>(await fetch(`/api/auto-repay/${address}`));
+    const data = await readJson<{ rules: AutoRepayRule[] }>(
+      await fetch(`/api/auto-repay/${address}`),
+    );
     setRules(data.rules);
   }, [address]);
 
@@ -334,9 +364,21 @@ export function AutoRepayPanel() {
       {!canUse ? <WalletRequired /> : null}
       <form className={cardClass} onSubmit={createRule}>
         <div className="grid gap-3 sm:grid-cols-3">
-          <input className={fieldClass} value={triggerHF} onChange={(e) => setTriggerHF(e.target.value)} />
-          <input className={fieldClass} value={targetHF} onChange={(e) => setTargetHF(e.target.value)} />
-          <input className={fieldClass} value={maxRepay} onChange={(e) => setMaxRepay(e.target.value)} />
+          <input
+            className={fieldClass}
+            value={triggerHF}
+            onChange={(e) => setTriggerHF(e.target.value)}
+          />
+          <input
+            className={fieldClass}
+            value={targetHF}
+            onChange={(e) => setTargetHF(e.target.value)}
+          />
+          <input
+            className={fieldClass}
+            value={maxRepay}
+            onChange={(e) => setMaxRepay(e.target.value)}
+          />
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-xs text-sherpa-muted">{status}</p>
@@ -380,7 +422,10 @@ function RuleList({
       ) : (
         <div className="space-y-2">
           {items.map((item) => (
-            <div className="rounded-md border border-sherpa-surface2 bg-sherpa-bg p-3" key={item.id}>
+            <div
+              className="rounded-md border border-sherpa-surface2 bg-sherpa-bg p-3"
+              key={item.id}
+            >
               <div className="font-medium">{item.title}</div>
               <div className="mt-1 text-xs text-sherpa-muted">{item.meta}</div>
               <div className="mt-2 font-mono text-xs text-sherpa-muted">{item.id}</div>
@@ -397,13 +442,15 @@ export function MultiChainPanel() {
   const [status, setStatus] = useState('Loading chains...');
 
   useEffect(() => {
-    void fetch('/api/chains').then((res) => readJson<{ chains: ChainInfo[] }>(res)).then(
-      (data) => {
-        setChains(data.chains);
-        setStatus('Read-only chain registry loaded.');
-      },
-      (err) => setStatus(err instanceof Error ? err.message : String(err)),
-    );
+    void fetch('/api/chains')
+      .then((res) => readJson<{ chains: ChainInfo[] }>(res))
+      .then(
+        (data) => {
+          setChains(data.chains);
+          setStatus('Read-only chain registry loaded.');
+        },
+        (err) => setStatus(err instanceof Error ? err.message : String(err)),
+      );
   }, []);
 
   return (
@@ -424,10 +471,21 @@ export function MultiChainPanel() {
                 {chain.chainId}
               </span>
             </div>
-            <p className="mt-2 text-xs text-sherpa-muted">DEX: {chain.dex?.name ?? 'not configured'}</p>
-            <p className="mt-1 text-xs text-sherpa-muted">Aave pool: {chain.aave?.poolAddress ?? 'none'}</p>
-            <p className="mt-1 text-xs text-sherpa-muted">Bridges: {chain.bridgeProtocols.join(', ')}</p>
-            <a className="mt-3 inline-block text-sm text-sherpa-blue hover:underline" href={chain.explorerUrl} rel="noopener noreferrer" target="_blank">
+            <p className="mt-2 text-xs text-sherpa-muted">
+              DEX: {chain.dex?.name ?? 'not configured'}
+            </p>
+            <p className="mt-1 text-xs text-sherpa-muted">
+              Aave pool: {chain.aave?.poolAddress ?? 'none'}
+            </p>
+            <p className="mt-1 text-xs text-sherpa-muted">
+              Bridges: {chain.bridgeProtocols.join(', ')}
+            </p>
+            <a
+              className="mt-3 inline-block text-sm text-sherpa-blue hover:underline"
+              href={chain.explorerUrl}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
               Explorer
             </a>
           </div>
@@ -444,19 +502,22 @@ export function GovernancePanel() {
   useEffect(() => {
     void fetch('/api/governance/proposals?source=snapshot')
       .then((res) =>
-        readJson<{ proposals: GovernanceProposal[]; errors?: Array<{ source: string; error: string }> }>(res),
+        readJson<{
+          proposals: GovernanceProposal[];
+          errors?: Array<{ source: string; error: string }>;
+        }>(res),
       )
       .then(
-      (data) => {
-        setProposals(data.proposals.slice(0, 12));
-        setStatus(
-          data.errors && data.errors.length > 0
-            ? `Loaded with ${data.errors.length} upstream warning(s).`
-            : 'Snapshot proposal feed loaded.',
-        );
-      },
-      (err) => setStatus(err instanceof Error ? err.message : String(err)),
-    );
+        (data) => {
+          setProposals(data.proposals.slice(0, 12));
+          setStatus(
+            data.errors && data.errors.length > 0
+              ? `Loaded with ${data.errors.length} upstream warning(s).`
+              : 'Snapshot proposal feed loaded.',
+          );
+        },
+        (err) => setStatus(err instanceof Error ? err.message : String(err)),
+      );
   }, []);
 
   return (
@@ -471,7 +532,9 @@ export function GovernancePanel() {
       <div className="space-y-3">
         {proposals.length === 0 ? (
           <div className={cardClass}>
-            <p className="text-sm text-sherpa-muted">No proposals loaded from the selected source.</p>
+            <p className="text-sm text-sherpa-muted">
+              No proposals loaded from the selected source.
+            </p>
           </div>
         ) : (
           proposals.map((proposal) => (
@@ -479,12 +542,18 @@ export function GovernancePanel() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="font-medium">{proposal.title ?? proposal.id}</h2>
                 <span className="rounded-full border border-sherpa-surface2 px-2 py-0.5 text-xs text-sherpa-muted">
-                  {proposal.source ?? 'governance'} · {proposal.state ?? proposal.status ?? 'unknown'}
+                  {proposal.source ?? 'governance'} ·{' '}
+                  {proposal.state ?? proposal.status ?? 'unknown'}
                 </span>
               </div>
               <p className="mt-2 font-mono text-xs text-sherpa-muted">{proposal.id}</p>
               {proposal.link ? (
-                <a className="mt-3 inline-block text-sm text-sherpa-blue hover:underline" href={proposal.link} rel="noopener noreferrer" target="_blank">
+                <a
+                  className="mt-3 inline-block text-sm text-sherpa-blue hover:underline"
+                  href={proposal.link}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
                   Open proposal
                 </a>
               ) : null}
@@ -499,27 +568,49 @@ export function GovernancePanel() {
 export function TelegramPanel() {
   return (
     <SetupShell
-      description="The Telegram bot code is present and tested, but production needs a Telegram bot token and a separate Railway service. Farcaster/Base App surfaces are already live."
-      eyebrow="Setup needed"
+      description="The Telegram bot is deployed on Railway and connected to the production Sherpa API. It parses chat commands and routes signing through the web confirmation flow."
+      eyebrow="Live"
       title="Telegram bot"
     >
       <div className={cardClass}>
-        <h2 className="font-medium">Deployment blocker</h2>
+        <h2 className="font-medium">Bot is online</h2>
         <p className="mt-2 text-sm leading-6 text-sherpa-muted">
-          Add <span className="font-mono text-sherpa-fg">TELEGRAM_BOT_TOKEN</span> from BotFather, deploy
-          <span className="font-mono text-sherpa-fg"> apps/telegram-bot</span> as its own Railway service,
-          then this card can flip to live.
+          Open <span className="font-mono text-sherpa-fg">@sherpaonbasebot</span> in Telegram to use
+          Sherpa from chat. Transaction signing still happens through the web app, so wallet
+          approval stays explicit.
         </p>
         <p className="mt-2 text-sm leading-6 text-sherpa-muted">
-          Required bot env: <span className="font-mono text-sherpa-fg">SHERPA_API_BASE=https://sherpaapi-production.up.railway.app</span>,
-          <span className="font-mono text-sherpa-fg"> SHERPA_WEB_BASE=https://sherpa-web.vercel.app</span>, and your numeric
-          <span className="font-mono text-sherpa-fg"> ADMIN_TG_USER_IDS</span>. Linking also requires the API service database to be enabled.
+          The bot service runs from{' '}
+          <span className="font-mono text-sherpa-fg">apps/telegram-bot</span> and points at
+          <span className="font-mono text-sherpa-fg">
+            {' '}
+            https://sherpaapi-production.up.railway.app
+          </span>
+          . Keep bot token rotation and Railway monitoring on the operations checklist.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <a className={ghostButtonClass} href="https://sherpa-miniapp.vercel.app" rel="noopener noreferrer" target="_blank">
+          <a
+            className={ghostButtonClass}
+            href="https://t.me/sherpaonbasebot"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            Open Telegram bot
+          </a>
+          <a
+            className={ghostButtonClass}
+            href="https://sherpa-miniapp.vercel.app"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             Open Mini App
           </a>
-          <a className={ghostButtonClass} href="https://farcaster.xyz/sherpaonbase" rel="noopener noreferrer" target="_blank">
+          <a
+            className={ghostButtonClass}
+            href="https://farcaster.xyz/sherpaonbase"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             Farcaster profile
           </a>
         </div>
