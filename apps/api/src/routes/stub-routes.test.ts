@@ -82,6 +82,74 @@ describe('Stub ID routes return 501 not fake success (P1-3)', () => {
       );
     });
 
+    test('POST /api/notifications/send dispatches Farcaster through Mini App token URL', async () => {
+      const app = await makeApp(async (fastify) =>
+        notificationRoutes(fastify, {
+          farcasterTokenResolver: async (fid) =>
+            fid === 976779
+              ? {
+                  token: 'fc-token',
+                  url: 'https://api.farcaster.xyz/v1/frame-notifications',
+                }
+              : null,
+          farcasterTargetUrl: 'https://sherpa-miniapp.vercel.app',
+        }),
+      );
+      const fetchMock = vi.fn(async () => new Response(
+        JSON.stringify({ result: { successfulTokens: ['fc-token'] } }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ));
+      vi.stubGlobal('fetch', fetchMock);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/notifications/send',
+        payload: {
+          userAddress: '0x4234567890123456789012345678901234567890',
+          channel: 'farcaster',
+          recipient: '976779',
+          title: 'Sherpa alert',
+          body: 'Farcaster notification route uses the Mini App token endpoint.',
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).ok).toBe(true);
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://api.farcaster.xyz/v1/frame-notifications',
+        expect.objectContaining({ method: 'POST' }),
+      );
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      const sent = JSON.parse(String(init.body));
+      expect(sent.tokens).toEqual(['fc-token']);
+      expect(sent.targetUrl).toBe('https://sherpa-miniapp.vercel.app');
+    });
+
+    test('POST /api/notifications/send fails Farcaster explicitly when no Mini App token exists', async () => {
+      const app = await makeApp(async (fastify) =>
+        notificationRoutes(fastify, {
+          farcasterTokenResolver: async () => null,
+        }),
+      );
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/notifications/send',
+        payload: {
+          userAddress: '0x5234567890123456789012345678901234567890',
+          channel: 'farcaster',
+          recipient: '976779',
+          title: 'Sherpa alert',
+          body: 'Farcaster should fail until token opt-in is complete.',
+        },
+      });
+
+      expect(res.statusCode).toBe(503);
+      const body = JSON.parse(res.body);
+      expect(body.ok).toBe(false);
+      expect(body.error).toBe('missing farcaster notification token');
+    });
+
     test('POST /api/notifications/send returns explicit channel gaps', async () => {
       const app = await makeApp(notificationRoutes);
       const res = await app.inject({

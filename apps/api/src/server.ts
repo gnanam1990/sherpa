@@ -29,6 +29,7 @@ import {
   createUsageSink,
   fetchTodayUsage,
   fetchUserUsage,
+  getActiveNotificationToken,
   updateAuditLog,
   type AuditLogRow,
   type AuditStore,
@@ -901,6 +902,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     store:
       options.notificationStore ??
       createNotificationStore(sharedAutomationConfig),
+    farcasterTokenResolver: config.useRealDb
+      ? async (fid) => getActiveNotificationToken(getPool(config), BigInt(fid))
+      : undefined,
   });
   portfolioRoutes(app);
   governanceRoutes(app);

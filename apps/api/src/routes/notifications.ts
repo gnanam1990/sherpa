@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { InMemoryNotificationStore, type NotificationStore } from '@sherpa/memory';
 import { dispatchNotification, type NotificationPayload } from '@sherpa/tools';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 const AddressSchema = z.string().regex(/^0x[a-fA-F0-9]{40}$/);
@@ -62,12 +63,84 @@ function statusForDispatchError(error?: string): number {
   if (!error) return 502;
   if (error.endsWith('_not_implemented')) return 501;
   if (error.includes('not configured')) return 503;
+  if (error.includes('missing farcaster notification token')) return 503;
   return 502;
 }
 
+type FarcasterNotificationToken = {
+  token: string;
+  url: string;
+};
+
+type FarcasterTokenResolver = (fid: number) => Promise<FarcasterNotificationToken | null>;
+
 export type NotificationRoutesOptions = {
   store?: NotificationStore;
+  farcasterTokenResolver?: FarcasterTokenResolver;
+  farcasterTargetUrl?: string;
 };
+
+function truncate(value: string, max: number): string {
+  if (value.length <= max) return value;
+  return `${value.slice(0, Math.max(0, max - 3))}...`;
+}
+
+async function dispatchFarcasterMiniAppNotification(
+  fid: number,
+  payload: NotificationPayload,
+  resolver: FarcasterTokenResolver,
+  targetUrl = process.env.FARCASTER_NOTIFICATION_TARGET_URL ?? 'https://sherpa-miniapp.vercel.app',
+) {
+  const token = await resolver(fid);
+  if (!token) {
+    return { success: false, error: 'missing farcaster notification token' };
+  }
+
+  let resp: Response;
+  try {
+    resp = await fetch(token.url, {
+      body: JSON.stringify({
+        notificationId: randomUUID(),
+        title: truncate(payload.title, 32),
+        body: truncate(payload.body, 128),
+        targetUrl,
+        tokens: [token.token],
+      }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (err) {
+    return {
+      success: false,
+      error: `farcaster_fetch_error: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+
+  if (!resp.ok) {
+    return { success: false, error: `farcaster ${resp.status}` };
+  }
+
+  const data = (await resp.json().catch(() => null)) as
+    | {
+        result?: {
+          successfulTokens?: string[];
+          invalidTokens?: string[];
+          rateLimitedTokens?: string[];
+        };
+      }
+    | null;
+  if (data?.result?.successfulTokens && data.result.successfulTokens.length === 0) {
+    const invalid = data.result.invalidTokens?.length ?? 0;
+    const rateLimited = data.result.rateLimitedTokens?.length ?? 0;
+    return {
+      success: false,
+      error: `farcaster undelivered invalid=${invalid} rateLimited=${rateLimited}`,
+    };
+  }
+
+  return { success: true };
+}
 
 export async function notificationRoutes(
   app: FastifyInstance,
@@ -132,12 +205,20 @@ export async function notificationRoutes(
     };
 
     try {
-      const result = await dispatchNotification(
-        parsed.data.channel,
-        parsed.data.recipient,
-        payload,
-        { config: {} },
-      );
+      const result =
+        parsed.data.channel === 'farcaster' && options.farcasterTokenResolver
+          ? await dispatchFarcasterMiniAppNotification(
+              Number(parsed.data.recipient),
+              payload,
+              options.farcasterTokenResolver,
+              options.farcasterTargetUrl,
+            )
+          : await dispatchNotification(
+              parsed.data.channel,
+              parsed.data.recipient,
+              payload,
+              { config: {} },
+            );
       const notification = await notificationStore.logNotification({
         userAddress: parsed.data.userAddress.toLowerCase(),
         channel: parsed.data.channel,
