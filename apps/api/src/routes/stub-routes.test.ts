@@ -202,8 +202,9 @@ describe('Stub ID routes return 501 not fake success (P1-3)', () => {
   });
 
   describe('security', () => {
-    test('POST /api/security/multisig returns 501 not stub-multisig-id', async () => {
+    test('POST /api/security/multisig registers external Safe configs without fake deploys', async () => {
       const app = await makeApp(securityRoutes);
+      const safeAddress = '0x53918b7635d2d2c2882b213E3321c03887C98D73';
       const res = await app.inject({
         method: 'POST',
         url: '/api/security/multisig',
@@ -214,12 +215,19 @@ describe('Stub ID routes return 501 not fake success (P1-3)', () => {
             '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd',
           ],
           chainId: 8453,
+          safeAddress,
         },
       });
-      expect(res.statusCode).toBe(501);
+      expect(res.statusCode).toBe(201);
       const body = JSON.parse(res.body);
-      expect(body.error).toBe('not_implemented');
+      expect(body.multisig.safeAddress).toBe(safeAddress.toLowerCase());
+      expect(body.multisig.deploymentStatus).toBe('external_safe');
+      expect(body.warning).toContain('did not deploy');
       expect(JSON.stringify(body)).not.toContain('stub');
+
+      const lookup = await app.inject({ method: 'GET', url: `/api/security/multisig/${safeAddress}` });
+      expect(lookup.statusCode).toBe(200);
+      expect(JSON.parse(lookup.body).configured).toBe(true);
     });
   });
 
