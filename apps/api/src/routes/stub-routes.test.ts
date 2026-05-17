@@ -232,26 +232,34 @@ describe('Stub ID routes return 501 not fake success (P1-3)', () => {
   });
 
   describe('composable', () => {
-    test('POST /api/composable/flash-loan returns 501 not stub-flash-loan-id', async () => {
+    test('POST /api/composable/flash-loan returns a preview with execution disabled', async () => {
       const app = await makeApp(composableRoutes);
       const res = await app.inject({
         method: 'POST',
         url: '/api/composable/flash-loan',
-        payload: { asset: 'USDC', amount: '1000', chainId: 8453 },
+        payload: { asset: 'USDC', amount: '1000000', chainId: 8453 },
       });
-      expect(res.statusCode).toBe(501);
-      expect(JSON.stringify(JSON.parse(res.body))).not.toContain('stub');
+      expect(res.statusCode).toBe(409);
+      const body = JSON.parse(res.body);
+      expect(body.error).toBe('execution_disabled');
+      expect(body.preview.asset).toBe('USDC');
+      expect(body.preview.estimatedFeeBaseUnits).toBe('900');
+      expect(JSON.stringify(body)).not.toContain('stub');
     });
 
-    test('POST /api/composable/leverage returns 501 not stub-leverage-id', async () => {
+    test('POST /api/composable/leverage returns a risk preview with execution disabled', async () => {
       const app = await makeApp(composableRoutes);
       const res = await app.inject({
         method: 'POST',
         url: '/api/composable/leverage',
-        payload: { asset: 'ETH', leverageRatio: 2, collateralAsset: 'USDC', chainId: 8453 },
+        payload: { asset: 'ETH', leverageRatio: 2, collateralAsset: 'USDC', collateralAmount: '1000000', chainId: 8453 },
       });
-      expect(res.statusCode).toBe(501);
-      expect(JSON.stringify(JSON.parse(res.body))).not.toContain('stub');
+      expect(res.statusCode).toBe(409);
+      const body = JSON.parse(res.body);
+      expect(body.error).toBe('execution_disabled');
+      expect(body.preview.riskLevel).toBe('low');
+      expect(body.preview.borrowAmountBaseUnits).toBe('1000000');
+      expect(JSON.stringify(body)).not.toContain('stub');
     });
   });
 });
