@@ -6,11 +6,12 @@ This folder contains everything needed to audit Stage 2 of Sherpa.
 
 1. **SCOPE.md** — what's in/out, deployment info, invariants, build instructions
 2. **THREAT_MODEL.md** — 6-category attack-surface analysis
-3. **KNOWN_ISSUES.md** — acknowledged tradeoffs, what to skip
-4. **coverage-summary.txt** — test coverage report
-5. **slither-summary.txt** / **slither.json** — static analysis findings
-6. **gas-snapshot.txt** — gas cost per test case
-7. **test-output.txt** — full test run output
+3. **AUDIT_REMEDIATION.md** — external review findings, fixes, and remaining blockers
+4. **KNOWN_ISSUES.md** — acknowledged tradeoffs, what to skip
+5. **coverage-summary.txt** — test coverage report
+6. **slither-summary.txt** / **slither.json** — static analysis findings
+7. **gas-snapshot.txt** — gas cost per test case
+8. **test-output.txt** — full test run output
 
 ## Base Sepolia deployment status
 
