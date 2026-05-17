@@ -114,9 +114,13 @@ export function AlertsPanel() {
   const [comparison, setComparison] = useState('>');
   const [threshold, setThreshold] = useState('5000');
   const [conditionType, setConditionType] = useState('price');
+  const [notificationChannel, setNotificationChannel] = useState<'push' | 'telegram'>('push');
+  const [telegramChatId, setTelegramChatId] = useState('');
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [status, setStatus] = useState<string>('Ready');
   const canUse = Boolean(isConnected && address);
+  const canCreate =
+    canUse && (notificationChannel !== 'telegram' || telegramChatId.trim().length > 0);
 
   const loadRules = useCallback(async () => {
     if (!address) return;
@@ -141,14 +145,18 @@ export function AlertsPanel() {
             asset: asset.toUpperCase(),
             comparison,
             threshold: Number(threshold),
-            notificationChannels: ['push'],
+            notificationChannels: [notificationChannel],
+            params:
+              notificationChannel === 'telegram'
+                ? { telegramChatId: telegramChatId.trim() }
+                : undefined,
           }),
           headers: { 'content-type': 'application/json' },
           method: 'POST',
         }),
       );
       await loadRules();
-      setStatus('Alert saved. The production worker will evaluate it once Railway is connected.');
+      setStatus('Alert saved. The Railway worker will evaluate it from Postgres.');
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
     }
@@ -188,10 +196,27 @@ export function AlertsPanel() {
             value={threshold}
             onChange={(e) => setThreshold(e.target.value)}
           />
+          <select
+            className={fieldClass}
+            value={notificationChannel}
+            onChange={(e) => setNotificationChannel(e.target.value as 'push' | 'telegram')}
+          >
+            <option value="push">In-app</option>
+            <option value="telegram">Telegram</option>
+          </select>
+          {notificationChannel === 'telegram' ? (
+            <input
+              className={fieldClass}
+              inputMode="numeric"
+              placeholder="Telegram chat ID"
+              value={telegramChatId}
+              onChange={(e) => setTelegramChatId(e.target.value)}
+            />
+          ) : null}
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-xs text-sherpa-muted">{status}</p>
-          <button className={buttonClass} disabled={!canUse} type="submit">
+          <button className={buttonClass} disabled={!canCreate} type="submit">
             Create alert
           </button>
         </div>
