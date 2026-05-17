@@ -1,12 +1,19 @@
 import { describe, test, expect, vi, afterEach } from 'vitest';
 import { dispatchNotification } from './dispatcher.js';
 
+vi.mock('web-push', () => ({
+  default: {
+    sendNotification: vi.fn(async () => ({ statusCode: 201 })),
+  },
+}));
+
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('Notification dispatcher', () => {
-  test('push channel returns explicit not_implemented — no fake success (P1-7)', async () => {
+  test('push channel returns explicit config error when VAPID keys are missing', async () => {
     const result = await dispatchNotification(
       'push',
       JSON.stringify({ endpoint: 'https://push.example.com', keys: { p256dh: 'abc', auth: 'def' } }),
@@ -14,10 +21,42 @@ describe('Notification dispatcher', () => {
       { config: {} },
     );
     expect(result.success).toBe(false);
-    expect(result.error).toBe('push_channel_not_implemented');
+    expect(result.error).toBe('web_push_not_configured');
   });
 
-  test('email channel returns explicit not_implemented — no fake success (P1-7)', async () => {
+  test('push channel sends via web-push when VAPID keys are configured', async () => {
+    const webPush = (await import('web-push')).default;
+    const result = await dispatchNotification(
+      'web-push',
+      JSON.stringify({ endpoint: 'https://push.example.com', keys: { p256dh: 'abc', auth: 'def' } }),
+      { title: 'Alert', body: 'Hello', data: { url: '/alerts' } },
+      {
+        config: {
+          push: {
+            vapidPrivateKey: 'private',
+            vapidPublicKey: 'public',
+            vapidSubject: 'mailto:test@example.com',
+          },
+        },
+      },
+    );
+    expect(result.success).toBe(true);
+    expect(webPush.sendNotification).toHaveBeenCalledWith(
+      { endpoint: 'https://push.example.com', keys: { p256dh: 'abc', auth: 'def' } },
+      expect.any(String),
+      expect.objectContaining({
+        vapidDetails: {
+          privateKey: 'private',
+          publicKey: 'public',
+          subject: 'mailto:test@example.com',
+        },
+      }),
+    );
+    const [, body] = vi.mocked(webPush.sendNotification).mock.calls[0];
+    expect(JSON.parse(String(body))).toEqual({ body: 'Hello', title: 'Alert', url: '/alerts' });
+  });
+
+  test('email channel returns explicit config error when no provider key exists', async () => {
     const result = await dispatchNotification(
       'email',
       'user@example.com',
@@ -25,7 +64,38 @@ describe('Notification dispatcher', () => {
       { config: {} },
     );
     expect(result.success).toBe(false);
-    expect(result.error).toBe('email_channel_not_implemented');
+    expect(result.error).toBe('email_channel_not_configured');
+  });
+
+  test('email channel sends via Resend when configured', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'email-123' }),
+    }));
+    const result = await dispatchNotification(
+      'email',
+      'user@example.com',
+      { title: 'Sherpa alert', body: 'Hello' },
+      {
+        config: {
+          email: {
+            fromAddress: 'Sherpa <alerts@example.com>',
+            resendApiKey: 'resend-test',
+          },
+        },
+      },
+    );
+    expect(result.success).toBe(true);
+    expect(result.messageId).toBe('email-123');
+    const fetchCall = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(fetchCall[0]).toBe('https://api.resend.com/emails');
+    expect(fetchCall[1].headers.Authorization).toBe('Bearer resend-test');
+    expect(JSON.parse(fetchCall[1].body as string)).toMatchObject({
+      from: 'Sherpa <alerts@example.com>',
+      subject: 'Sherpa alert',
+      text: 'Hello',
+      to: 'user@example.com',
+    });
   });
 
   test('telegram returns error when botToken missing (P1-7)', async () => {

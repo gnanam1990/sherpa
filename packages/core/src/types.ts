@@ -560,7 +560,7 @@ export type PortfolioPlan = {
 
 // ── Notification types (Stage 6 — Notification System) ──────────────
 
-export type NotificationChannel = 'push' | 'email' | 'farcaster' | 'telegram';
+export type NotificationChannel = 'push' | 'web-push' | 'email' | 'farcaster' | 'telegram';
 
 export type Notification = {
   id: string;

@@ -19,8 +19,8 @@ const CreateAlertBody = z.object({
   asset: z.string().optional(),
   comparison: z.enum(['>', '<', '>=', '<=', '==', 'cross-above', 'cross-below']),
   threshold: z.number(),
-  notificationChannels: z
-    .array(z.enum(['email', 'push', 'farcaster', 'telegram']))
+      notificationChannels: z
+    .array(z.enum(['email', 'push', 'web-push', 'farcaster', 'telegram']))
     .default(['push']),
   triggeredIntent: z.string().optional(),
   params: z.record(z.unknown()).optional(),
@@ -41,7 +41,7 @@ const UpdateAlertBody = z
     status: z.enum(['active', 'paused', 'cancelled']).optional(),
     threshold: z.number().optional(),
     comparison: z.enum(['>', '<', '>=', '<=', '==', 'cross-above', 'cross-below']).optional(),
-    notificationChannels: z.array(z.enum(['email', 'push', 'farcaster', 'telegram'])).optional(),
+    notificationChannels: z.array(z.enum(['email', 'push', 'web-push', 'farcaster', 'telegram'])).optional(),
     oneShot: z.boolean().optional(),
     cooldownSeconds: z.number().int().min(60).max(86400).optional(),
   })

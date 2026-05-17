@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAccount } from 'wagmi';
+import { GovernanceActionsPanel } from './AdvancedPanels';
 
 type AlertRule = {
   id: string;
@@ -20,6 +21,17 @@ type FarcasterNotificationStatus = {
   fid: string;
   client?: string;
   urlHost?: string;
+};
+
+type AlertNotificationChannel = 'push' | 'web-push' | 'email' | 'telegram' | 'farcaster';
+
+type PushSubscriptionJson = {
+  endpoint?: string;
+  expirationTime?: number | null;
+  keys?: {
+    auth?: string;
+    p256dh?: string;
+  };
 };
 
 type DCASchedule = {
@@ -115,16 +127,26 @@ function WalletRequired() {
   );
 }
 
+function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
+  const padding = '='.repeat((4 - (value.length % 4)) % 4);
+  const base64 = `${value}${padding}`.replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const output = new Uint8Array(new ArrayBuffer(raw.length));
+  for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
 export function AlertsPanel() {
   const { address, isConnected } = useWalletAddress();
   const [asset, setAsset] = useState('ETH');
   const [comparison, setComparison] = useState('>');
   const [threshold, setThreshold] = useState('5000');
   const [conditionType, setConditionType] = useState('price');
-  const [notificationChannel, setNotificationChannel] = useState<
-    'push' | 'telegram' | 'farcaster'
-  >('push');
+  const [notificationChannel, setNotificationChannel] = useState<AlertNotificationChannel>('push');
   const [telegramChatId, setTelegramChatId] = useState('');
+  const [emailAddress, setEmailAddress] = useState('');
+  const [pushSubscription, setPushSubscription] = useState<PushSubscriptionJson | null>(null);
+  const [pushStatus, setPushStatus] = useState('Browser push is not enabled.');
   const [farcasterFid, setFarcasterFid] = useState('');
   const [farcasterStatus, setFarcasterStatus] = useState<
     'idle' | 'checking' | 'active' | 'missing' | 'error'
@@ -137,6 +159,8 @@ export function AlertsPanel() {
   const canCreate =
     canUse &&
     (notificationChannel !== 'telegram' || telegramChatId.trim().length > 0) &&
+    (notificationChannel !== 'email' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress.trim())) &&
+    (notificationChannel !== 'web-push' || Boolean(pushSubscription)) &&
     (notificationChannel !== 'farcaster' || farcasterStatus === 'active');
 
   const loadRules = useCallback(async () => {
@@ -195,6 +219,39 @@ export function AlertsPanel() {
     return () => controller.abort();
   }, [farcasterFid, farcasterFidIsValid, notificationChannel]);
 
+  async function enableBrowserPush() {
+    setPushStatus('Preparing browser push...');
+    const publicKey = process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY;
+    if (!publicKey) {
+      setPushStatus('Browser push needs NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY.');
+      return;
+    }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushStatus('This browser does not support Web Push.');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      setPushStatus('Notification permission was not granted.');
+      return;
+    }
+    const registration = await navigator.serviceWorker.ready;
+    const existing = await registration.pushManager.getSubscription();
+    const subscription =
+      existing ??
+      (await registration.pushManager.subscribe({
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        userVisibleOnly: true,
+      }));
+    const json = subscription.toJSON() as PushSubscriptionJson;
+    if (!json.endpoint || !json.keys?.auth || !json.keys.p256dh) {
+      setPushStatus('Browser returned an incomplete push subscription.');
+      return;
+    }
+    setPushSubscription(json);
+    setPushStatus('Browser push ready.');
+  }
+
   async function createRule(event: FormEvent) {
     event.preventDefault();
     if (!address) return;
@@ -212,6 +269,12 @@ export function AlertsPanel() {
             params: {
               ...(notificationChannel === 'telegram'
                 ? { telegramChatId: telegramChatId.trim() }
+                : {}),
+              ...(notificationChannel === 'email'
+                ? { email: emailAddress.trim() }
+                : {}),
+              ...(notificationChannel === 'web-push' && pushSubscription
+                ? { pushSubscription }
                 : {}),
               ...(notificationChannel === 'farcaster'
                 ? { farcasterFid: Number(farcasterFid.trim()) }
@@ -267,13 +330,42 @@ export function AlertsPanel() {
             className={fieldClass}
             value={notificationChannel}
             onChange={(e) =>
-              setNotificationChannel(e.target.value as 'push' | 'telegram' | 'farcaster')
+              setNotificationChannel(e.target.value as AlertNotificationChannel)
             }
           >
             <option value="push">In-app</option>
+            <option value="web-push">Browser push</option>
+            <option value="email">Email</option>
             <option value="telegram">Telegram</option>
             <option value="farcaster">Farcaster</option>
           </select>
+          {notificationChannel === 'web-push' ? (
+            <div className="space-y-1">
+              <button
+                className="rounded border border-sherpa-border px-3 py-2 text-sm text-sherpa-fg hover:border-sherpa-blue"
+                onClick={() => void enableBrowserPush()}
+                type="button"
+              >
+                Enable browser push
+              </button>
+              <p
+                className={
+                  pushSubscription ? 'text-xs text-green-400' : 'text-xs text-sherpa-muted'
+                }
+              >
+                {pushStatus}
+              </p>
+            </div>
+          ) : null}
+          {notificationChannel === 'email' ? (
+            <input
+              className={fieldClass}
+              inputMode="email"
+              placeholder="Email address"
+              value={emailAddress}
+              onChange={(e) => setEmailAddress(e.target.value)}
+            />
+          ) : null}
           {notificationChannel === 'telegram' ? (
             <input
               className={fieldClass}
@@ -635,13 +727,14 @@ export function GovernancePanel() {
 
   return (
     <SetupShell
-      description="Browse governance proposals from supported sources. Signing votes and delegation transactions stay explicit wallet actions and are not auto-executed."
-      eyebrow="Read-only live"
+      description="Browse governance proposals and build delegation transactions for explicit wallet signing. Sherpa never auto-broadcasts governance writes."
+      eyebrow="Builder live"
       title="Governance"
     >
       <div className={cardClass}>
         <p className="text-sm text-sherpa-muted">{status}</p>
       </div>
+      <GovernanceActionsPanel />
       <div className="space-y-3">
         {proposals.length === 0 ? (
           <div className={cardClass}>

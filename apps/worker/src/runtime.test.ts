@@ -5,6 +5,7 @@ import {
   logCycleResult,
   readWorkerIntervals,
   readWorkerToggles,
+  readWorkerReadiness,
   runDCAWorkerCycle,
 } from './runtime.js';
 import { InMemoryDCAStore } from '@sherpa/memory';
@@ -53,6 +54,36 @@ describe('worker runtime', () => {
       alerts: false,
       dca: false,
       autoRepay: false,
+    });
+  });
+
+  test('reports notification and execution readiness without pretending automation can sign', () => {
+    const readiness = readWorkerReadiness({
+      RESEND_API_KEY: 'resend-test',
+      WEB_PUSH_VAPID_PUBLIC_KEY: 'public',
+      WEB_PUSH_VAPID_PRIVATE_KEY: 'private',
+      TELEGRAM_BOT_TOKEN: 'telegram-test',
+    } as NodeJS.ProcessEnv, { persistence: 'postgres' });
+
+    expect(readiness.notifications).toEqual({
+      email: 'configured',
+      webPush: 'configured',
+      telegram: 'configured',
+      farcaster: 'token_store_configured',
+    });
+    expect(readiness.execution.dca.mode).toBe('fail-closed');
+    expect(readiness.execution.dca.reason).toContain('session_key_executor_not_configured');
+    expect(readiness.execution.autoRepay.mode).toBe('fail-closed');
+    expect(readiness.execution.autoRepay.reason).toContain('auto_repay_signer_not_configured');
+  });
+
+  test('reports missing production notification provider configuration', () => {
+    const readiness = readWorkerReadiness({} as NodeJS.ProcessEnv, { persistence: 'process-memory' });
+    expect(readiness.notifications).toEqual({
+      email: 'missing_provider',
+      webPush: 'missing_vapid_keys',
+      telegram: 'missing_bot_token',
+      farcaster: 'requires_postgres_token_store',
     });
   });
 

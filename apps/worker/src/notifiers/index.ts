@@ -1,6 +1,8 @@
 export { notifyTelegram } from './telegram.js';
 export { notifyFarcaster, setFarcasterTokenResolver } from './farcaster.js';
 export { notifyInApp, setNotificationStore } from './in-app.js';
+export { notifyEmail } from './email.js';
+export { notifyWebPush } from './web-push.js';
 export type { NotifyResult, NotifyPayload } from './telegram.js';
 export type { AlertRow } from '../types.js';
 
@@ -9,12 +11,16 @@ import type { NotifyResult, NotifyPayload } from './telegram.js';
 import { notifyTelegram } from './telegram.js';
 import { notifyFarcaster } from './farcaster.js';
 import { notifyInApp } from './in-app.js';
+import { notifyEmail } from './email.js';
+import { notifyWebPush } from './web-push.js';
 
 const notifierMap: Record<string, (alert: AlertRow, payload: NotifyPayload) => Promise<NotifyResult>> = {
   telegram: notifyTelegram,
   farcaster: notifyFarcaster,
+  email: notifyEmail,
   push: notifyInApp,
   'in-app': notifyInApp,
+  'web-push': notifyWebPush,
 };
 
 export async function dispatchAlertNotification(

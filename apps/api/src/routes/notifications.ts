@@ -1,11 +1,16 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { InMemoryNotificationStore, type NotificationStore } from '@sherpa/memory';
-import { dispatchNotification, type NotificationPayload } from '@sherpa/tools';
+import {
+  dispatchNotification,
+  type NotificationDeps,
+  type NotificationPayload,
+  type NotificationResult,
+} from '@sherpa/tools';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 const AddressSchema = z.string().regex(/^0x[a-fA-F0-9]{40}$/);
-const ChannelSchema = z.enum(['push', 'email', 'farcaster', 'telegram']);
+const ChannelSchema = z.enum(['push', 'web-push', 'email', 'farcaster', 'telegram']);
 
 const SubscribeBody = z.object({
   userAddress: AddressSchema,
@@ -41,7 +46,7 @@ function validateRecipient(channel: NotificationChannel, recipient: string): str
     const parsed = z.string().email().safeParse(recipient);
     return parsed.success ? null : 'email recipient must be a valid email address';
   }
-  if (channel === 'push') {
+  if (channel === 'push' || channel === 'web-push') {
     try {
       const parsed = JSON.parse(recipient) as unknown;
       const subscription = z.object({
@@ -62,7 +67,7 @@ function validateRecipient(channel: NotificationChannel, recipient: string): str
 function statusForDispatchError(error?: string): number {
   if (!error) return 502;
   if (error.endsWith('_not_implemented')) return 501;
-  if (error.includes('not configured')) return 503;
+  if (error.includes('not configured') || error.endsWith('_not_configured')) return 503;
   if (error.includes('missing farcaster notification token')) return 503;
   return 502;
 }
@@ -73,9 +78,16 @@ type FarcasterNotificationToken = {
 };
 
 type FarcasterTokenResolver = (fid: number) => Promise<FarcasterNotificationToken | null>;
+type NotificationDispatcher = (
+  channel: string,
+  recipient: string,
+  payload: NotificationPayload,
+  deps: NotificationDeps,
+) => Promise<NotificationResult>;
 
 export type NotificationRoutesOptions = {
   store?: NotificationStore;
+  dispatcher?: NotificationDispatcher;
   farcasterTokenResolver?: FarcasterTokenResolver;
   farcasterTargetUrl?: string;
 };
@@ -147,6 +159,7 @@ export async function notificationRoutes(
   options: NotificationRoutesOptions = {},
 ): Promise<void> {
   const notificationStore = options.store ?? new InMemoryNotificationStore();
+  const dispatcher = options.dispatcher ?? dispatchNotification;
 
   app.post('/api/notifications/subscribe', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = SubscribeBody.safeParse(req.body);
@@ -213,7 +226,7 @@ export async function notificationRoutes(
               options.farcasterTokenResolver,
               options.farcasterTargetUrl,
             )
-          : await dispatchNotification(
+          : await dispatcher(
               parsed.data.channel,
               parsed.data.recipient,
               payload,

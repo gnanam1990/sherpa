@@ -12,7 +12,8 @@ export async function dispatchNotification(
 ): Promise<NotificationResult> {
   switch (channel) {
     case 'push':
-      return sendPushNotification(JSON.parse(recipient), payload);
+    case 'web-push':
+      return sendPushNotification(JSON.parse(recipient), payload, deps.config.push ?? {});
     case 'email':
       return sendEmailNotification(recipient, payload, deps.config.email ?? {});
     case 'farcaster':

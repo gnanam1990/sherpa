@@ -63,6 +63,7 @@ describe('AlertsPanel', () => {
     wagmiState.address = '0x1234567890123456789012345678901234567890';
     wagmiState.isConnected = true;
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it('creates in-app alerts by default', async () => {
@@ -94,6 +95,67 @@ describe('AlertsPanel', () => {
       const body = JSON.parse(String(post?.[1]?.body));
       expect(body.notificationChannels).toEqual(['telegram']);
       expect(body.params).toEqual({ telegramChatId: '6102672721' });
+    });
+  });
+
+  it('requires and sends email recipient for Email alerts', async () => {
+    const fetchMock = mockFetch();
+    render(<AlertsPanel />);
+
+    await userEvent.selectOptions(screen.getByDisplayValue('In-app'), 'email');
+    expect(screen.getByRole('button', { name: 'Create alert' })).toBeDisabled();
+
+    await userEvent.type(screen.getByPlaceholderText('Email address'), 'builder@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Create alert' }));
+
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find(([url, init]) => url === '/api/alerts' && init?.method === 'POST');
+      expect(post).toBeTruthy();
+      const body = JSON.parse(String(post?.[1]?.body));
+      expect(body.notificationChannels).toEqual(['email']);
+      expect(body.params).toEqual({ email: 'builder@example.com' });
+    });
+  });
+
+  it('enables and sends browser push subscription for Web Push alerts', async () => {
+    vi.stubEnv('NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY', 'BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+    Object.defineProperty(window, 'PushManager', { configurable: true, value: function PushManager() {} });
+    Object.defineProperty(window, 'Notification', {
+      configurable: true,
+      value: { requestPermission: vi.fn(async () => 'granted') },
+    });
+    const subscription = {
+      toJSON: () => ({
+        endpoint: 'https://push.example.com/sub',
+        keys: { auth: 'auth', p256dh: 'p256dh' },
+      }),
+    };
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: {
+        ready: Promise.resolve({
+          pushManager: {
+            getSubscription: vi.fn(async () => null),
+            subscribe: vi.fn(async () => subscription),
+          },
+        }),
+      },
+    });
+    const fetchMock = mockFetch();
+    render(<AlertsPanel />);
+
+    await userEvent.selectOptions(screen.getByDisplayValue('In-app'), 'web-push');
+    expect(screen.getByRole('button', { name: 'Create alert' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Enable browser push' }));
+    await screen.findByText('Browser push ready.');
+    await userEvent.click(screen.getByRole('button', { name: 'Create alert' }));
+
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find(([url, init]) => url === '/api/alerts' && init?.method === 'POST');
+      expect(post).toBeTruthy();
+      const body = JSON.parse(String(post?.[1]?.body));
+      expect(body.notificationChannels).toEqual(['web-push']);
+      expect(body.params.pushSubscription.endpoint).toBe('https://push.example.com/sub');
     });
   });
 

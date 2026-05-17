@@ -1,7 +1,7 @@
 import type pg from 'pg';
 import { query, type QueryResult } from '@sherpa/config';
 
-export type NotificationChannel = 'push' | 'email' | 'farcaster' | 'telegram';
+export type NotificationChannel = 'push' | 'web-push' | 'email' | 'farcaster' | 'telegram';
 export type NotificationStatus = 'pending' | 'sent' | 'delivered' | 'failed';
 
 export type NotificationPayload = {
@@ -215,7 +215,7 @@ async function ensureNotificationSchema(pool: pg.Pool): Promise<void> {
     `CREATE TABLE IF NOT EXISTS notification_subscriptions (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       user_address text NOT NULL,
-      channel text NOT NULL CHECK (channel IN ('push','email','farcaster','telegram')),
+      channel text NOT NULL CHECK (channel IN ('push','web-push','email','farcaster','telegram')),
       condition text,
       enabled boolean NOT NULL DEFAULT true,
       last_triggered_at timestamptz,
@@ -245,6 +245,17 @@ async function ensureNotificationSchema(pool: pg.Pool): Promise<void> {
       ADD COLUMN IF NOT EXISTS recipient text NOT NULL DEFAULT '',
       ADD COLUMN IF NOT EXISTS label text,
       ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb`,
+  );
+  await query(
+    pool,
+    `ALTER TABLE notification_subscriptions
+      DROP CONSTRAINT IF EXISTS notification_subscriptions_channel_check`,
+  );
+  await query(
+    pool,
+    `ALTER TABLE notification_subscriptions
+      ADD CONSTRAINT notification_subscriptions_channel_check
+      CHECK (channel IN ('push','web-push','email','farcaster','telegram'))`,
   );
   await query(
     pool,

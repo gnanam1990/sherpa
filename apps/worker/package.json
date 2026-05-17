@@ -18,6 +18,7 @@
     "@sherpa/config": "workspace:*",
     "@sherpa/memory": "workspace:*",
     "@sherpa/scheduler": "workspace:*",
+    "@sherpa/tools": "workspace:*",
     "fastify": "^5.2.0"
   },
   "devDependencies": {

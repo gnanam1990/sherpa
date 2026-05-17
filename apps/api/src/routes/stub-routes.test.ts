@@ -6,10 +6,20 @@ import { developerRoutes } from './developer.js';
 import { securityRoutes } from './security.js';
 import { composableRoutes } from './composable.js';
 
+vi.mock('web-push', () => ({
+  default: {
+    sendNotification: vi.fn(async () => ({ statusCode: 201 })),
+  },
+}));
+
 // P1-3: Verify routes previously returning stub-* IDs now return 501 not_implemented
 
 describe('Stub ID routes return 501 not fake success (P1-3)', () => {
   const originalTelegramToken = process.env.TELEGRAM_BOT_TOKEN;
+  const originalResendKey = process.env.RESEND_API_KEY;
+  const originalEmailFrom = process.env.EMAIL_FROM_ADDRESS;
+  const originalVapidPublic = process.env.WEB_PUSH_VAPID_PUBLIC_KEY;
+  const originalVapidPrivate = process.env.WEB_PUSH_VAPID_PRIVATE_KEY;
 
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -17,6 +27,26 @@ describe('Stub ID routes return 501 not fake success (P1-3)', () => {
       delete process.env.TELEGRAM_BOT_TOKEN;
     } else {
       process.env.TELEGRAM_BOT_TOKEN = originalTelegramToken;
+    }
+    if (originalResendKey === undefined) {
+      delete process.env.RESEND_API_KEY;
+    } else {
+      process.env.RESEND_API_KEY = originalResendKey;
+    }
+    if (originalEmailFrom === undefined) {
+      delete process.env.EMAIL_FROM_ADDRESS;
+    } else {
+      process.env.EMAIL_FROM_ADDRESS = originalEmailFrom;
+    }
+    if (originalVapidPublic === undefined) {
+      delete process.env.WEB_PUSH_VAPID_PUBLIC_KEY;
+    } else {
+      process.env.WEB_PUSH_VAPID_PUBLIC_KEY = originalVapidPublic;
+    }
+    if (originalVapidPrivate === undefined) {
+      delete process.env.WEB_PUSH_VAPID_PRIVATE_KEY;
+    } else {
+      process.env.WEB_PUSH_VAPID_PRIVATE_KEY = originalVapidPrivate;
     }
   });
 
@@ -150,7 +180,68 @@ describe('Stub ID routes return 501 not fake success (P1-3)', () => {
       expect(body.error).toBe('missing farcaster notification token');
     });
 
-    test('POST /api/notifications/send returns explicit channel gaps', async () => {
+    test('POST /api/notifications/send sends email via configured provider', async () => {
+      const app = await makeApp(notificationRoutes);
+      process.env.RESEND_API_KEY = 'resend-test';
+      process.env.EMAIL_FROM_ADDRESS = 'Sherpa <alerts@example.com>';
+      const fetchMock = vi.fn(async () => new Response(
+        JSON.stringify({ id: 'email-123' }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ));
+      vi.stubGlobal('fetch', fetchMock);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/notifications/send',
+        payload: {
+          userAddress: '0x6234567890123456789012345678901234567890',
+          channel: 'email',
+          recipient: 'builder@example.com',
+          title: 'Sherpa',
+          body: 'Email should send through the configured provider.',
+        },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).notification.result.messageId).toBe('email-123');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://api.resend.com/emails',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    test('POST /api/notifications/send sends Web Push via configured VAPID keys', async () => {
+      const dispatcher = vi.fn(async () => ({ success: true, messageId: 'push-201' }));
+      const app = await makeApp(async (fastify) =>
+        notificationRoutes(fastify, { dispatcher }),
+      );
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/notifications/send',
+        payload: {
+          userAddress: '0x7234567890123456789012345678901234567890',
+          channel: 'web-push',
+          recipient: JSON.stringify({
+            endpoint: 'https://push.example.com/sub',
+            keys: { auth: 'auth', p256dh: 'p256dh' },
+          }),
+          title: 'Sherpa',
+          body: 'Browser push should use the web-push sender.',
+        },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.ok).toBe(true);
+      expect(body.notification.result.messageId).toBe('push-201');
+      expect(dispatcher).toHaveBeenCalledWith(
+        'web-push',
+        expect.stringContaining('push.example.com'),
+        expect.objectContaining({ title: 'Sherpa' }),
+        { config: {} },
+      );
+      expect(JSON.stringify(body)).not.toContain('push_channel_not_implemented');
+    });
+
+    test('POST /api/notifications/send returns explicit channel config gaps', async () => {
       const app = await makeApp(notificationRoutes);
       const res = await app.inject({
         method: 'POST',
@@ -163,10 +254,10 @@ describe('Stub ID routes return 501 not fake success (P1-3)', () => {
           body: 'Email should fail explicitly until the channel is wired.',
         },
       });
-      expect(res.statusCode).toBe(501);
+      expect(res.statusCode).toBe(503);
       const body = JSON.parse(res.body);
       expect(body.ok).toBe(false);
-      expect(body.error).toBe('email_channel_not_implemented');
+      expect(body.error).toBe('email_channel_not_configured');
       expect(JSON.stringify(body)).not.toContain('stub');
     });
   });

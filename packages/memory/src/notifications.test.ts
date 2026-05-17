@@ -363,6 +363,8 @@ describe('notifications / postgres store', () => {
       { rows: [], rowCount: 0 },
       { rows: [], rowCount: 0 },
       { rows: [], rowCount: 0 },
+      { rows: [], rowCount: 0 },
+      { rows: [], rowCount: 0 },
       {
         rows: [{
           id: 'sub-created',
@@ -393,6 +395,8 @@ describe('notifications / postgres store', () => {
         expect.stringContaining('CREATE TABLE IF NOT EXISTS notification_subscriptions'),
         expect.stringContaining('CREATE TABLE IF NOT EXISTS notification_log'),
         expect.stringContaining('ALTER TABLE notification_subscriptions'),
+        expect.stringContaining('DROP CONSTRAINT IF EXISTS notification_subscriptions_channel_check'),
+        expect.stringContaining('CHECK (channel IN'),
         expect.stringContaining('ALTER TABLE notification_log'),
         expect.stringContaining('CREATE INDEX IF NOT EXISTS idx_notif_subs_user'),
         expect.stringContaining('CREATE INDEX IF NOT EXISTS idx_notif_log_user'),

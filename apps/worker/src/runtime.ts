@@ -45,6 +45,25 @@ export type WorkerToggles = {
   autoRepay: boolean;
 };
 
+export type WorkerReadiness = {
+  notifications: {
+    email: 'configured' | 'missing_provider';
+    webPush: 'configured' | 'missing_vapid_keys';
+    telegram: 'configured' | 'missing_bot_token';
+    farcaster: 'token_store_configured' | 'requires_postgres_token_store';
+  };
+  execution: {
+    dca: {
+      mode: 'fail-closed';
+      reason: string;
+    };
+    autoRepay: {
+      mode: 'fail-closed';
+      reason: string;
+    };
+  };
+};
+
 export type WorkerCycleResult = {
   ok?: boolean;
   detail?: string;
@@ -83,6 +102,36 @@ export function readWorkerToggles(env: NodeJS.ProcessEnv = process.env): WorkerT
     alerts: boolFromEnv(env.WORKER_ALERTS_ENABLED, true),
     dca: boolFromEnv(env.WORKER_DCA_ENABLED, true),
     autoRepay: boolFromEnv(env.WORKER_AUTO_REPAY_ENABLED, true),
+  };
+}
+
+export function readWorkerReadiness(
+  env: NodeJS.ProcessEnv = process.env,
+  stores?: Pick<WorkerStores, 'persistence'>,
+): WorkerReadiness {
+  return {
+    notifications: {
+      email: env.RESEND_API_KEY || env.POSTMARK_API_KEY ? 'configured' : 'missing_provider',
+      webPush:
+        env.WEB_PUSH_VAPID_PUBLIC_KEY && env.WEB_PUSH_VAPID_PRIVATE_KEY
+          ? 'configured'
+          : 'missing_vapid_keys',
+      telegram: env.TELEGRAM_BOT_TOKEN ? 'configured' : 'missing_bot_token',
+      farcaster:
+        stores?.persistence === 'postgres'
+          ? 'token_store_configured'
+          : 'requires_postgres_token_store',
+    },
+    execution: {
+      dca: {
+        mode: 'fail-closed',
+        reason: 'session_key_executor_not_configured: unattended DCA requires audited session-key execution',
+      },
+      autoRepay: {
+        mode: 'fail-closed',
+        reason: 'auto_repay_signer_not_configured: unattended repayment requires audited broadcaster setup',
+      },
+    },
   };
 }
 
@@ -214,6 +263,7 @@ export async function workerHealthExtra(stores: WorkerStores): Promise<Record<st
   return {
     dueDcaSchedules: dueDca.length,
     activeAutoRepayRules: activeAutoRepay.length,
+    readiness: readWorkerReadiness(process.env, stores),
     persistence: stores.persistence,
   };
 }

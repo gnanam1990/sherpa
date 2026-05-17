@@ -3,6 +3,15 @@ import { formatAlertPayload, dispatchAlertNotification } from './index.js';
 import { notifyFarcaster, setFarcasterTokenResolver } from './farcaster.js';
 import type { AlertRow } from './telegram.js';
 
+vi.mock('@sherpa/tools', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sherpa/tools')>();
+  return {
+    ...actual,
+    sendEmailNotification: vi.fn(async () => ({ success: true, messageId: 'email-1' })),
+    sendPushNotification: vi.fn(async () => ({ success: true, messageId: 'push-1' })),
+  };
+});
+
 function makeAlert(overrides: Partial<AlertRow> = {}): AlertRow {
   return {
     id: 'test-alert-1',
@@ -30,6 +39,7 @@ function makeAlert(overrides: Partial<AlertRow> = {}): AlertRow {
 
 afterEach(() => {
   setFarcasterTokenResolver(undefined);
+  vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -133,6 +143,51 @@ describe('dispatchAlertNotification', () => {
     results.forEach((r) => {
       expect(r).toHaveProperty('success');
     });
+  });
+
+  test('dispatches to email channel with address from alert params', async () => {
+    const tools = await import('@sherpa/tools');
+    const alert = makeAlert({
+      notification_channels: ['email'],
+      params: { email: 'builder@example.com' },
+    });
+    const results = await dispatchAlertNotification(alert, {
+      title: 'Email alert',
+      body: 'Hello',
+    });
+    expect(results).toEqual([{ success: true, messageId: 'email-1' }]);
+    expect(tools.sendEmailNotification).toHaveBeenCalledWith(
+      'builder@example.com',
+      { title: 'Email alert', body: 'Hello' },
+      {},
+    );
+  });
+
+  test('dispatches to web-push channel with subscription from alert params', async () => {
+    const tools = await import('@sherpa/tools');
+    const alert = makeAlert({
+      notification_channels: ['web-push'],
+      params: {
+        pushSubscription: {
+          endpoint: 'https://push.example.com/sub',
+          keys: { auth: 'auth', p256dh: 'p256dh' },
+        },
+      },
+    });
+    const results = await dispatchAlertNotification(alert, {
+      title: 'Push alert',
+      body: 'Hello',
+    });
+    expect(results).toEqual([{ success: true, messageId: 'push-1' }]);
+    expect(tools.sendPushNotification).toHaveBeenCalledWith(
+      {
+        endpoint: 'https://push.example.com/sub',
+        expirationTime: null,
+        keys: { auth: 'auth', p256dh: 'p256dh' },
+      },
+      { title: 'Push alert', body: 'Hello' },
+      {},
+    );
   });
 });
 

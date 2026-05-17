@@ -12,8 +12,12 @@ export type NotificationResult = {
 };
 
 export type ChannelConfig = {
-  push?: { vapidPublicKey?: string; vapidPrivateKey?: string };
-  email?: { postmarkApiKey?: string; fromAddress?: string };
+  push?: { vapidPublicKey?: string; vapidPrivateKey?: string; vapidSubject?: string };
+  email?: {
+    resendApiKey?: string;
+    postmarkApiKey?: string;
+    fromAddress?: string;
+  };
   farcaster?: { neynarApiKey?: string };
   telegram?: { botToken?: string; chatId?: string };
 };

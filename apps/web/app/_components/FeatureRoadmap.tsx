@@ -69,9 +69,21 @@ const FEATURES: Array<{
   },
   {
     name: 'Governance',
-    status: 'read-only',
-    description: 'Browse proposals across Snapshot, Aave, Compound, and OP.',
+    status: 'beta',
+    description: 'Browse proposals and build explicit delegation transactions.',
     href: '/governance',
+  },
+  {
+    name: 'Strategy marketplace',
+    status: 'beta',
+    description: 'Browse and follow reusable strategy templates.',
+    href: '/strategies',
+  },
+  {
+    name: 'Session keys',
+    status: 'beta',
+    description: 'Configure scoped permission policies for future automation.',
+    href: '/session-keys',
   },
 ];
 
