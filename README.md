@@ -22,9 +22,9 @@ Sherpa is live with two production boundaries: Stage 1 send remains on Base Sepo
 | **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP               | ✅ Live (Base Sepolia)      | Web app, Smart Wallet, sponsored gas, identity resolution, balance/history                                                                   |
 | **Stage 2** | Positions + DeFi writes                               | ✅ Live (Base mainnet)       | Aave positions are read-only. Swap/lend/borrow/repay/withdraw build Base mainnet confirmation cards through verified Sherpa contracts with guarded caps |
 | **Stage 3** | Multi-surface (Farcaster/Base Mini App, Telegram bot) | ✅ Live                     | Mini App deployed at `sherpa-miniapp.vercel.app`; Telegram bot online at `@sherpaonbasebot`                                                  |
-| **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta live                | Alert/DCA/auto-repay setup screens exist. Railway worker is live with Postgres persistence; notification delivery and session-key execution remain gated |
+| **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta live                | Alert/DCA/auto-repay setup screens exist. Railway worker is live with Postgres persistence; Telegram alert delivery is verified; session-key execution remains gated |
 | **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace       | 🔵 Partial                  | Multi-chain explorer is read-only. Session keys and strategy marketplace remain pending                                                      |
-| **Stage 6** | Portfolio Dashboard, Notifications, Fee Taker         | 🔵 Partial                  | Portfolio/notification scaffolds exist. Production notification channels and fee taker remain pending                                        |
+| **Stage 6** | Portfolio Dashboard, Notifications, Fee Taker         | 🔵 Partial                  | Portfolio/notification scaffolds exist. Telegram alert delivery is live; Farcaster/email/browser push and fee taker remain pending           |
 | **Stage 7** | Governance, Social, Automation Deep Dive              | 🔵 Partial                  | Governance proposal browser is read-only. Voting/delegation/social writes remain pending                                                     |
 | **Stage 8** | Developer API, Cross-chain, Mobile                    | ⚪ Planned                  | Scaffolded                                                                                                                                   |
 | **Stage 9** | Risk & Compliance                                     | ⚪ Planned                  | Scaffolded                                                                                                                                   |
@@ -37,7 +37,7 @@ See [Stage Status](docs/sherpa/STAGE_STATUS.md) for the fuller breakdown.
 | ----------------------- | ------------------------------------------- | -------------------------------------------------- |
 | Web app                 | https://sherpa-web.vercel.app               | Live                                               |
 | API                     | https://sherpaapi-production.up.railway.app | Live behind the web app                            |
-| Automation worker       | https://sherpa-worker-production.up.railway.app/health | Live on Railway; health endpoint only              |
+| Automation worker       | https://sherpa-worker-production.up.railway.app/health | Live on Railway with Postgres-backed loops         |
 | Farcaster/Base Mini App | https://sherpa-miniapp.vercel.app           | Live app surface; discovery/listing polish ongoing |
 | Farcaster profile       | https://farcaster.xyz/sherpaonbase          | Live                                               |
 | Telegram bot            | https://t.me/sherpaonbasebot                | Live on Railway                                    |
@@ -74,7 +74,7 @@ Sherpa does not have a token. Any SHERPA token claiming to be affiliated with th
 | Aave positions            | Read-only live against Base mainnet Aave V3                  |
 | Swap / lend / borrow      | Live on Base mainnet through verified SherpaRouter            |
 | Repay / withdraw          | Live on Base mainnet through verified SherpaRouter            |
-| Alerts / DCA / auto-repay | Beta setup surfaces; Railway worker live with Postgres persistence; autonomous execution waits on session-key signing |
+| Alerts / DCA / auto-repay | Beta setup surfaces; Railway worker live with Postgres persistence; Telegram alerts verified; autonomous DCA/auto-repay execution waits on session-key signing |
 | Multi-chain / governance  | Read-only discovery views                                    |
 | Mainnet DeFi writes       | Public via explicit `SHERPA_STAGE_2_PUBLIC_MAINNET=true` rollout |
 

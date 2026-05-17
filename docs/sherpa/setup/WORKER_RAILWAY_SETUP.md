@@ -2,7 +2,9 @@
 
 The worker runs Stage 4 automation loops:
 
-- Alerts: evaluates active alerts and dispatches notifications.
+- Alerts: evaluates active alerts and dispatches notifications. Telegram
+  delivery is verified in production when an alert stores `telegramChatId` in
+  `params`.
 - DCA: checks due schedules and records fail-closed execution attempts until the session-key executor is configured.
 - Auto-repay: checks Aave health factors and records fail-closed execution attempts until the repay executor and broadcaster are configured.
 
@@ -32,6 +34,7 @@ BASE_MAINNET_RPC_URL=<base mainnet rpc>
 BASE_RPC_URL=<base mainnet rpc>
 BASESCAN_API_KEY=<basescan key>
 TELEGRAM_BOT_TOKEN=<telegram bot token, if telegram alerts are enabled>
+ADMIN_TG_USER_IDS=<comma-separated admin telegram ids, optional>
 ```
 
 Worker loop toggles:
@@ -68,4 +71,11 @@ Production:
 
 ```text
 https://sherpa-worker-production.up.railway.app/health
+```
+
+Telegram smoke verification:
+
+```text
+Bot API getMe resolves to @sherpaonbasebot, and a direct smoke message to the
+configured admin chat ID succeeded on 2026-05-17.
 ```
