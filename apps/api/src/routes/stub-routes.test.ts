@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'vitest';
+import { afterEach, describe, test, expect, vi } from 'vitest';
 import Fastify from 'fastify';
 import { notificationRoutes } from './notifications.js';
 import { strategyRoutes } from './strategies.js';
@@ -9,6 +9,17 @@ import { composableRoutes } from './composable.js';
 // P1-3: Verify routes previously returning stub-* IDs now return 501 not_implemented
 
 describe('Stub ID routes return 501 not fake success (P1-3)', () => {
+  const originalTelegramToken = process.env.TELEGRAM_BOT_TOKEN;
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (originalTelegramToken === undefined) {
+      delete process.env.TELEGRAM_BOT_TOKEN;
+    } else {
+      process.env.TELEGRAM_BOT_TOKEN = originalTelegramToken;
+    }
+  });
+
   async function makeApp(register: (app: ReturnType<typeof Fastify>) => Promise<void>) {
     const app = Fastify({ logger: false });
     await register(app);
@@ -16,26 +27,79 @@ describe('Stub ID routes return 501 not fake success (P1-3)', () => {
   }
 
   describe('notifications', () => {
-    test('POST /api/notifications/subscribe returns 501 not_implemented', async () => {
+    test('POST /api/notifications/subscribe persists a real subscription', async () => {
       const app = await makeApp(notificationRoutes);
+      const userAddress = '0x1234567890123456789012345678901234567890';
       const res = await app.inject({
         method: 'POST',
         url: '/api/notifications/subscribe',
-        payload: { userAddress: '0x1234567890123456789012345678901234567890', channel: 'telegram' },
+        payload: { userAddress, channel: 'telegram', recipient: '6102672721', condition: 'hf < 1.5' },
+      });
+      expect(res.statusCode).toBe(201);
+      const body = JSON.parse(res.body);
+      expect(body.subscription.id).toEqual(expect.any(String));
+      expect(body.subscription.enabled).toBe(true);
+      expect(body.subscription.storage).toBe('memory');
+
+      const list = await app.inject({
+        method: 'GET',
+        url: `/api/notifications/${userAddress}`,
+      });
+      expect(list.statusCode).toBe(200);
+      expect(JSON.parse(list.body).subscriptions).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: body.subscription.id })]),
+      );
+    });
+
+    test('POST /api/notifications/send dispatches telegram without fake success', async () => {
+      const app = await makeApp(notificationRoutes);
+      process.env.TELEGRAM_BOT_TOKEN = 'test-token';
+      const fetchMock = vi.fn(async () => new Response(
+        JSON.stringify({ ok: true, result: { message_id: 42 } }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ));
+      vi.stubGlobal('fetch', fetchMock);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/notifications/send',
+        payload: {
+          userAddress: '0x2234567890123456789012345678901234567890',
+          channel: 'telegram',
+          recipient: '6102672721',
+          title: 'Sherpa smoke test',
+          body: 'Notification route dispatches through Telegram.',
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.ok).toBe(true);
+      expect(body.notification.result.messageId).toBe('42');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://api.telegram.org/bottest-token/sendMessage',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    test('POST /api/notifications/send returns explicit channel gaps', async () => {
+      const app = await makeApp(notificationRoutes);
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/notifications/send',
+        payload: {
+          userAddress: '0x3234567890123456789012345678901234567890',
+          channel: 'email',
+          recipient: 'builder@example.com',
+          title: 'Sherpa',
+          body: 'Email should fail explicitly until the channel is wired.',
+        },
       });
       expect(res.statusCode).toBe(501);
       const body = JSON.parse(res.body);
-      expect(body.error).toBe('not_implemented');
-      expect(body).not.toHaveProperty('id');
-    });
-
-    test('POST /api/notifications/send returns 501 not_implemented', async () => {
-      const app = await makeApp(notificationRoutes);
-      const res = await app.inject({ method: 'POST', url: '/api/notifications/send', payload: {} });
-      expect(res.statusCode).toBe(501);
-      const body = JSON.parse(res.body);
-      expect(body.error).toBe('not_implemented');
-      expect(body.details).not.toContain('stub');
+      expect(body.ok).toBe(false);
+      expect(body.error).toBe('email_channel_not_implemented');
+      expect(JSON.stringify(body)).not.toContain('stub');
     });
   });
 
