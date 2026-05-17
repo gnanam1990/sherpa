@@ -156,28 +156,48 @@ describe('Stub ID routes return 501 not fake success (P1-3)', () => {
   });
 
   describe('developer', () => {
-    test('POST /api/developer/keys returns 501 not stub-key-id', async () => {
+    test('POST /api/developer/keys creates a real one-time API key', async () => {
       const app = await makeApp(developerRoutes);
       const res = await app.inject({
         method: 'POST',
         url: '/api/developer/keys',
         payload: { name: 'My Key' },
       });
-      expect(res.statusCode).toBe(501);
+      expect(res.statusCode).toBe(201);
       const body = JSON.parse(res.body);
-      expect(body.error).toBe('not_implemented');
+      expect(body.key).toMatch(/^sk_/);
+      expect(body.apiKey.id).toEqual(expect.any(String));
+      expect(body.apiKey.keyPreview).toContain('...');
+      expect(body.apiKey).not.toHaveProperty('keyHash');
       expect(JSON.stringify(body)).not.toContain('stub');
+
+      const list = await app.inject({ method: 'GET', url: '/api/developer/keys' });
+      expect(list.statusCode).toBe(200);
+      expect(JSON.parse(list.body).keys).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: body.apiKey.id })]),
+      );
     });
 
-    test('POST /api/developer/webhooks returns 501 not stub-webhook-id', async () => {
+    test('POST /api/developer/webhooks creates a real webhook registration', async () => {
       const app = await makeApp(developerRoutes);
       const res = await app.inject({
         method: 'POST',
         url: '/api/developer/webhooks',
         payload: { url: 'https://example.com/hook', events: ['swap.executed'] },
       });
-      expect(res.statusCode).toBe(501);
-      expect(JSON.stringify(JSON.parse(res.body))).not.toContain('stub');
+      expect(res.statusCode).toBe(201);
+      const body = JSON.parse(res.body);
+      expect(body.secret).toMatch(/^whsec_/);
+      expect(body.webhook.id).toEqual(expect.any(String));
+      expect(body.webhook.status).toBe('active');
+      expect(body.webhook).not.toHaveProperty('secretHash');
+      expect(JSON.stringify(body)).not.toContain('stub');
+
+      const list = await app.inject({ method: 'GET', url: '/api/developer/webhooks' });
+      expect(list.statusCode).toBe(200);
+      expect(JSON.parse(list.body).webhooks).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: body.webhook.id })]),
+      );
     });
   });
 
