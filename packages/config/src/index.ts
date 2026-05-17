@@ -164,6 +164,8 @@ export type SherpaConfig = {
   feeBps: number;
   /** Whether Stage 2 features (swap, lend, borrow, repay, withdraw) are enabled. */
   stage2Enabled: boolean;
+  /** Whether unaudited Stage 2 write actions are enabled on Base Sepolia only. */
+  stage2TestnetEnabled: boolean;
   /** Public-facing Stage 2 flag (exposed via NEXT_PUBLIC_*). */
   stage2PublicEnabled: boolean;
 };
@@ -183,6 +185,18 @@ export const ONCHAIN_ADDRESSES = Object.freeze({
    * `getEnsAddress` is therefore not applicable for `.base.eth` names.
    */
   basenamesL2Resolver: '0xC6d566A56A1aFf6508b41f6c90ff131615583BCD' as const,
+  /**
+   * Stage 2 audit target on Base Sepolia.
+   *
+   * Source: deployments/base-sepolia.json, deployed 2026-05-16.
+   * These addresses are testnet-only and must never be reused for mainnet.
+   */
+  stage2BaseSepolia: {
+    mockAerodromeRouter: '0x135Ea0F5422fB1D4aDeaC8A205735498ffA5B933' as const,
+    aavePool: '0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27' as const,
+    sherpaRouter: '0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032' as const,
+    sherpaTreasury: '0x70A58169BF96587E55F500c4b5cb9d956Ef826ee' as const,
+  },
 });
 
 /** Public Ethereum mainnet RPC used when ALCHEMY_ETH_MAINNET_RPC is unset. */
@@ -279,6 +293,7 @@ const FeeEnvSchema = z.object({
 
 const Stage2EnvSchema = z.object({
   SHERPA_STAGE_2_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('false')),
+  SHERPA_STAGE_2_TESTNET_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('true')),
   NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED: z.preprocess(emptyToUndefined, z.enum(['true', 'false']).default('false')),
 });
 
@@ -337,11 +352,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   });
   const stage2Env = Stage2EnvSchema.parse({
     SHERPA_STAGE_2_ENABLED: env.SHERPA_STAGE_2_ENABLED,
+    SHERPA_STAGE_2_TESTNET_ENABLED: env.SHERPA_STAGE_2_TESTNET_ENABLED,
     NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED: env.NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED,
   });
 
   const paymasterUrl = env.SHERPA_PAYMASTER_URL;
   const simulationFailOpen = tenderlyEnv.SHERPA_SIMULATION_FAIL_OPEN ?? !isMainnet;
+  const stage2TestnetEnabled =
+    chainName === 'base-sepolia' && stage2Env.SHERPA_STAGE_2_TESTNET_ENABLED === 'true';
+  const testnetAddresses = ONCHAIN_ADDRESSES.stage2BaseSepolia;
 
   if (paymasterUrl) {
     if (isMainnet && chainName === 'base-mainnet' && !paymasterUrl.includes('mainnet')) {
@@ -399,13 +418,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
     simulationEnabled: tenderlyEnv.SHERPA_SIMULATION_ENABLED !== 'false',
     simulationFailOpen,
     isMainnet,
-    aerodromeRouterAddress: aerodromeEnv.AERODROME_ROUTER_ADDRESS as `0x${string}` | undefined,
-    aavePoolAddress: aaveEnv.AAVE_POOL_ADDRESS as `0x${string}` | undefined,
+    aerodromeRouterAddress: (aerodromeEnv.AERODROME_ROUTER_ADDRESS ??
+      (stage2TestnetEnabled ? testnetAddresses.mockAerodromeRouter : undefined)) as `0x${string}` | undefined,
+    aavePoolAddress: (aaveEnv.AAVE_POOL_ADDRESS ??
+      (stage2TestnetEnabled ? testnetAddresses.aavePool : undefined)) as `0x${string}` | undefined,
     aaveDataProviderAddress: aaveEnv.AAVE_DATA_PROVIDER_ADDRESS as `0x${string}` | undefined,
     feeTreasuryAddress: feeEnv.SHERPA_FEE_TREASURY_ADDRESS as `0x${string}` | undefined,
     feeEnabled: feeEnv.SHERPA_FEE_ENABLED,
     feeBps: feeEnv.SHERPA_FEE_BPS,
     stage2Enabled: stage2Env.SHERPA_STAGE_2_ENABLED === 'true',
+    stage2TestnetEnabled,
     stage2PublicEnabled: stage2Env.NEXT_PUBLIC_SHERPA_STAGE_2_ENABLED === 'true',
   };
 }

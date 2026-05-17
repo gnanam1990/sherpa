@@ -18,6 +18,13 @@ describe('Stage2ComingSoon', () => {
     expect(screen.getByText(/lend 100 usdc to aave/)).toBeTruthy();
   });
 
+  it('renders testnet-enabled copy for executable demos', () => {
+    render(<Stage2ComingSoon feature="swap" testnetEnabled />);
+    expect(screen.getByText('Swap is live on testnet')).toBeTruthy();
+    expect(screen.getByText('Testnet enabled')).toBeTruthy();
+    expect(screen.getByText(/Base Sepolia with small demo amount caps/)).toBeTruthy();
+  });
+
   it('builds text summaries for chat responses', () => {
     const text = stage2ComingSoonText('borrow', { intent: 'BORROW' });
     expect(text).toContain('Borrow from Aave - Coming soon');

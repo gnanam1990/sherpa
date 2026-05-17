@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-type FeatureStatus = 'live' | 'read-only' | 'pending-audit' | 'coming';
+type FeatureStatus = 'live' | 'read-only' | 'testnet' | 'pending-audit' | 'coming';
 
 const FEATURES: Array<{
   name: string;
@@ -21,20 +21,20 @@ const FEATURES: Array<{
   },
   {
     name: 'Swap',
-    status: 'pending-audit',
-    description: 'Swap via Aerodrome after mainnet audit.',
+    status: 'testnet',
+    description: 'Testnet-only swap demo on Base Sepolia.',
     href: '/swap',
   },
   {
     name: 'Lend / Withdraw',
-    status: 'pending-audit',
-    description: 'Supply to and withdraw from Aave V3.',
+    status: 'testnet',
+    description: 'Supply to Aave V3 on Base Sepolia. Withdraw remains audit pending.',
     href: '/lend',
   },
   {
     name: 'Borrow / Repay',
-    status: 'pending-audit',
-    description: 'Borrow against collateral and repay debt.',
+    status: 'testnet',
+    description: 'Borrow against Base Sepolia Aave collateral. Repay remains audit pending.',
     href: '/borrow',
   },
   {
@@ -78,6 +78,10 @@ const STATUS_CONFIG: Record<FeatureStatus, { label: string; classes: string }> =
     label: 'Read-only live',
     classes: 'border-sherpa-blue/30 bg-sherpa-blue/10 text-sherpa-blue',
   },
+  testnet: {
+    label: 'Testnet live',
+    classes: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
+  },
   'pending-audit': {
     label: 'Audit pending',
     classes: 'border-yellow-400/30 bg-yellow-400/10 text-yellow-300',
@@ -94,7 +98,7 @@ export function FeatureRoadmap() {
       <div className="mb-5">
         <h2 className="text-xl font-semibold tracking-[-0.02em]">What Sherpa can do</h2>
         <p className="mt-1 text-sm text-sherpa-muted">
-          Stage 1 is live. Stage 2 contracts are verified on Base Sepolia and pending audit.
+          Stage 1 is live. Stage 2 write actions are testnet-only until audit.
         </p>
       </div>
 

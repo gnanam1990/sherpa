@@ -9,7 +9,7 @@ export default function BorrowPage() {
           Back to Sherpa
         </Link>
         <div className="mt-6">
-          <Stage2ComingSoon feature="borrow" />
+          <Stage2ComingSoon feature="borrow" testnetEnabled />
         </div>
       </div>
     </main>

@@ -17,6 +17,7 @@ type ParseResponse = {
   parsed?: { intent: string; confidence: number; slots?: Record<string, unknown> };
   card?: SerializedConfirmationCardProps;
   error?: string;
+  stage2?: { status: string; reason: string };
 };
 
 type BalanceResponse = {
@@ -383,7 +384,7 @@ export function Prompt({
       const stage2Feature = body.parsed?.intent
         ? stage2FeatureByIntent[body.parsed.intent]
         : undefined;
-      if (stage2Feature) {
+      if (stage2Feature && body.stage2?.status === 'coming_soon' && !body.card) {
         chat.updateMessage(thinkingMessage.id, {
           content: {
             kind: 'text',

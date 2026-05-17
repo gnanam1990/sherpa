@@ -55,13 +55,20 @@ describe('loadConfig', () => {
   });
 
   it('loadConfig treats empty AAVE_POOL_ADDRESS as undefined', () => {
-    const cfg = loadConfig({ AAVE_POOL_ADDRESS: '' });
+    const cfg = loadConfig({ AAVE_POOL_ADDRESS: '', SHERPA_STAGE_2_TESTNET_ENABLED: 'false' });
     expect(cfg.aavePoolAddress).toBeUndefined();
   });
 
   it('loadConfig treats missing AAVE_POOL_ADDRESS as undefined', () => {
-    const cfg = loadConfig({});
+    const cfg = loadConfig({ SHERPA_STAGE_2_TESTNET_ENABLED: 'false' });
     expect(cfg.aavePoolAddress).toBeUndefined();
+  });
+
+  it('defaults Base Sepolia Stage 2 testnet addresses when testnet mode is enabled', () => {
+    const cfg = loadConfig({});
+    expect(cfg.stage2TestnetEnabled).toBe(true);
+    expect(cfg.aavePoolAddress).toBe('0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27');
+    expect(cfg.aerodromeRouterAddress).toBe('0x135Ea0F5422fB1D4aDeaC8A205735498ffA5B933');
   });
 });
 

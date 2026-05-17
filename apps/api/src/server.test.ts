@@ -4,7 +4,8 @@ import { createInMemoryAuditStore, createInMemoryRateLimiter } from '@sherpa/mem
 import { _resetSentryForTests, type Logger, type SentryLike } from '@sherpa/logger';
 import { buildServer } from './server.js';
 
-const offlineConfig = { ...loadConfig(), useRealRpc: false } as const;
+const offlineConfig = { ...loadConfig(), stage2TestnetEnabled: false, useRealRpc: false } as const;
+const testnetStage2Config = { ...offlineConfig, stage2TestnetEnabled: true } as const;
 
 const USDC_RECIPIENT = '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
 
@@ -121,6 +122,28 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  it('POST /api/parse returns executable cards for testnet-enabled Stage 2 intents', async () => {
+    const app = buildServer({ config: testnetStage2Config });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse',
+      payload: { input: 'lend 1 usdc to aave', userKey: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      parsed?: { intent: string };
+      card?: { intent: string; batch?: { chainId: string; calls: unknown[] }; warnings?: string[] };
+      stage2?: unknown;
+    };
+    expect(body.parsed?.intent).toBe('LEND');
+    expect(body.stage2).toBeUndefined();
+    expect(body.card?.intent).toBe('LEND');
+    expect(body.card?.batch?.chainId).toBe('0x14a34');
+    expect(body.card?.batch?.calls.length).toBe(2);
+    expect(body.card?.warnings?.join(' ')).toMatch(/Base Sepolia testnet only/i);
+    await app.close();
+  });
+
   it('POST /api/execute writes an audit log and returns the plan', async () => {
     const app = buildServer();
     const res = await app.inject({
@@ -151,6 +174,26 @@ describe('apps/api', () => {
       ok: false,
       error: expect.stringContaining('pending external audit'),
     });
+    await app.close();
+  });
+
+  it('POST /api/execute allows testnet-enabled Stage 2 intents', async () => {
+    const auditStore = createInMemoryAuditStore();
+    const app = buildServer({ auditStore, config: testnetStage2Config });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/execute',
+      payload: { input: 'borrow 1 usdc', userAddress: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      ok: boolean;
+      card?: { intent: string; batch?: { chainId: string; calls: unknown[] } };
+    };
+    expect(body.ok).toBe(true);
+    expect(body.card?.intent).toBe('BORROW');
+    expect(body.card?.batch?.chainId).toBe('0x14a34');
+    expect(body.card?.batch?.calls.length).toBe(1);
     await app.close();
   });
 

@@ -1553,6 +1553,24 @@ describe('core/executor', () => {
     }
   });
 
+  it('SWAP plans with a configured Base Sepolia mock Aerodrome router', async () => {
+    const me = '0x1111111111111111111111111111111111111111' as const;
+    const fakeRouter = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as const;
+    const p = parseDeterministic('swap 1 USDC for ETH');
+    const out = await plan(p, {
+      aerodromeRouterAddress: fakeRouter,
+      paymasterUrl: 'https://paymaster.test',
+      stage2Testnet: true,
+      userAddress: me,
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.card.intent).toBe('SWAP');
+    expect(out.card.batch?.chainId).toBe('0x14a34');
+    expect(out.card.batch?.calls.length).toBe(2);
+    expect(out.card.warnings.join(' ')).toMatch(/testnet only/i);
+  });
+
   // ── LEND executor ───────────────────────────────────────────────────
 
   it('LEND returns graceful error when Aave not configured (default)', async () => {
@@ -1612,23 +1630,21 @@ describe('core/executor', () => {
   // ── BORROW executor ─────────────────────────────────────────────────
 
   it('BORROW requires userAddress', async () => {
-    const p = parseDeterministic('borrow 50 USDC');
+    const p = parseDeterministic('borrow 1 USDC');
     const out = await plan(p);
     expect(out.ok).toBe(false);
     if (!out.ok) {
-      // BORROW executor reads slots.amount/asset but parser sets borrowAmount/borrowAsset
-      expect(out.error).toMatch(/missing slots/i);
+      expect(out.error).toMatch(/connected wallet/i);
     }
   });
 
   it('BORROW returns graceful error when Aave not configured (default)', async () => {
     const me = '0x1111111111111111111111111111111111111111' as const;
-    const p = parseDeterministic('borrow 50 USDC');
+    const p = parseDeterministic('borrow 1 USDC');
     const out = await plan(p, { userAddress: me });
     expect(out.ok).toBe(false);
     if (!out.ok) {
-      // BORROW executor reads slots.amount/asset but parser sets borrowAmount/borrowAsset
-      expect(out.error).toMatch(/missing slots/i);
+      expect(out.error).toMatch(/available/i);
     }
   });
 
@@ -1638,18 +1654,18 @@ describe('core/executor', () => {
     const { createAave } = await import('@sherpa/tools');
     const aaveAdapter = createAave({ poolAddress: fakePool });
 
-    const p = parseDeterministic('borrow 50 USDC');
+    const p = parseDeterministic('borrow 1 USDC');
     const out = await plan(p, {
       userAddress: me,
       paymasterUrl: 'https://paymaster.test',
       aave: aaveAdapter,
+      stage2Testnet: true,
     });
-    // BORROW executor reads slots.amount/asset but parser sets borrowAmount/borrowAsset
-    // This results in "missing slots" error - testing actual behavior
-    expect(out.ok).toBe(false);
-    if (!out.ok) {
-      expect(out.error).toMatch(/missing slots/i);
-    }
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.card.intent).toBe('BORROW');
+    expect(out.card.batch?.calls.length).toBe(1);
+    expect(out.card.warnings.join(' ')).toMatch(/testnet only/i);
   });
 
   // ── BALANCE executor ───────────────────────────────────────────────

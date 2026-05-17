@@ -45,25 +45,50 @@ export function stage2ComingSoonText(feature: Stage2Feature, parsedIntent?: unkn
 export function Stage2ComingSoon({
   feature,
   parsedIntent,
+  testnetEnabled = false,
 }: {
   feature: Stage2Feature;
   parsedIntent?: unknown;
+  testnetEnabled?: boolean;
 }) {
   const info = FEATURE_INFO[feature];
+  const executable = testnetEnabled && ['swap', 'lend', 'borrow'].includes(feature);
   return (
-    <section className="rounded-lg border border-yellow-400/30 bg-yellow-400/10 p-6">
+    <section
+      className={`rounded-lg border p-6 ${
+        executable
+          ? 'border-blue-400/30 bg-blue-400/10'
+          : 'border-yellow-400/30 bg-yellow-400/10'
+      }`}
+    >
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-yellow-300">
-            Audit pending
+          <p
+            className={`text-xs font-medium uppercase tracking-[0.14em] ${
+              executable ? 'text-blue-300' : 'text-yellow-300'
+            }`}
+          >
+            {executable ? 'Testnet enabled' : 'Audit pending'}
           </p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-yellow-100">
-            {info.title} is coming soon
+          <h2
+            className={`mt-1 text-2xl font-semibold tracking-[-0.03em] ${
+              executable ? 'text-blue-100' : 'text-yellow-100'
+            }`}
+          >
+            {executable ? `${info.title} is live on testnet` : `${info.title} is coming soon`}
           </h2>
-          <p className="mt-2 text-sm text-yellow-100/80">{info.description}</p>
+          <p className={`mt-2 text-sm ${executable ? 'text-blue-100/80' : 'text-yellow-100/80'}`}>
+            {info.description}
+          </p>
         </div>
-        <span className="rounded-full border border-yellow-400/30 bg-black/20 px-3 py-1 text-xs text-yellow-200">
-          Base Sepolia ready
+        <span
+          className={`rounded-full border bg-black/20 px-3 py-1 text-xs ${
+            executable
+              ? 'border-blue-400/30 text-blue-200'
+              : 'border-yellow-400/30 text-yellow-200'
+          }`}
+        >
+          {executable ? 'Base Sepolia only' : 'Base Sepolia ready'}
         </span>
       </div>
 
@@ -77,12 +102,25 @@ export function Stage2ComingSoon({
       ) : null}
 
       <div className="space-y-2 text-sm text-sherpa-muted">
+        {executable ? (
+          <>
+            <p>
+              This action is enabled only on Base Sepolia with small demo amount caps.
+              Mainnet execution stays disabled until external audit is complete.
+            </p>
+            <p>
+              Open the chat and try: <span className="font-mono text-sherpa-fg">{info.command}</span>
+            </p>
+          </>
+        ) : (
+          <p>
+            SherpaRouter and SherpaTreasury are verified on Base Sepolia for audit review.
+            Mainnet execution stays disabled until external audit is complete.
+          </p>
+        )}
         <p>
-          SherpaRouter and SherpaTreasury are verified on Base Sepolia for audit review.
-          Mainnet execution stays disabled until external audit is complete.
-        </p>
-        <p>
-          Try the command later: <span className="font-mono text-sherpa-fg">{info.command}</span>
+          {executable ? 'Testnet warning: use faucet assets only.' : 'Try the command later:'}{' '}
+          <span className="font-mono text-sherpa-fg">{info.command}</span>
         </p>
       </div>
 

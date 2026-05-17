@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { FeatureRoadmap } from './FeatureRoadmap';
 
 describe('FeatureRoadmap', () => {
-  it('shows live, read-only, audit-pending, and coming statuses', () => {
+  it('shows live, read-only, testnet, and coming statuses', () => {
     render(<FeatureRoadmap />);
 
     expect(screen.getByText('Send tokens')).toBeTruthy();
     expect(screen.getByText('Live')).toBeTruthy();
     expect(screen.getByText('Aave positions')).toBeTruthy();
     expect(screen.getByText('Read-only live')).toBeTruthy();
-    expect(screen.getAllByText('Audit pending').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Testnet live').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Coming soon').length).toBeGreaterThan(0);
   });
 

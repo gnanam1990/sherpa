@@ -37,7 +37,7 @@ import {
 import type { ToolAdapter } from '@sherpa/tools';
 import { resolveToken } from '@sherpa/tools';
 import { buildSwapCall, verifySwap } from '@sherpa/tools';
-import { encodeFunctionData, erc20Abi } from 'viem';
+import { encodeFunctionData, erc20Abi, parseUnits } from 'viem';
 import type {
   ConfirmationCardProps,
   ExecutionStep,
@@ -67,6 +67,10 @@ export type ExecutorDeps = {
   uniswap?: ToolAdapter<BuyParams, BuyQuote, BuyParams>;
   /** Override the default Aave adapter for LEND. */
   aave?: AaveAdapter;
+  /** Explicit Aerodrome-compatible router address for testnet swap demos. */
+  aerodromeRouterAddress?: Address;
+  /** True only for Base Sepolia Stage 2 demos; applies small amount caps and warnings. */
+  stage2Testnet?: boolean;
   /**
    * Optional simulation callback for Ring 6. When provided, the planner
    * runs simulation after building steps and rejects if the tx would fail.
@@ -87,6 +91,37 @@ const GAS_SPONSORED_DISPLAY = '$0.00 (sponsored ✓)';
 const GAS_USER_PAYS = 'user pays';
 const DEFAULT_CHAIN_ID = 84532;
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
+const TESTNET_MAX_USDC_AMOUNT = 10_000_000n;
+const TESTNET_MAX_WETH_AMOUNT = 10_000_000_000_000_000n;
+const TESTNET_MAX_BORROW_USDC_AMOUNT = 5_000_000n;
+
+function testnetCapError(action: string): string {
+  return `${action} is testnet-only right now. Keep demo amounts small: max 10 USDC / 0.01 ETH, borrow max 5 USDC.`;
+}
+
+function parseTokenAmount(amount: string, decimals: number): bigint {
+  return parseUnits(amount, decimals);
+}
+
+function enforceTestnetAmountCap(
+  action: string,
+  asset: string,
+  amount: string,
+  deps: ExecutorDeps,
+): string | undefined {
+  if (!deps.stage2Testnet) return undefined;
+  const normalized = asset.toUpperCase();
+  const decimals = normalized === 'USDC' ? 6 : 18;
+  const parsed = parseTokenAmount(amount, decimals);
+  const cap =
+    action === 'BORROW'
+      ? TESTNET_MAX_BORROW_USDC_AMOUNT
+      : normalized === 'USDC'
+        ? TESTNET_MAX_USDC_AMOUNT
+        : TESTNET_MAX_WETH_AMOUNT;
+  if (parsed > cap) return testnetCapError(action);
+  return undefined;
+}
 
 function stepToCall(step: ExecutionStep): Call {
   return { to: step.to, data: step.data, value: step.value };
@@ -602,6 +637,8 @@ async function planSwap(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
   if (!deps.userAddress) {
     return { ok: false, error: 'SWAP requires a connected wallet.' };
   }
+  const capError = enforceTestnetAmountCap('SWAP', fromAsset, fromAmount, deps);
+  if (capError) return { ok: false, error: capError };
 
   // Guard: Aerodrome not configured → graceful error (not a crash)
   try {
@@ -610,13 +647,19 @@ async function planSwap(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
       toAsset as 'USDC' | 'ETH',
       fromAmount,
       deps.userAddress,
-      { pyth: false, slippageBps },
+      { pyth: false, routerAddress: deps.aerodromeRouterAddress, slippageBps },
     );
 
-    const verified = await verifySwap({ to: result.to, data: result.data, value: result.value, sponsorable: result.sponsorable });
+    const verified = await verifySwap(
+      { to: result.to, data: result.data, value: result.value, sponsorable: result.sponsorable },
+      { routerAddress: deps.aerodromeRouterAddress },
+    );
     if (!verified.ok) return { ok: false, error: `tx verify failed: ${verified.reason}` };
 
     const warnings: string[] = [];
+    if (deps.stage2Testnet) {
+      warnings.push('Base Sepolia testnet only. This uses a mock Aerodrome router and is not mainnet liquidity.');
+    }
     if (slippageBps > 500) {
       warnings.push(`High slippage tolerance (${(slippageBps / 100).toFixed(1)}%). Price may move significantly.`);
     }
@@ -714,6 +757,8 @@ async function planLend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
   if (!deps.userAddress) {
     return { ok: false, error: 'LEND requires a connected wallet.' };
   }
+  const capError = enforceTestnetAmountCap('LEND', asset, amount, deps);
+  if (capError) return { ok: false, error: capError };
 
   const aaveAdapter = deps.aave ?? defaultAave;
 
@@ -743,6 +788,9 @@ async function planLend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
     if (!r.ok) return r;
 
     const warnings: string[] = [];
+    if (deps.stage2Testnet) {
+      warnings.push('Base Sepolia testnet only. This supplies to the configured Aave V3 testnet pool.');
+    }
     if (q.supplyApyBps < 100) {
       warnings.push(`Low supply APY (${(q.supplyApyBps / 100).toFixed(2)}%). Consider waiting for better rates.`);
     }
@@ -794,15 +842,30 @@ async function planLend(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanR
 
 async function planBorrow(parsed: ParsedIntent, deps: ExecutorDeps): Promise<PlanResult> {
   const slots = parsed.slots;
-  const amount = typeof slots.amount === 'string' ? slots.amount : '';
-  const asset = (typeof slots.asset === 'string' ? slots.asset : '').toUpperCase();
+  const amount =
+    typeof slots.amount === 'string'
+      ? slots.amount
+      : typeof slots.borrowAmount === 'string'
+        ? slots.borrowAmount
+        : '';
+  const asset = (typeof slots.asset === 'string'
+    ? slots.asset
+    : typeof slots.borrowAsset === 'string'
+      ? slots.borrowAsset
+      : ''
+  ).toUpperCase();
 
   if (!amount || !asset) {
     return { ok: false, error: 'missing slots: amount/asset' };
   }
+  if (asset !== 'USDC') {
+    return { ok: false, error: `Aave testnet borrowing starts with USDC. Try USDC.` };
+  }
   if (!deps.userAddress) {
     return { ok: false, error: 'BORROW requires a connected wallet.' };
   }
+  const capError = enforceTestnetAmountCap('BORROW', asset, amount, deps);
+  if (capError) return { ok: false, error: capError };
 
   const token = resolveToken(asset);
   if (!token) {
@@ -818,7 +881,7 @@ async function planBorrow(parsed: ParsedIntent, deps: ExecutorDeps): Promise<Pla
   try {
     const borrowParams: AaveBorrowParams = {
       asset,
-      amount: BigInt(amount),
+      amount: parseTokenAmount(amount, token.decimals),
       interestMode: 'variable',
     };
 
@@ -832,7 +895,9 @@ async function planBorrow(parsed: ParsedIntent, deps: ExecutorDeps): Promise<Pla
       { poolAddress },
     );
 
-    const warnings: string[] = [];
+    const warnings: string[] = deps.stage2Testnet
+      ? ['Base Sepolia testnet only. Borrow requires sufficient Aave collateral on Base Sepolia.']
+      : [];
 
     const steps: ExecutionStep[] = [
       {

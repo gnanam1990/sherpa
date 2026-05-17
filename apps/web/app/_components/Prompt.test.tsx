@@ -300,7 +300,7 @@ describe('Prompt', () => {
             confidence: 0.9,
             slots: { fromAmount: '1', fromAsset: 'USDC', toAsset: 'ETH' },
           },
-          error: 'Stage 2 swap is pending audit.',
+          stage2: { status: 'coming_soon', reason: 'pending_external_audit' },
         });
       }
       throw new Error(`unexpected fetch ${url}`);
