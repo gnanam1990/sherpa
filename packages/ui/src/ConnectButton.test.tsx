@@ -1,93 +1,91 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type { ReactNode } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConnectButton } from './ConnectButton.js';
 
+type RainbowRenderProps = {
+  account?: { displayName: string };
+  chain?: { unsupported?: boolean };
+  mounted: boolean;
+  openAccountModal: () => void;
+  openChainModal: () => void;
+  openConnectModal: () => void;
+};
+
 const mockState = vi.hoisted(() => ({
-  isConnected: false,
-  address: undefined as `0x${string}` | undefined,
-  chainId: 84532,
-  connect: vi.fn(),
-  connectors: [{ id: 'coinbaseWalletSDK', name: 'Coinbase Wallet' }],
-  disconnect: vi.fn(),
+  account: undefined as RainbowRenderProps['account'],
+  chain: undefined as RainbowRenderProps['chain'],
+  mounted: true,
+  openAccountModal: vi.fn(),
+  openChainModal: vi.fn(),
+  openConnectModal: vi.fn(),
 }));
 
-vi.mock('wagmi', async () => {
-  const actual = await vi.importActual<typeof import('wagmi')>('wagmi');
-  return {
-    ...actual,
-    useAccount: () => ({
-      address: mockState.address,
-      isConnected: mockState.isConnected,
-      chain: mockState.isConnected ? { id: mockState.chainId, name: 'Base' } : undefined,
-    }),
-    useConnect: () => ({
-      connect: mockState.connect,
-      connectors: mockState.connectors,
-      isPending: false,
-    }),
-    useDisconnect: () => ({ disconnect: mockState.disconnect }),
-  };
-});
+vi.mock('@rainbow-me/rainbowkit', () => ({
+  ConnectButton: {
+    Custom: ({ children }: { children: (props: RainbowRenderProps) => ReactNode }) =>
+      children({
+        account: mockState.account,
+        chain: mockState.chain,
+        mounted: mockState.mounted,
+        openAccountModal: mockState.openAccountModal,
+        openChainModal: mockState.openChainModal,
+        openConnectModal: mockState.openConnectModal,
+      }),
+  },
+}));
 
 describe('ConnectButton', () => {
   beforeEach(() => {
-    mockState.isConnected = false;
-    mockState.address = undefined;
-    mockState.chainId = 84532;
-    mockState.connectors = [{ id: 'coinbaseWalletSDK', name: 'Coinbase Wallet' }];
-    mockState.connect.mockReset();
-    mockState.disconnect.mockReset();
+    mockState.account = undefined;
+    mockState.chain = undefined;
+    mockState.mounted = true;
+    mockState.openAccountModal.mockReset();
+    mockState.openChainModal.mockReset();
+    mockState.openConnectModal.mockReset();
   });
 
-  it('renders a compact connect button when disconnected', () => {
-    mockState.isConnected = false;
-    render(<ConnectButton variant="compact" />);
-
-    const button = screen.getByRole('button', { name: 'Connect' });
-    expect(button).toBeInTheDocument();
-  });
-
-  it('renders a truncated address when connected', () => {
-    mockState.isConnected = true;
-    mockState.address = '0x1234567890123456789012345678901234567890';
-    render(<ConnectButton variant="compact" />);
-
-    expect(screen.getByRole('button', { name: '0x1234...7890' })).toBeInTheDocument();
-  });
-
-  it('calls connect with coinbase connector when clicked', () => {
-    mockState.isConnected = false;
+  it('opens the RainbowKit wallet modal when disconnected', () => {
     render(<ConnectButton variant="compact" />);
 
     const button = screen.getByRole('button', { name: 'Connect' });
     fireEvent.click(button);
 
-    expect(mockState.connect).toHaveBeenCalledWith({
-      connector: expect.objectContaining({ id: 'coinbaseWalletSDK' }),
-    });
+    expect(mockState.openConnectModal).toHaveBeenCalledTimes(1);
   });
 
-  it('renders Rabby/browser wallet option when an injected connector is available', () => {
-    mockState.connectors = [
-      { id: 'coinbaseWalletSDK', name: 'Coinbase Wallet' },
-      { id: 'injected', name: 'Rabby Wallet' },
-    ];
-    render(<ConnectButton variant="compact" />);
+  it('uses the hero label for the primary connect surface', () => {
+    render(<ConnectButton variant="hero" />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rabby' }));
-
-    expect(mockState.connect).toHaveBeenCalledWith({
-      connector: expect.objectContaining({ id: 'injected' }),
-    });
+    expect(screen.getByRole('button', { name: 'Connect wallet' })).toBeInTheDocument();
   });
 
-  it('treats Base mainnet as a supported connected network', () => {
-    mockState.isConnected = true;
-    mockState.address = '0x1234567890123456789012345678901234567890';
-    mockState.chainId = 8453;
+  it('opens the account modal when connected', () => {
+    mockState.account = { displayName: '0x1234...7890' };
+    mockState.chain = { unsupported: false };
     render(<ConnectButton variant="compact" />);
 
-    expect(screen.getByRole('button', { name: '0x1234...7890' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Unsupported network' })).toBeNull();
+    const button = screen.getByRole('button', { name: '0x1234...7890' });
+    fireEvent.click(button);
+
+    expect(mockState.openAccountModal).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the chain modal when the wallet is on an unsupported network', () => {
+    mockState.account = { displayName: '0x1234...7890' };
+    mockState.chain = { unsupported: true };
+    render(<ConnectButton variant="compact" />);
+
+    const button = screen.getByRole('button', { name: 'Unsupported network' });
+    fireEvent.click(button);
+
+    expect(mockState.openChainModal).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays disabled until RainbowKit is mounted', () => {
+    mockState.mounted = false;
+    render(<ConnectButton variant="compact" />);
+
+    expect(screen.getByRole('button', { name: 'Connect' })).toBeDisabled();
   });
 });
