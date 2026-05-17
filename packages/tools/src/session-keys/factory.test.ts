@@ -13,32 +13,81 @@ const VALID_CONFIG = {
   }],
 };
 
+const VALID_OPTIONS = {
+  sessionKeyAddress: '0x3333333333333333333333333333333333333333' as `0x${string}`,
+  deploymentTx: '0x' + '12'.repeat(32) as `0x${string}`,
+  now: 1_700_000_000,
+};
+
 describe('Session key factory', () => {
-  test('creates session key with valid config', async () => {
-    const result = await createSessionKey(VALID_CONFIG);
-    expect(result.sessionKeyAddress).toBeDefined();
-    expect(result.validUntil).toBeGreaterThan(result.validFrom);
+  test('records a caller-provided session key address with valid config', async () => {
+    const result = await createSessionKey(VALID_CONFIG, VALID_OPTIONS);
+    expect(result.sessionKeyAddress).toBe(VALID_OPTIONS.sessionKeyAddress);
+    expect(result.deploymentTx).toBe(VALID_OPTIONS.deploymentTx);
+    expect(result.validFrom).toBe(VALID_OPTIONS.now);
+    expect(result.validUntil).toBe(VALID_OPTIONS.now + VALID_CONFIG.validDuration);
   });
 
-  test('creates unique addresses for different calls', async () => {
-    const r1 = await createSessionKey(VALID_CONFIG);
-    const r2 = await createSessionKey(VALID_CONFIG);
-    // Current stub returns same address, but structure is correct
-    expect(r1.sessionKeyAddress).toBeDefined();
-    expect(r2.sessionKeyAddress).toBeDefined();
+  test('does not invent addresses for different calls', async () => {
+    const r1 = await createSessionKey(VALID_CONFIG, {
+      ...VALID_OPTIONS,
+      sessionKeyAddress: '0x3333333333333333333333333333333333333333',
+    });
+    const r2 = await createSessionKey(VALID_CONFIG, {
+      ...VALID_OPTIONS,
+      sessionKeyAddress: '0x4444444444444444444444444444444444444444',
+    });
+    expect(r1.sessionKeyAddress).toBe('0x3333333333333333333333333333333333333333');
+    expect(r2.sessionKeyAddress).toBe('0x4444444444444444444444444444444444444444');
   });
 
   test('validDuration maps to correct validUntil', async () => {
-    const before = Math.floor(Date.now() / 1000);
-    const result = await createSessionKey({ ...VALID_CONFIG, validDuration: 3600 });
-    const after = Math.floor(Date.now() / 1000) + 3600;
-    expect(result.validUntil).toBeGreaterThanOrEqual(before + 3600);
-    expect(result.validUntil).toBeLessThanOrEqual(after + 1);
+    const result = await createSessionKey(
+      { ...VALID_CONFIG, validDuration: 3600 },
+      VALID_OPTIONS,
+    );
+    expect(result.validUntil).toBe(VALID_OPTIONS.now + 3600);
   });
 
   test('returns deployment tx hash', async () => {
-    const result = await createSessionKey(VALID_CONFIG);
-    expect(result.deploymentTx).toBeDefined();
+    const result = await createSessionKey(VALID_CONFIG, VALID_OPTIONS);
+    expect(result.deploymentTx).toBe(VALID_OPTIONS.deploymentTx);
+  });
+
+  test('uses explicit zero hash when no deployment tx is provided', async () => {
+    const result = await createSessionKey(VALID_CONFIG, {
+      sessionKeyAddress: VALID_OPTIONS.sessionKeyAddress,
+      now: VALID_OPTIONS.now,
+    });
+    expect(result.deploymentTx).toBe('0x' + '00'.repeat(32));
+  });
+
+  test('rejects zero address session keys', async () => {
+    await expect(createSessionKey(VALID_CONFIG, {
+      ...VALID_OPTIONS,
+      sessionKeyAddress: '0x0000000000000000000000000000000000000000',
+    })).rejects.toThrow('zero address');
+  });
+
+  test('rejects malformed session key addresses', async () => {
+    await expect(createSessionKey(VALID_CONFIG, {
+      ...VALID_OPTIONS,
+      sessionKeyAddress: '0x1234',
+    })).rejects.toThrow('valid EVM address');
+  });
+
+  test('rejects malformed deployment transaction hashes', async () => {
+    await expect(createSessionKey(VALID_CONFIG, {
+      ...VALID_OPTIONS,
+      deploymentTx: '0x1234',
+    })).rejects.toThrow('valid transaction hash');
+  });
+
+  test('rejects invalid configs instead of recording deployment metadata', async () => {
+    await expect(createSessionKey(
+      { ...VALID_CONFIG, spendLimit: 0n },
+      VALID_OPTIONS,
+    )).rejects.toThrow('Spend limit must be positive');
   });
 
   test('validates spend limit is positive', () => {
