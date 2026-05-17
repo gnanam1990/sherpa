@@ -49,7 +49,7 @@ SherpaRouter routes user intents (swap, lend, borrow) to Aerodrome V2 and Aave V
 **Impact**: Users lose collateral, liquidators profit.
 
 **Mitigations**:
-- `MIN_HEALTH_FACTOR` (1.2e18) enforced on-chain
+- `MIN_HEALTH_FACTOR` (1.5e18) enforced on-chain
 - Aave V3 uses Chainlink oracles (manipulation-resistant)
 - Health factor checked before borrow execution
 

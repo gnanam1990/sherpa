@@ -47,11 +47,12 @@ Total `src/` tree (contracts + libraries + interfaces): 697 lines, 8 files.
 | `setSwapTokenAllowed` | external | state-changing | `onlyOwner`, single-token allowlist |
 | `batchSetSwapTokenAllowed` | external | state-changing | `onlyOwner`, batch allowlist, length-checked |
 | `getUserPositions` | external | view | Proxies Aave `getUserAccountData` |
-| `swap` | external | state-changing | `nonReentrant`; Aerodrome swap, 10 bps fee to treasury |
-| `supply` | external | state-changing | `nonReentrant`; Aave supply, `onBehalfOf = msg.sender` |
-| `withdraw` | external | state-changing | `nonReentrant`; pulls aToken, post-HF guard at 1.5e18 if debt |
-| `borrow` | external | state-changing | `nonReentrant`; post-HF guard at 1.2e18 |
-| `repay` | external | state-changing | `nonReentrant`; Aave repay, returns repaid amount in event |
+| `pause` / `unpause` | external | state-changing | `onlyOwner`; emergency control for user-facing DeFi operations |
+| `swap` | external | state-changing | `whenNotPaused`, `nonReentrant`; Aerodrome swap, 10 bps fee to treasury, quote-derived slippage guard |
+| `supply` | external | state-changing | `whenNotPaused`, `nonReentrant`; Aave supply, `onBehalfOf = msg.sender` |
+| `withdraw` | external | state-changing | `whenNotPaused`, `nonReentrant`; pulls aToken, post-HF guard at 1.5e18 if debt, emits actual withdrawn amount |
+| `borrow` | external | state-changing | `whenNotPaused`, `nonReentrant`; post-HF guard at 1.5e18 |
+| `repay` | external | state-changing | `whenNotPaused`, `nonReentrant`; Aave repay, refunds excess, returns repaid amount in event |
 
 ### SherpaTreasury
 
@@ -105,7 +106,7 @@ Total `src/` tree (contracts + libraries + interfaces): 697 lines, 8 files.
 **Post-deploy configuration:**
 
 - `FEE_BPS` = 10 (0.1%)
-- `MIN_HEALTH_FACTOR` = `1200000000000000000` (1.2e18)
+- `MIN_HEALTH_FACTOR` = `1500000000000000000` (1.5e18)
 - `MIN_WITHDRAW_HEALTH_FACTOR` = `1500000000000000000` (1.5e18)
 - `BUILDER_CODE` = `bc_97ju6eu2`
 - Allowlisted tokens (swap + Aave): USDC `0x036CbD53842c5426634e7929541eC2318f3dCF7e`, WETH `0x4200000000000000000000000000000000000006`
@@ -116,7 +117,7 @@ Total `src/` tree (contracts + libraries + interfaces): 697 lines, 8 files.
    external call; it cannot be inflated post-hoc.
 2. **Aave `onBehalfOf` is always `msg.sender`** — never `address(this)`. The
    router never holds user lending positions.
-3. **Borrow reverts** if post-borrow health factor < `1.2e18`.
+3. **Borrow reverts** if post-borrow health factor < `1.5e18`.
 4. **Withdraw reverts** if the user has debt and post-withdraw health factor
    < `1.5e18`.
 5. **Only allowlisted tokens** can be swapped, supplied, withdrawn, borrowed,

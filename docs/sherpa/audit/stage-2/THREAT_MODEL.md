@@ -45,7 +45,7 @@ Deployment target: Base Sepolia (chainId 84532). See `SCOPE.md`.
 
 **Forced liquidation**
 - Risk: borrow followed by a price drop pushes the position to liquidation.
-- Mitigation: hard health-factor block at `1.2e18` in `SherpaRouter.borrow` (reverts `UnhealthyPosition`).
+- Mitigation: hard health-factor block at `1.5e18` in `SherpaRouter.borrow` (reverts `UnhealthyPosition`).
 - Mitigation: UI warns at HF < 1.5e18 and < 1.3e18.
 
 **Wrong rate mode**
@@ -135,7 +135,7 @@ Attacker → `SherpaRouter.swap(huge_amount)`
 - Attack gas cost > attack value. **Not profitable.**
 
 ### Scenario 2 — Force liquidation via borrow
-Attacker → `SherpaRouter.borrow(amount)` such that post-HF < 1.2e18
+Attacker → `SherpaRouter.borrow(amount)` such that post-HF < 1.5e18
 - **BLOCKED** by the contract check (`revert UnhealthyPosition`).
 - Even if bypassed, Aave Pool enforces its own collateralization checks.
 

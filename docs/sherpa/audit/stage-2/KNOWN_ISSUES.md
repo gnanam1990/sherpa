@@ -30,12 +30,13 @@ findings; novel exploitation paths around them are in scope.
 - Owner must withdraw manually (`withdraw` / `batchWithdraw`, `onlyOwner`).
 - Time-locked auto-distribution is future work, not Stage 2.
 
-### No emergency pause function
-- Stage 2 has no `Pausable`.
-- Emergency lever: owner removes tokens from the allowlist — new
-  swaps/supplies/borrows are blocked, existing Aave positions are unaffected
-  (they live in Aave, not in the router).
-- `Pausable` may be added later if needed (not Stage 2).
+### Emergency pause scope
+- Stage 2 includes `Pausable` on user-facing DeFi operations:
+  `swap`, `supply`, `withdraw`, `borrow`, and `repay`.
+- Owner allowlist updates remain callable while paused so operators can remove
+  risky assets during an incident.
+- Existing Aave positions are unaffected by pause state because positions live in
+  Aave, not in the router.
 
 ### SherpaTreasury has no ReentrancyGuard
 - Intentional: `withdraw`/`batchWithdraw` are `onlyOwner` and send to an
@@ -55,22 +56,22 @@ Slither 0.11.5, run with the same args as CI
 (`--filter-paths "lib/,test/" --exclude-dependencies`). Full output in
 `slither-summary.txt` / `slither.json`.
 
-**0 high, 0 critical.** Remaining 11 findings, all reviewed and accepted:
+**0 high, 0 critical.** Remaining reviewed findings are tracked in
+`slither-summary.txt` / `slither.json` and should be refreshed after code
+changes before final audit submission:
 
 | Severity | Detector | Count | Disposition |
 |---|---|---|---|
-| Medium | `unused-return` | 4 | Intentional — `AAVE_POOL.withdraw` return and unused `getUserAccountData` tuple fields are not needed; the HF guard destructures only the fields it checks. |
+| Medium | `unused-return` | TBD | Refresh before submission; `AAVE_POOL.withdraw` return is now consumed for actual-amount events. |
 | Low | `calls-loop` | 1 | `batchWithdraw` external calls in a loop; `onlyOwner`, caller-bounded array. Acceptable. |
 | Low | `timestamp` | 1 | `swap` deadline comparison against `block.timestamp`. Intended. |
 | Informational | `naming-convention` | 5 | Immutables in SCREAMING_CASE. Style only. |
 
 Please do not file these as findings.
 
-### `forge build` lint warnings (test-only)
-`forge build` emits `forge lint` warnings (`erc20-unchecked-transfer`,
-`unsafe-typecast`). **Every one is in `test/` (mocks and test files), which
-is out of scope.** `src/` contains zero raw `.transfer(` calls — all token
-movement uses OpenZeppelin `SafeERC20`. No action required.
+### `forge build` lint warnings
+Latest local `forge build` is clean. `src/` contains zero raw `.transfer(`
+calls — all token movement uses OpenZeppelin `SafeERC20`.
 
 ## Pre-audit findings (internal review)
 

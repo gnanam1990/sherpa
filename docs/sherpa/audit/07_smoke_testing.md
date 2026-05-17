@@ -108,10 +108,10 @@ cast call <ROUTER_ADDRESS> \
 # availableBorrowsBase: > 0
 # currentLiquidationThreshold: > 0
 # ltv: > 0
-# healthFactor: > 1.2e18
+# healthFactor: > 1.5e18
 ```
 
-**Expected**: All values returned, health factor > 1.2e18.
+**Expected**: All values returned, health factor > 1.5e18.
 
 ## Test 5: Fee Collection Verification
 
@@ -154,10 +154,10 @@ cast call <TREASURY_ADDRESS> \
 
 ```bash
 # Attempt swap with slippage > 500 bps
-# Expected: Transaction reverts with SlippageOutOfRange error
+# Expected: Transaction reverts with SafetyCheck.InvalidSlippage error
 
 # Attempt swap with slippage < 10 bps
-# Expected: Transaction reverts with SlippageOutOfRange error
+# Expected: Transaction reverts with SafetyCheck.InvalidSlippage error
 ```
 
 **Expected**: Transactions revert.

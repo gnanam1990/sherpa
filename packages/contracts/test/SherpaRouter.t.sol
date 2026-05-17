@@ -2,14 +2,18 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {SherpaRouter} from "../src/SherpaRouter.sol";
 import {IAerodromeRouter} from "../src/interfaces/IAerodromeRouter.sol";
 import {ISherpaRouter} from "../src/interfaces/ISherpaRouter.sol";
+import {SafetyCheck} from "../src/libraries/SafetyCheck.sol";
 import {MockAerodromeRouter} from "./mocks/MockAerodromeRouter.sol";
 import {MockAavePool} from "./mocks/MockAavePool.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 
 contract SherpaRouterTest is Test {
+    bytes32 public constant TEST_BUILDER_CODE = "bc_97ju6eu2";
+
     SherpaRouter public router;
     MockAerodromeRouter public mockAerodrome;
     MockAavePool public mockAave;
@@ -30,12 +34,7 @@ contract SherpaRouterTest is Test {
         tokenB = new MockERC20("Token B", "TKB", 18);
         aTokenA = new MockERC20("aToken A", "aTKA", 18);
 
-        router = new SherpaRouter(
-            owner,
-            address(mockAerodrome),
-            address(mockAave),
-            treasury
-        );
+        router = new SherpaRouter(owner, address(mockAerodrome), address(mockAave), treasury);
 
         // Allow both tokens
         router.setSwapTokenAllowed(address(tokenA), true);
@@ -65,9 +64,9 @@ contract SherpaRouterTest is Test {
         assertEq(router.FEE_BPS(), 10);
         assertEq(router.MAX_SLIPPAGE_BPS(), 500);
         assertEq(router.MIN_SLIPPAGE_BPS(), 10);
-        assertEq(router.MIN_HEALTH_FACTOR(), 1.2e18);
+        assertEq(router.MIN_HEALTH_FACTOR(), 1.5e18);
         assertEq(router.MIN_WITHDRAW_HEALTH_FACTOR(), 1.5e18);
-        assertEq(router.BUILDER_CODE(), bytes32("bc_97ju6eu2"));
+        assertEq(router.BUILDER_CODE(), TEST_BUILDER_CODE);
     }
 
     function test_constructor_revertsZeroAerodrome() public {
@@ -155,6 +154,21 @@ contract SherpaRouterTest is Test {
         vm.stopPrank();
     }
 
+    function test_batchSetSwapTokenAllowed_emitsBatchCompletionEvent() public {
+        address[] memory tokens = new address[](2);
+        tokens[0] = address(tokenA);
+        tokens[1] = address(tokenB);
+        bool[] memory allowed = new bool[](2);
+        allowed[0] = true;
+        allowed[1] = false;
+
+        vm.startPrank(owner);
+        vm.expectEmit(false, false, false, true);
+        emit ISherpaRouter.BatchTokenAllowlistUpdated(2);
+        router.batchSetSwapTokenAllowed(tokens, allowed);
+        vm.stopPrank();
+    }
+
     function test_batchSetSwapTokenAllowed_revertsLengthMismatch() public {
         address[] memory tokens = new address[](2);
         tokens[0] = address(tokenA);
@@ -212,13 +226,7 @@ contract SherpaRouterTest is Test {
     function test_getUserPositions_reflectsUpdatedMockData() public {
         mockAave.setMockAccountData(5000e8, 1000e8, 3000e8);
 
-        (
-            uint256 totalCollateral,
-            uint256 totalDebt,
-            uint256 availableBorrows,
-            ,
-            ,
-        ) = router.getUserPositions(user);
+        (uint256 totalCollateral, uint256 totalDebt, uint256 availableBorrows,,,) = router.getUserPositions(user);
 
         assertEq(totalCollateral, 5000e8);
         assertEq(totalDebt, 1000e8);
@@ -229,28 +237,28 @@ contract SherpaRouterTest is Test {
 
     function _swapRoutes() internal view returns (IAerodromeRouter.Route[] memory routes) {
         routes = new IAerodromeRouter.Route[](1);
-        routes[0] = IAerodromeRouter.Route({
-            from: address(tokenA),
-            to: address(tokenB),
-            stable: false,
-            factory: address(0)
-        });
+        routes[0] =
+            IAerodromeRouter.Route({from: address(tokenA), to: address(tokenB), stable: false, factory: address(0)});
+    }
+
+    function _amountAfterFee(uint256 amountIn) internal pure returns (uint256) {
+        return amountIn - ((amountIn * 10) / 10_000);
+    }
+
+    function _minOutForSlippage(uint256 amountIn, uint256 slippageBps) internal pure returns (uint256) {
+        uint256 quotedOut = _amountAfterFee(amountIn);
+        return (quotedOut * (10_000 - slippageBps)) / 10_000;
     }
 
     function test_swap_happyPath() public {
         uint256 amountIn = 1000e18;
+        uint256 amountOutMin = _minOutForSlippage(amountIn, 50);
         tokenA.mint(user, amountIn);
 
         vm.startPrank(user);
         tokenA.approve(address(router), amountIn);
-        uint256 amountOut = router.swap(
-            address(tokenA),
-            address(tokenB),
-            amountIn,
-            0,
-            _swapRoutes(),
-            block.timestamp + 100
-        );
+        uint256 amountOut =
+            router.swap(address(tokenA), address(tokenB), amountIn, amountOutMin, _swapRoutes(), block.timestamp + 100);
         vm.stopPrank();
 
         uint256 expectedFee = (amountIn * 10) / 10_000;
@@ -261,11 +269,12 @@ contract SherpaRouterTest is Test {
 
     function test_swap_feeGoesToTreasury() public {
         uint256 amountIn = 10_000e18;
+        uint256 amountOutMin = _minOutForSlippage(amountIn, 50);
         tokenA.mint(user, amountIn);
 
         vm.startPrank(user);
         tokenA.approve(address(router), amountIn);
-        router.swap(address(tokenA), address(tokenB), amountIn, 0, _swapRoutes(), block.timestamp + 100);
+        router.swap(address(tokenA), address(tokenB), amountIn, amountOutMin, _swapRoutes(), block.timestamp + 100);
         vm.stopPrank();
 
         uint256 expectedFee = (amountIn * 10) / 10_000;
@@ -274,13 +283,14 @@ contract SherpaRouterTest is Test {
 
     function test_swap_emitsSwapExecuted() public {
         uint256 amountIn = 1000e18;
+        uint256 amountOutMin = _minOutForSlippage(amountIn, 50);
         tokenA.mint(user, amountIn);
 
         vm.startPrank(user);
         tokenA.approve(address(router), amountIn);
         vm.expectEmit(true, true, true, false);
-        emit ISherpaRouter.SwapExecuted(user, address(tokenA), address(tokenB), amountIn, 0, 0, bytes32("bc_97ju6eu2"));
-        router.swap(address(tokenA), address(tokenB), amountIn, 0, _swapRoutes(), block.timestamp + 100);
+        emit ISherpaRouter.SwapExecuted(user, address(tokenA), address(tokenB), amountIn, 0, 0, TEST_BUILDER_CODE);
+        router.swap(address(tokenA), address(tokenB), amountIn, amountOutMin, _swapRoutes(), block.timestamp + 100);
         vm.stopPrank();
     }
 
@@ -309,9 +319,49 @@ contract SherpaRouterTest is Test {
         tokenA.mint(user, amountIn);
         vm.startPrank(user);
         tokenA.approve(address(router), amountIn);
-        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.InvalidDeadline.selector, block.timestamp - 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(SafetyCheck.DeadlineExpired.selector, block.timestamp - 1, block.timestamp)
+        );
         router.swap(address(tokenA), address(tokenB), amountIn, 0, _swapRoutes(), block.timestamp - 1);
         vm.stopPrank();
+    }
+
+    function test_swap_revertsExcessiveSlippage() public {
+        uint256 amountIn = 1000e18;
+        tokenA.mint(user, amountIn);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amountIn);
+        vm.expectRevert(abi.encodeWithSelector(SafetyCheck.InvalidSlippage.selector, 10_000, 10, 500));
+        router.swap(address(tokenA), address(tokenB), amountIn, 0, _swapRoutes(), block.timestamp + 100);
+        vm.stopPrank();
+    }
+
+    function test_swap_revertsSlippageBelowMinimum() public {
+        uint256 amountIn = 1000e18;
+        uint256 quotedOut = _amountAfterFee(amountIn);
+        uint256 amountOutMin = (quotedOut * 9995) / 10_000;
+        tokenA.mint(user, amountIn);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amountIn);
+        vm.expectRevert(abi.encodeWithSelector(SafetyCheck.InvalidSlippage.selector, 5, 10, 500));
+        router.swap(address(tokenA), address(tokenB), amountIn, amountOutMin, _swapRoutes(), block.timestamp + 100);
+        vm.stopPrank();
+    }
+
+    function test_swap_allowsStrictAmountOutMin() public {
+        uint256 amountIn = 1000e18;
+        uint256 amountOutMin = _amountAfterFee(amountIn);
+        tokenA.mint(user, amountIn);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amountIn);
+        uint256 amountOut =
+            router.swap(address(tokenA), address(tokenB), amountIn, amountOutMin, _swapRoutes(), block.timestamp + 100);
+        vm.stopPrank();
+
+        assertEq(amountOut, amountOutMin);
     }
 
     // ─── Supply Tests ───────────────────────────────────────────────────
@@ -335,7 +385,7 @@ contract SherpaRouterTest is Test {
         vm.startPrank(user);
         tokenA.approve(address(router), amount);
         vm.expectEmit(true, true, false, true);
-        emit ISherpaRouter.SupplyExecuted(user, address(tokenA), amount, bytes32("bc_97ju6eu2"));
+        emit ISherpaRouter.SupplyExecuted(user, address(tokenA), amount, TEST_BUILDER_CODE);
         router.supply(address(tokenA), amount);
         vm.stopPrank();
     }
@@ -359,6 +409,7 @@ contract SherpaRouterTest is Test {
         uint256 amount = 200e18;
         // User holds aTokens (representing their Aave position)
         aTokenA.mint(user, amount);
+        mockAave.supply(address(tokenA), amount, user, 0);
         // Mock: supply so the pool has the asset to return
         mockAave.setMockAccountData(1000e8, 0, 500e8); // no debt
         mockAave.setMockHealthFactor(2e18);
@@ -372,6 +423,7 @@ contract SherpaRouterTest is Test {
     function test_withdraw_happyPath_withDebt_hfOk() public {
         uint256 amount = 100e18;
         aTokenA.mint(user, amount);
+        mockAave.supply(address(tokenA), amount, user, 0);
         // Has debt but HF is safely above 1.5
         mockAave.setMockAccountData(1000e8, 200e8, 300e8);
         mockAave.setMockHealthFactor(2e18);
@@ -385,6 +437,7 @@ contract SherpaRouterTest is Test {
     function test_withdraw_revertsUnhealthyPosition() public {
         uint256 amount = 100e18;
         aTokenA.mint(user, amount);
+        mockAave.supply(address(tokenA), amount, user, 0);
         // Has debt and HF drops below 1.5 after withdraw
         mockAave.setMockAccountData(500e8, 200e8, 100e8);
         mockAave.setMockHealthFactor(1.3e18); // below 1.5
@@ -412,21 +465,40 @@ contract SherpaRouterTest is Test {
     function test_withdraw_emitsWithdrawExecuted() public {
         uint256 amount = 200e18;
         aTokenA.mint(user, amount);
+        mockAave.supply(address(tokenA), amount, user, 0);
         mockAave.setMockAccountData(1000e8, 0, 500e8);
         mockAave.setMockHealthFactor(2e18);
 
         vm.startPrank(user);
         aTokenA.approve(address(router), amount);
         vm.expectEmit(true, true, false, true);
-        emit ISherpaRouter.WithdrawExecuted(user, address(tokenA), amount, bytes32("bc_97ju6eu2"));
+        emit ISherpaRouter.WithdrawExecuted(user, address(tokenA), amount, TEST_BUILDER_CODE);
         router.withdraw(address(tokenA), amount);
         vm.stopPrank();
+    }
+
+    function test_withdraw_emitsActualWithdrawnAmountAndRefundsUnusedAToken() public {
+        uint256 requestedAmount = 200e18;
+        uint256 actualAmount = 125e18;
+        aTokenA.mint(user, requestedAmount);
+        mockAave.supply(address(tokenA), actualAmount, user, 0);
+        mockAave.setMockAccountData(1000e8, 0, 500e8);
+        mockAave.setMockHealthFactor(2e18);
+
+        vm.startPrank(user);
+        aTokenA.approve(address(router), requestedAmount);
+        vm.expectEmit(true, true, false, true);
+        emit ISherpaRouter.WithdrawExecuted(user, address(tokenA), actualAmount, TEST_BUILDER_CODE);
+        router.withdraw(address(tokenA), requestedAmount);
+        vm.stopPrank();
+
+        assertEq(aTokenA.balanceOf(user), requestedAmount - actualAmount);
     }
 
     // ─── Borrow Tests ───────────────────────────────────────────────────
 
     function test_borrow_happyPath_variable() public {
-        // HF stays above 1.2 after borrow
+        // HF stays at the safer 1.5 minimum after borrow
         mockAave.setMockHealthFactor(1.5e18);
 
         vm.prank(user);
@@ -436,7 +508,7 @@ contract SherpaRouterTest is Test {
     }
 
     function test_borrow_happyPath_stable() public {
-        mockAave.setMockHealthFactor(1.5e18);
+        mockAave.setMockHealthFactor(1.6e18);
 
         vm.prank(user);
         router.borrow(address(tokenA), 50e18, 1);
@@ -445,11 +517,11 @@ contract SherpaRouterTest is Test {
     }
 
     function test_borrow_revertsUnhealthyPosition() public {
-        // HF drops below 1.2 after borrow
-        mockAave.setMockHealthFactor(1.1e18);
+        // HF drops below 1.5 after borrow
+        mockAave.setMockHealthFactor(1.4e18);
 
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.UnhealthyPosition.selector, 1.1e18));
+        vm.expectRevert(abi.encodeWithSelector(SherpaRouter.UnhealthyPosition.selector, 1.4e18));
         router.borrow(address(tokenA), 100e18, 2);
     }
 
@@ -479,11 +551,11 @@ contract SherpaRouterTest is Test {
     }
 
     function test_borrow_emitsBorrowExecuted() public {
-        mockAave.setMockHealthFactor(1.5e18);
+        mockAave.setMockHealthFactor(1.6e18);
 
         vm.prank(user);
         vm.expectEmit(true, true, false, true);
-        emit ISherpaRouter.BorrowExecuted(user, address(tokenA), 100e18, 2, bytes32("bc_97ju6eu2"));
+        emit ISherpaRouter.BorrowExecuted(user, address(tokenA), 100e18, 2, TEST_BUILDER_CODE);
         router.borrow(address(tokenA), 100e18, 2);
     }
 
@@ -537,8 +609,65 @@ contract SherpaRouterTest is Test {
         vm.startPrank(user);
         tokenA.approve(address(router), amount);
         vm.expectEmit(true, true, false, true);
-        emit ISherpaRouter.RepayExecuted(user, address(tokenA), amount, 2, bytes32("bc_97ju6eu2"));
+        emit ISherpaRouter.RepayExecuted(user, address(tokenA), amount, 2, TEST_BUILDER_CODE);
         router.repay(address(tokenA), amount, 2);
+        vm.stopPrank();
+    }
+
+    function test_repay_refundsExcessWhenDebtIsLowerThanRequestedAmount() public {
+        uint256 requestedAmount = 100e18;
+        uint256 actualDebt = 40e18;
+        tokenA.mint(user, requestedAmount);
+        mockAave.setBorrowed(address(tokenA), actualDebt);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), requestedAmount);
+        vm.expectEmit(true, true, false, true);
+        emit ISherpaRouter.RepayExecuted(user, address(tokenA), actualDebt, 2, TEST_BUILDER_CODE);
+        router.repay(address(tokenA), requestedAmount, 2);
+        vm.stopPrank();
+
+        assertEq(tokenA.balanceOf(user), requestedAmount - actualDebt);
+    }
+
+    // ─── Pause Tests ───────────────────────────────────────────────────────
+
+    function test_pauseAndUnpause_ownerOnly() public {
+        assertFalse(router.paused());
+
+        vm.prank(owner);
+        router.pause();
+        assertTrue(router.paused());
+
+        vm.prank(owner);
+        router.unpause();
+        assertFalse(router.paused());
+    }
+
+    function test_pause_revertsNonOwner() public {
+        vm.prank(nonOwner);
+        vm.expectRevert();
+        router.pause();
+    }
+
+    function test_swap_revertsWhenPaused() public {
+        uint256 amountIn = 1000e18;
+        tokenA.mint(user, amountIn);
+
+        vm.prank(owner);
+        router.pause();
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amountIn);
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        router.swap(
+            address(tokenA),
+            address(tokenB),
+            amountIn,
+            _minOutForSlippage(amountIn, 50),
+            _swapRoutes(),
+            block.timestamp + 100
+        );
         vm.stopPrank();
     }
 

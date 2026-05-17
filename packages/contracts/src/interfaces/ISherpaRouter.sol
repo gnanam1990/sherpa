@@ -45,11 +45,7 @@ interface ISherpaRouter {
     /// @param interestRateMode The interest rate mode (1 = stable, 2 = variable)
     /// @param builderCode The Sherpa builder attribution code
     event BorrowExecuted(
-        address indexed user,
-        address indexed asset,
-        uint256 amount,
-        uint256 interestRateMode,
-        bytes32 builderCode
+        address indexed user, address indexed asset, uint256 amount, uint256 interestRateMode, bytes32 builderCode
     );
 
     /// @notice Emitted when a repay to Aave is executed
@@ -59,11 +55,7 @@ interface ISherpaRouter {
     /// @param interestRateMode The interest rate mode (1 = stable, 2 = variable)
     /// @param builderCode The Sherpa builder attribution code
     event RepayExecuted(
-        address indexed user,
-        address indexed asset,
-        uint256 amount,
-        uint256 interestRateMode,
-        bytes32 builderCode
+        address indexed user, address indexed asset, uint256 amount, uint256 interestRateMode, bytes32 builderCode
     );
 
     /// @notice Emitted when a fee is collected
@@ -77,6 +69,10 @@ interface ISherpaRouter {
     /// @param allowed Whether the token is now allowed
     event TokenAllowlistUpdated(address indexed token, bool allowed);
 
+    /// @notice Emitted after a token allowlist batch update completes
+    /// @param count The number of tokens updated
+    event BatchTokenAllowlistUpdated(uint256 count);
+
     /// @notice Returns the user's Aave positions
     /// @param user The address of the user
     /// @return totalCollateralBase The total collateral in base currency
@@ -85,9 +81,7 @@ interface ISherpaRouter {
     /// @return currentLiquidationThreshold The liquidation threshold
     /// @return ltv The loan to value
     /// @return healthFactor The health factor
-    function getUserPositions(
-        address user
-    )
+    function getUserPositions(address user)
         external
         view
         returns (
