@@ -5,6 +5,7 @@
 ### Security
 - [ ] External security audit complete ($5-15k budget)
 - [ ] All audit findings addressed
+- [ ] Final reviewer acknowledgement recorded in `docs/sherpa/audit/stage-2/MAINNET_READINESS.md`
 - [ ] UserOp signature verification tested
 - [ ] Safety rings validated on Sepolia for 14+ days
 - [ ] Spend caps configured ($1000/user/day, $100/tx)
@@ -14,6 +15,7 @@
 - [ ] Mainnet database migrations applied
 - [ ] Mainnet Coinbase Paymaster policy created ($100/day cap)
 - [ ] Treasury wallet set up (2-of-3 Gnosis Safe)
+- [ ] Fresh mainnet deployer created; no leaked or previously pasted private key is used
 - [ ] Tenderly project for mainnet
 - [ ] Sentry project for mainnet
 
@@ -23,6 +25,7 @@
 - [ ] SHERPA_CHAIN=base-mainnet set in Vercel
 - [ ] Paymaster URL matches mainnet
 - [ ] Fee treasury address set
+- [ ] `MAINNET_SAFE_OWNER_ADDRESS` set for contract deployment
 - [ ] Admin API key set
 
 ### Testing

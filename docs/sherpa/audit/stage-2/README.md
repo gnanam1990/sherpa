@@ -8,10 +8,11 @@ This folder contains everything needed to audit Stage 2 of Sherpa.
 2. **THREAT_MODEL.md** — 6-category attack-surface analysis
 3. **AUDIT_REMEDIATION.md** — external review findings, fixes, and remaining blockers
 4. **KNOWN_ISSUES.md** — acknowledged tradeoffs, what to skip
-5. **coverage-summary.txt** — test coverage report
-6. **slither-summary.txt** / **slither.json** — static analysis findings
-7. **gas-snapshot.txt** — gas cost per test case
-8. **test-output.txt** — full test run output
+5. **MAINNET_READINESS.md** — mainnet go/no-go gates and deployment controls
+6. **coverage-summary.txt** — test coverage report
+7. **slither-summary.txt** / **slither.json** — static analysis findings
+8. **gas-snapshot.txt** — gas cost per test case
+9. **test-output.txt** — full test run output
 
 ## Base Sepolia deployment status
 
@@ -40,6 +41,12 @@ This folder contains everything needed to audit Stage 2 of Sherpa.
 | Foundry tests | 113 passed, 0 failed, 0 skipped |
 | Coverage | SherpaRouter: 96.94% lines / 95.35% statements / 90.00% branches / 100% functions; SherpaTreasury, FeeCalculator, SafetyCheck: 100% |
 | Slither | 0 high, 0 critical — 3 medium / 1 low / 7 informational, all disclosed in KNOWN_ISSUES.md |
+
+## Mainnet readiness
+
+Mainnet deployment is prepared but **not yet authorized for broadcast**. The
+guarded script lives at `packages/contracts/script/DeployMainnet.s.sol`, and the
+go/no-go checklist lives in `MAINNET_READINESS.md`.
 
 ## Test the build
 
