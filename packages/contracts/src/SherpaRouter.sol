@@ -79,6 +79,12 @@ contract SherpaRouter is Ownable, Pausable, ReentrancyGuard, ISherpaRouter {
     /// @notice Thrown when array lengths do not match
     error LengthMismatch();
 
+    /// @notice Thrown when a swap route does not match Stage 2 single-hop policy
+    error InvalidRoute();
+
+    /// @notice Thrown when Aave reserve data cannot provide the aToken address
+    error ReserveDataUnavailable(address asset);
+
     // ─── Constructor ────────────────────────────────────────────────────
 
     /// @param _owner The initial owner of the contract
@@ -174,6 +180,7 @@ contract SherpaRouter is Ownable, Pausable, ReentrancyGuard, ISherpaRouter {
         if (amountIn == 0) revert ZeroAmount();
         if (!swapTokenAllowlist[tokenIn]) revert TokenNotAllowed(tokenIn);
         if (!swapTokenAllowlist[tokenOut]) revert TokenNotAllowed(tokenOut);
+        _validateSwapRoute(tokenIn, tokenOut, routes);
         SafetyCheck.validateDeadline(deadline);
 
         uint256 fee = amountIn.calculateFee(FEE_BPS);
@@ -210,7 +217,7 @@ contract SherpaRouter is Ownable, Pausable, ReentrancyGuard, ISherpaRouter {
         if (amount == 0) revert ZeroAmount();
         if (!swapTokenAllowlist[asset]) revert TokenNotAllowed(asset);
 
-        address aToken = AAVE_POOL.getReserveAToken(asset);
+        address aToken = _getReserveAToken(asset);
         IERC20(aToken).safeTransferFrom(msg.sender, address(this), amount);
         uint256 actualAmount = AAVE_POOL.withdraw(asset, amount, msg.sender);
         if (actualAmount < amount) {
@@ -233,6 +240,7 @@ contract SherpaRouter is Ownable, Pausable, ReentrancyGuard, ISherpaRouter {
         if (interestRateMode != 1 && interestRateMode != 2) revert InvalidInterestRateMode(interestRateMode);
 
         AAVE_POOL.borrow(asset, amount, interestRateMode, 0, msg.sender);
+        IERC20(asset).safeTransfer(msg.sender, amount);
 
         (,,,,, uint256 postHf) = AAVE_POOL.getUserAccountData(msg.sender);
         if (postHf < MIN_HEALTH_FACTOR) revert UnhealthyPosition(postHf);
@@ -256,6 +264,15 @@ contract SherpaRouter is Ownable, Pausable, ReentrancyGuard, ISherpaRouter {
         emit RepayExecuted(msg.sender, asset, repaid, interestRateMode, BUILDER_CODE);
     }
 
+    function _validateSwapRoute(address tokenIn, address tokenOut, IAerodromeRouter.Route[] calldata routes)
+        internal
+        pure
+    {
+        if (routes.length != 1) revert InvalidRoute();
+        if (routes[0].from != tokenIn) revert InvalidRoute();
+        if (routes[0].to != tokenOut) revert InvalidRoute();
+    }
+
     function _validateSwapSlippage(
         uint256 amountInAfterFee,
         uint256 amountOutMin,
@@ -271,5 +288,17 @@ contract SherpaRouter is Ownable, Pausable, ReentrancyGuard, ISherpaRouter {
         }
 
         SafetyCheck.validateSlippage(slippageBps, MIN_SLIPPAGE_BPS, MAX_SLIPPAGE_BPS);
+    }
+
+    function _getReserveAToken(address asset) internal view returns (address aToken) {
+        (bool ok, bytes memory data) =
+            address(AAVE_POOL).staticcall(abi.encodeWithSignature("getReserveData(address)", asset));
+        if (!ok || data.length < 9 * 32) revert ReserveDataUnavailable(asset);
+
+        assembly {
+            aToken := mload(add(data, 0x120))
+        }
+
+        if (aToken == address(0)) revert ReserveDataUnavailable(asset);
     }
 }

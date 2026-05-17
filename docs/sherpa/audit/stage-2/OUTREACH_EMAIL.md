@@ -25,30 +25,34 @@ Stage 2 adds DeFi primitives: swap (Aerodrome V2), supply/withdraw/borrow/repay
 
 ## Scope
 
-- 395 lines of Solidity across 4 in-scope units (2 contracts +
-  2 pure libraries); ~697 lines including supporting interfaces.
-- Battle-tested patterns: OpenZeppelin `Ownable`, `ReentrancyGuard`, `SafeERC20`.
+- 441 lines of Solidity across 4 in-scope units (2 contracts +
+  2 pure libraries); 736 lines including supporting interfaces.
+- Battle-tested patterns: OpenZeppelin `Ownable`, `Pausable`,
+  `ReentrancyGuard`, `SafeERC20`.
 - Integrates Aerodrome V2 and Aave V3 Pool (both independently audited).
-- Deployed and verified on Base Sepolia:
+- Previous deployment verified on Base Sepolia:
   - SherpaRouter: `0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032`
   - SherpaTreasury: `0x70A58169BF96587E55F500c4b5cb9d956Ef826ee`
+  - Note: the router above predates the latest issue-report remediation; the
+    patched router will be redeployed from the audit tag before live smoke tests.
   - Note: the testnet Aerodrome router is a mock (no official Aerodrome on
     Base Sepolia); the swap path is re-validated on mainnet pre-launch.
 
 ## Repository
 
 - Public: https://github.com/gnanam1990/sherpa
-- Audit tag: `stage-2-pre-audit-v1.0.0` (frozen, canonical reference)
-- Audit branch: `audit/stage-2` (frozen)
+- Audit tag: `stage-2-pre-audit-v1.0.0` (canonical reference)
+- Audit branch: `audit/stage-2`
 - Audit package: `docs/sherpa/audit/stage-2/`
 
 ## Test coverage
 
-- 101 Foundry tests passing (0 failed, 0 skipped).
-- 100% line/branch/function/statement coverage on all 4 in-scope units.
+- 113 Foundry tests passing (0 failed, 0 skipped).
+- SherpaRouter coverage: 96.94% lines / 95.35% statements / 90.00% branches /
+  100% functions; SherpaTreasury, FeeCalculator, and SafetyCheck are 100%.
 - Includes fuzz tests and treasury invariant tests.
-- Slither: **0 high, 0 critical**. Residue: 4 medium (`unused-return`,
-  reviewed/benign), 2 low, 5 informational — all disclosed in the package's
+- Slither: **0 high, 0 critical**. Residue: 3 medium (`unused-return`),
+  1 low, 7 informational — all disclosed in the package's
   KNOWN_ISSUES.md.
 
 ## Budget + timeline

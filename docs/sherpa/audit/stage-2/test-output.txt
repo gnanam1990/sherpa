@@ -1,58 +1,5 @@
 No files changed, compilation skipped
-
-Ran 51 tests for test/SherpaRouter.t.sol:SherpaRouterTest
-[PASS] test_batchSetSwapTokenAllowed_emitsEvents() (gas: 29937)
-[PASS] test_batchSetSwapTokenAllowed_revertsLengthMismatch() (gas: 19044)
-[PASS] test_batchSetSwapTokenAllowed_revertsNonOwner() (gas: 17091)
-[PASS] test_batchSetSwapTokenAllowed_revertsZeroAddress() (gas: 16089)
-[PASS] test_batchSetSwapTokenAllowed_setsMultiple() (gas: 31035)
-[PASS] test_borrow_emitsBorrowExecuted() (gas: 69278)
-[PASS] test_borrow_happyPath_stable() (gas: 66529)
-[PASS] test_borrow_happyPath_variable() (gas: 67847)
-[PASS] test_borrow_revertsInvalidRateMode_three() (gas: 21988)
-[PASS] test_borrow_revertsInvalidRateMode_zero() (gas: 22889)
-[PASS] test_borrow_revertsTokenNotAllowed() (gas: 534924)
-[PASS] test_borrow_revertsUnhealthyPosition() (gas: 67263)
-[PASS] test_borrow_revertsZeroAmount() (gas: 19056)
-[PASS] test_constructor_revertsZeroAave() (gas: 90785)
-[PASS] test_constructor_revertsZeroAerodrome() (gas: 91165)
-[PASS] test_constructor_revertsZeroTreasury() (gas: 91201)
-[PASS] test_constructor_setsConstants() (gas: 10692)
-[PASS] test_constructor_setsImmutables() (gas: 15419)
-[PASS] test_constructor_setsOwner() (gas: 10062)
-[PASS] test_getUserPositions_reflectsUpdatedMockData() (gas: 53903)
-[PASS] test_getUserPositions_returnsMockData() (gas: 24723)
-[PASS] test_renounceOwnership() (gas: 14986)
-[PASS] test_repay_emitsRepayExecuted() (gas: 139915)
-[PASS] test_repay_happyPath_stable() (gas: 119781)
-[PASS] test_repay_happyPath_variable() (gas: 119636)
-[PASS] test_repay_revertsInvalidRateMode() (gas: 22549)
-[PASS] test_repay_revertsTokenNotAllowed() (gas: 535181)
-[PASS] test_repay_revertsZeroAmount() (gas: 18791)
-[PASS] test_setSwapTokenAllowed_emitsEvent() (gas: 20684)
-[PASS] test_setSwapTokenAllowed_revertsNonOwner() (gas: 16611)
-[PASS] test_setSwapTokenAllowed_revertsZeroAddress() (gas: 13343)
-[PASS] test_setSwapTokenAllowed_setsFalse() (gas: 22768)
-[PASS] test_setSwapTokenAllowed_setsTrue() (gas: 20284)
-[PASS] test_supply_emitsSupplyExecuted() (gas: 137104)
-[PASS] test_supply_happyPath() (gas: 137544)
-[PASS] test_supply_revertsTokenNotAllowed() (gas: 535046)
-[PASS] test_supply_revertsZeroAmount() (gas: 20195)
-[PASS] test_swap_emitsSwapExecuted() (gas: 197651)
-[PASS] test_swap_feeGoesToTreasury() (gas: 197685)
-[PASS] test_swap_happyPath() (gas: 198108)
-[PASS] test_swap_revertsExpiredDeadline() (gas: 102535)
-[PASS] test_swap_revertsTokenInNotAllowed() (gas: 541128)
-[PASS] test_swap_revertsTokenOutNotAllowed() (gas: 541929)
-[PASS] test_swap_revertsZeroAmount() (gas: 23423)
-[PASS] test_transferOwnership() (gas: 21211)
-[PASS] test_withdraw_emitsWithdrawExecuted() (gas: 120840)
-[PASS] test_withdraw_happyPath_noDebt() (gas: 118673)
-[PASS] test_withdraw_happyPath_withDebt_hfOk() (gas: 137128)
-[PASS] test_withdraw_revertsTokenNotAllowed() (gas: 535506)
-[PASS] test_withdraw_revertsUnhealthyPosition() (gas: 141147)
-[PASS] test_withdraw_revertsZeroAmount() (gas: 19416)
-Suite result: ok. 51 passed; 0 failed; 0 skipped; finished in 252.90ms (5.73ms CPU time)
+2026-05-17T06:54:56.351477Z  WARN evm::traces::external: etherscan config not found
 
 Ran 22 tests for test/SherpaTreasury.t.sol:SherpaTreasuryTest
 [PASS] testBatchWithdraw_emitsEvents() (gas: 98589)
@@ -77,58 +24,73 @@ Ran 22 tests for test/SherpaTreasury.t.sol:SherpaTreasuryTest
 [PASS] test_withdraw_revertsZeroAddress() (gas: 15573)
 [PASS] test_withdraw_revertsZeroAmount() (gas: 17893)
 [PASS] test_withdraw_transfersTokens() (gas: 55467)
-Suite result: ok. 22 passed; 0 failed; 0 skipped; finished in 252.96ms (4.56ms CPU time)
+Suite result: ok. 22 passed; 0 failed; 0 skipped; finished in 21.58ms (11.22ms CPU time)
 
-Ran 2 tests for test/invariants/TreasuryInvariants.t.sol:TreasuryInvariants
-[PASS] invariant_balanceAlwaysPositive() (runs: 256, calls: 8192, reverts: 6370)
-
-╭----------------+-------------------+-------+---------+----------╮
-| Contract       | Selector          | Calls | Reverts | Discards |
-+=================================================================+
-| SherpaTreasury | batchWithdraw     | 944   | 944     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| SherpaTreasury | renounceOwnership | 897   | 897     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| SherpaTreasury | transferOwnership | 959   | 959     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| SherpaTreasury | withdraw          | 865   | 865     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| MockERC20      | approve           | 893   | 8       | 0        |
-|----------------+-------------------+-------+---------+----------|
-| MockERC20      | burn              | 894   | 875     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| MockERC20      | mint              | 911   | 27      | 0        |
-|----------------+-------------------+-------+---------+----------|
-| MockERC20      | transfer          | 894   | 881     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| MockERC20      | transferFrom      | 935   | 914     | 0        |
-╰----------------+-------------------+-------+---------+----------╯
-
-[PASS] invariant_balanceNeverExceedsMinted() (runs: 256, calls: 8192, reverts: 6350)
-
-╭----------------+-------------------+-------+---------+----------╮
-| Contract       | Selector          | Calls | Reverts | Discards |
-+=================================================================+
-| SherpaTreasury | batchWithdraw     | 913   | 913     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| SherpaTreasury | renounceOwnership | 916   | 916     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| SherpaTreasury | transferOwnership | 950   | 950     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| SherpaTreasury | withdraw          | 909   | 909     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| MockERC20      | approve           | 929   | 3       | 0        |
-|----------------+-------------------+-------+---------+----------|
-| MockERC20      | burn              | 917   | 907     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| MockERC20      | mint              | 913   | 31      | 0        |
-|----------------+-------------------+-------+---------+----------|
-| MockERC20      | transfer          | 888   | 878     | 0        |
-|----------------+-------------------+-------+---------+----------|
-| MockERC20      | transferFrom      | 857   | 843     | 0        |
-╰----------------+-------------------+-------+---------+----------╯
-
-Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 255.40ms (504.87ms CPU time)
+Ran 63 tests for test/SherpaRouter.t.sol:SherpaRouterTest
+[PASS] test_batchSetSwapTokenAllowed_emitsBatchCompletionEvent() (gas: 28929)
+[PASS] test_batchSetSwapTokenAllowed_emitsEvents() (gas: 31509)
+[PASS] test_batchSetSwapTokenAllowed_revertsLengthMismatch() (gas: 19149)
+[PASS] test_batchSetSwapTokenAllowed_revertsNonOwner() (gas: 17196)
+[PASS] test_batchSetSwapTokenAllowed_revertsZeroAddress() (gas: 16415)
+[PASS] test_batchSetSwapTokenAllowed_setsMultiple() (gas: 32705)
+[PASS] test_borrow_emitsBorrowExecuted() (gas: 109522)
+[PASS] test_borrow_happyPath_stable() (gas: 107819)
+[PASS] test_borrow_happyPath_variable() (gas: 109328)
+[PASS] test_borrow_revertsInvalidRateMode_three() (gas: 24304)
+[PASS] test_borrow_revertsInvalidRateMode_zero() (gas: 25391)
+[PASS] test_borrow_revertsTokenNotAllowed() (gas: 537304)
+[PASS] test_borrow_revertsUnhealthyPosition() (gas: 107369)
+[PASS] test_borrow_revertsZeroAmount() (gas: 21306)
+[PASS] test_constructor_revertsZeroAave() (gas: 91247)
+[PASS] test_constructor_revertsZeroAerodrome() (gas: 91681)
+[PASS] test_constructor_revertsZeroTreasury() (gas: 91690)
+[PASS] test_constructor_setsConstants() (gas: 11210)
+[PASS] test_constructor_setsImmutables() (gas: 15777)
+[PASS] test_constructor_setsOwner() (gas: 10171)
+[PASS] test_getUserPositions_reflectsUpdatedMockData() (gas: 54057)
+[PASS] test_getUserPositions_returnsMockData() (gas: 24852)
+[PASS] test_pauseAndUnpause_ownerOnly() (gas: 21789)
+[PASS] test_pause_revertsNonOwner() (gas: 14190)
+[PASS] test_renounceOwnership() (gas: 15323)
+[PASS] test_repay_emitsRepayExecuted() (gas: 128264)
+[PASS] test_repay_happyPath_stable() (gas: 126826)
+[PASS] test_repay_happyPath_variable() (gas: 126588)
+[PASS] test_repay_refundsExcessWhenDebtIsLowerThanRequestedAmount() (gas: 148217)
+[PASS] test_repay_revertsInvalidRateMode() (gas: 25018)
+[PASS] test_repay_revertsTokenNotAllowed() (gas: 537641)
+[PASS] test_repay_revertsZeroAmount() (gas: 21040)
+[PASS] test_setSwapTokenAllowed_emitsEvent() (gas: 20792)
+[PASS] test_setSwapTokenAllowed_revertsNonOwner() (gas: 16882)
+[PASS] test_setSwapTokenAllowed_revertsZeroAddress() (gas: 13423)
+[PASS] test_setSwapTokenAllowed_setsFalse() (gas: 23183)
+[PASS] test_setSwapTokenAllowed_setsTrue() (gas: 20422)
+[PASS] test_supply_emitsSupplyExecuted() (gas: 125332)
+[PASS] test_supply_happyPath() (gas: 125768)
+[PASS] test_supply_revertsTokenNotAllowed() (gas: 537445)
+[PASS] test_supply_revertsZeroAmount() (gas: 22631)
+[PASS] test_swap_allowsStrictAmountOutMin() (gas: 185832)
+[PASS] test_swap_emitsSwapExecuted() (gas: 188485)
+[PASS] test_swap_feeGoesToTreasury() (gas: 188639)
+[PASS] test_swap_happyPath() (gas: 188920)
+[PASS] test_swap_revertsExcessiveSlippage() (gas: 97819)
+[PASS] test_swap_revertsExpiredDeadline() (gas: 88387)
+[PASS] test_swap_revertsMismatchedRouteEndpoints() (gas: 87993)
+[PASS] test_swap_revertsMultiHopRoutes() (gas: 88736)
+[PASS] test_swap_revertsSlippageBelowMinimum() (gas: 95886)
+[PASS] test_swap_revertsTokenInNotAllowed() (gas: 543756)
+[PASS] test_swap_revertsTokenOutNotAllowed() (gas: 544397)
+[PASS] test_swap_revertsWhenPaused() (gas: 86369)
+[PASS] test_swap_revertsZeroAmount() (gas: 25954)
+[PASS] test_transferOwnership() (gas: 21377)
+[PASS] test_withdraw_emitsActualWithdrawnAmountAndRefundsUnusedAToken() (gas: 160782)
+[PASS] test_withdraw_emitsWithdrawExecuted() (gas: 140517)
+[PASS] test_withdraw_happyPath_noDebt() (gas: 138331)
+[PASS] test_withdraw_happyPath_withDebt_hfOk() (gas: 156877)
+[PASS] test_withdraw_revertsTokenNotAllowed() (gas: 538003)
+[PASS] test_withdraw_revertsUnhealthyPosition() (gas: 160297)
+[PASS] test_withdraw_revertsWhenReserveDataHasNoAToken() (gas: 641099)
+[PASS] test_withdraw_revertsZeroAmount() (gas: 21665)
+Suite result: ok. 63 passed; 0 failed; 0 skipped; finished in 26.41ms (38.09ms CPU time)
 
 Ran 16 tests for test/libraries/FeeCalculator.t.sol:FeeCalculatorTest
 [PASS] testAfterFee_10000bps() (gas: 615)
@@ -147,7 +109,7 @@ Ran 16 tests for test/libraries/FeeCalculator.t.sol:FeeCalculatorTest
 [PASS] testCalculateFee_zeroFee() (gas: 395)
 [PASS] testFuzz_afterFee_plusFee_equalsOriginal(uint256,uint256) (runs: 256, μ: 3936, ~: 3936)
 [PASS] testFuzz_calculateFee(uint256,uint256) (runs: 256, μ: 4035, ~: 4035)
-Suite result: ok. 16 passed; 0 failed; 0 skipped; finished in 260.83ms (271.91ms CPU time)
+Suite result: ok. 16 passed; 0 failed; 0 skipped; finished in 41.15ms (73.20ms CPU time)
 
 Ran 10 tests for test/libraries/SafetyCheck.t.sol:SafetyCheckTest
 [PASS] testFuzz_validateDeadline_alwaysRevertsWhenExpired(uint256) (runs: 256, μ: 8897, ~: 8897)
@@ -160,6 +122,37 @@ Ran 10 tests for test/libraries/SafetyCheck.t.sol:SafetyCheckTest
 [PASS] testValidateSlippage_atMin() (gas: 5494)
 [PASS] testValidateSlippage_belowMin() (gas: 9461)
 [PASS] testValidateSlippage_withinRange() (gas: 5917)
-Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 371.36ms (383.73ms CPU time)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 186.31ms (234.99ms CPU time)
 
-Ran 5 test suites in 372.29ms (1.39s CPU time): 101 tests passed, 0 failed, 0 skipped (101 total tests)
+Ran 2 tests for test/invariants/TreasuryInvariants.t.sol:TreasuryInvariants
+[PASS] invariant_balanceAlwaysPositive() (runs: 256, calls: 8192, reverts: 8192)
+
+╭----------------+-------------------+-------+---------+----------╮
+| Contract       | Selector          | Calls | Reverts | Discards |
++=================================================================+
+| SherpaTreasury | batchWithdraw     | 1997  | 1997    | 0        |
+|----------------+-------------------+-------+---------+----------|
+| SherpaTreasury | renounceOwnership | 2008  | 2008    | 0        |
+|----------------+-------------------+-------+---------+----------|
+| SherpaTreasury | transferOwnership | 2106  | 2106    | 0        |
+|----------------+-------------------+-------+---------+----------|
+| SherpaTreasury | withdraw          | 2081  | 2081    | 0        |
+╰----------------+-------------------+-------+---------+----------╯
+
+[PASS] invariant_balanceNeverExceedsMinted() (runs: 256, calls: 8192, reverts: 8192)
+
+╭----------------+-------------------+-------+---------+----------╮
+| Contract       | Selector          | Calls | Reverts | Discards |
++=================================================================+
+| SherpaTreasury | batchWithdraw     | 2041  | 2041    | 0        |
+|----------------+-------------------+-------+---------+----------|
+| SherpaTreasury | renounceOwnership | 2043  | 2043    | 0        |
+|----------------+-------------------+-------+---------+----------|
+| SherpaTreasury | transferOwnership | 2077  | 2077    | 0        |
+|----------------+-------------------+-------+---------+----------|
+| SherpaTreasury | withdraw          | 2031  | 2031    | 0        |
+╰----------------+-------------------+-------+---------+----------╯
+
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 654.26ms (1.01s CPU time)
+
+Ran 5 test suites in 671.89ms (929.71ms CPU time): 113 tests passed, 0 failed, 0 skipped (113 total tests)

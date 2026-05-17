@@ -9,23 +9,14 @@ interface IAavePool {
     /// @param amount The amount to be supplied
     /// @param onBehalfOf The address that will receive the aTokens
     /// @param referralCode Code used to register the integrator (0 if none)
-    function supply(
-        address asset,
-        uint256 amount,
-        address onBehalfOf,
-        uint16 referralCode
-    ) external;
+    function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
 
     /// @notice Withdraws an `amount` of underlying asset from the reserve
     /// @param asset The address of the underlying asset to withdraw
     /// @param amount The amount to be withdrawn (use type(uint256).max for full balance)
     /// @param to The address that will receive the underlying asset
     /// @return The final amount withdrawn
-    function withdraw(
-        address asset,
-        uint256 amount,
-        address to
-    ) external returns (uint256);
+    function withdraw(address asset, uint256 amount, address to) external returns (uint256);
 
     /// @notice Borrows an `amount` of underlying asset from the reserve
     /// @param asset The address of the underlying asset to borrow
@@ -33,13 +24,8 @@ interface IAavePool {
     /// @param interestRateMode The interest rate mode (1 = stable, 2 = variable)
     /// @param referralCode Code used to register the integrator (0 if none)
     /// @param onBehalfOf The address that will receive the debt
-    function borrow(
-        address asset,
-        uint256 amount,
-        uint256 interestRateMode,
-        uint16 referralCode,
-        address onBehalfOf
-    ) external;
+    function borrow(address asset, uint256 amount, uint256 interestRateMode, uint16 referralCode, address onBehalfOf)
+        external;
 
     /// @notice Repays a borrowed `amount` on a reserve
     /// @param asset The address of the borrowed underlying asset
@@ -47,12 +33,9 @@ interface IAavePool {
     /// @param interestRateMode The interest rate mode (1 = stable, 2 = variable)
     /// @param onBehalfOf The address for which to repay the debt
     /// @return The final amount repaid
-    function repay(
-        address asset,
-        uint256 amount,
-        uint256 interestRateMode,
-        address onBehalfOf
-    ) external returns (uint256);
+    function repay(address asset, uint256 amount, uint256 interestRateMode, address onBehalfOf)
+        external
+        returns (uint256);
 
     /// @notice Returns the user account data across all reserves
     /// @param user The address of the user
@@ -62,9 +45,7 @@ interface IAavePool {
     /// @return currentLiquidationThreshold The liquidation threshold
     /// @return ltv The loan to value
     /// @return healthFactor The health factor
-    function getUserAccountData(
-        address user
-    )
+    function getUserAccountData(address user)
         external
         view
         returns (
@@ -76,8 +57,26 @@ interface IAavePool {
             uint256 healthFactor
         );
 
-    /// @notice Returns the aToken address for a given underlying asset
-    /// @param asset The underlying asset address
-    /// @return The aToken address
-    function getReserveAToken(address asset) external view returns (address);
+    /// @notice Returns Aave reserve data for a given underlying asset
+    /// @dev Aave V3 encodes aTokenAddress as the ninth static return word.
+    function getReserveData(address asset)
+        external
+        view
+        returns (
+            uint256 configuration,
+            uint128 liquidityIndex,
+            uint128 currentLiquidityRate,
+            uint128 variableBorrowIndex,
+            uint128 currentVariableBorrowRate,
+            uint128 currentStableBorrowRate,
+            uint40 lastUpdateTimestamp,
+            uint16 id,
+            address aTokenAddress,
+            address stableDebtTokenAddress,
+            address variableDebtTokenAddress,
+            address interestRateStrategyAddress,
+            uint128 accruedToTreasury,
+            uint128 unbacked,
+            uint128 isolationModeTotalDebt
+        );
 }

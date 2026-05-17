@@ -13,10 +13,10 @@ read-only positions view.
 - **Repository**: https://github.com/gnanam1990/sherpa
 - **Audit tag**: `stage-2-pre-audit-v1.0.0` — the canonical immutable
   reference. Run `git checkout stage-2-pre-audit-v1.0.0`.
-- **Deployment-record parent**: `944d7e3` — the parent of the tagged commit;
-  it records the Base Sepolia deployment. The tagged commit adds this docs
-  package on top of it.
-- **Audit branch**: `audit/stage-2` (frozen, points at the tag)
+- **Audit branch**: `audit/stage-2` (points at the tag)
+- **Deployment note**: the previously verified Base Sepolia router predates the
+  issue-report remediation. The tagged source is canonical; redeploy the patched
+  router before using a live testnet target for auditor smoke tests.
 - **Compiler**: Solidity 0.8.24, optimizer enabled (200 runs), `via_ir = true`
 - **Framework**: Foundry
 
@@ -24,18 +24,18 @@ read-only positions view.
 
 | Contract | Path | Lines | Inherits |
 |---|---|---|---|
-| `SherpaRouter` | `packages/contracts/src/SherpaRouter.sol` | 258 | `Ownable`, `ReentrancyGuard`, `ISherpaRouter` |
+| `SherpaRouter` | `packages/contracts/src/SherpaRouter.sol` | 304 | `Ownable`, `ReentrancyGuard`, `Pausable`, `ISherpaRouter` |
 | `SherpaTreasury` | `packages/contracts/src/SherpaTreasury.sol` | 83 | `Ownable` |
 | `FeeCalculator` | `packages/contracts/src/libraries/FeeCalculator.sol` | 23 | pure library |
 | `SafetyCheck` | `packages/contracts/src/libraries/SafetyCheck.sol` | 31 | pure/view library |
 
-**Total in-scope Solidity: 395 lines across 4 units (2 contracts + 2 libraries).**
+**Total in-scope Solidity: 441 lines across 4 units (2 contracts + 2 libraries).**
 
 Supporting interfaces (in `packages/contracts/src/interfaces/`, no executable
-logic, included for completeness — 302 lines total): `ISherpaRouter.sol`,
+logic, included for completeness — 295 lines total): `ISherpaRouter.sol`,
 `IAerodromeRouter.sol`, `IAavePool.sol`, `IAaveOracle.sol`.
 
-Total `src/` tree (contracts + libraries + interfaces): 697 lines, 8 files.
+Total `src/` tree (contracts + libraries + interfaces): 736 lines, 8 files.
 
 ## Functions in scope
 
@@ -48,10 +48,10 @@ Total `src/` tree (contracts + libraries + interfaces): 697 lines, 8 files.
 | `batchSetSwapTokenAllowed` | external | state-changing | `onlyOwner`, batch allowlist, length-checked |
 | `getUserPositions` | external | view | Proxies Aave `getUserAccountData` |
 | `pause` / `unpause` | external | state-changing | `onlyOwner`; emergency control for user-facing DeFi operations |
-| `swap` | external | state-changing | `whenNotPaused`, `nonReentrant`; Aerodrome swap, 10 bps fee to treasury, quote-derived slippage guard |
+| `swap` | external | state-changing | `whenNotPaused`, `nonReentrant`; single-hop Aerodrome swap, route endpoints must match `tokenIn` / `tokenOut`, 10 bps fee to treasury, quote-derived slippage guard |
 | `supply` | external | state-changing | `whenNotPaused`, `nonReentrant`; Aave supply, `onBehalfOf = msg.sender` |
-| `withdraw` | external | state-changing | `whenNotPaused`, `nonReentrant`; pulls aToken, post-HF guard at 1.5e18 if debt, emits actual withdrawn amount |
-| `borrow` | external | state-changing | `whenNotPaused`, `nonReentrant`; post-HF guard at 1.5e18 |
+| `withdraw` | external | state-changing | `whenNotPaused`, `nonReentrant`; decodes aToken from Aave `getReserveData`, pulls aToken, post-HF guard at 1.5e18 if debt, emits actual withdrawn amount |
+| `borrow` | external | state-changing | `whenNotPaused`, `nonReentrant`; post-HF guard at 1.5e18, forwards borrowed funds from router to `msg.sender` |
 | `repay` | external | state-changing | `whenNotPaused`, `nonReentrant`; Aave repay, refunds excess, returns repaid amount in event |
 
 ### SherpaTreasury
@@ -81,7 +81,7 @@ Total `src/` tree (contracts + libraries + interfaces): 697 lines, 8 files.
 - Test files (`packages/contracts/test/`) and deploy scripts (`packages/contracts/script/`)
 - External protocols (Aerodrome V2, Aave V3) — independently audited; integration correctness is in scope, their internals are not
 
-## Deployment (audit target — Base Sepolia)
+## Deployment (historical Base Sepolia smoke target)
 
 - **Network**: Base Sepolia, chainId **84532**
 - **Deployment date**: 2026-05-16T15:21:22Z
@@ -91,6 +91,12 @@ Total `src/` tree (contracts + libraries + interfaces): 697 lines, 8 files.
 |---|---|---|---|
 | SherpaRouter | `0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032` | 41588233 | ✅ basescan-sepolia |
 | SherpaTreasury | `0x70A58169BF96587E55F500c4b5cb9d956Ef826ee` | 41588193 | ✅ basescan-sepolia |
+
+> ⚠️ The router address above was deployed before the issue-report remediation
+> that fixed borrow fund forwarding, Aave reserve-data decoding, and swap route
+> endpoint validation. It is retained as historical deployment evidence. The
+> patched router should be redeployed from `stage-2-pre-audit-v1.0.0` before an
+> external auditor depends on live Base Sepolia bytecode behavior.
 
 **External dependencies (testnet):**
 
@@ -136,7 +142,7 @@ cd sherpa
 git checkout stage-2-pre-audit-v1.0.0
 cd packages/contracts
 forge install
-forge test -vv                         # 101 tests
+forge test -vv                         # 113 tests
 forge coverage --report summary --ir-minimum
 forge snapshot
 ```
@@ -148,14 +154,15 @@ forge snapshot
 
 | Check | Result | Artifact |
 |---|---|---|
-| Tests | **101 passed, 0 failed, 0 skipped** | `test-output.txt` |
-| Coverage | **100%** lines/statements/branches/functions on all 4 in-scope units | `coverage-summary.txt` |
-| Slither | **0 high, 0 critical** — 4 medium (`unused-return`), 2 low, 5 informational | `slither-summary.txt`, `slither.json` |
-| Gas | snapshot of all 101 test cases | `gas-snapshot.txt` |
+| Tests | **113 passed, 0 failed, 0 skipped** | `test-output.txt` |
+| Coverage | SherpaRouter: **96.94%** lines / **95.35%** statements / **90.00%** branches / **100%** functions; SherpaTreasury, FeeCalculator, SafetyCheck: **100%** | `coverage-summary.txt` |
+| Slither | **0 high, 0 critical** — 3 medium (`unused-return`), 1 low, 7 informational | `slither-summary.txt`, `slither.json` |
+| Gas | snapshot of all 113 test cases | `gas-snapshot.txt` |
 
 > Coverage `Total` row in `coverage-summary.txt` reads ~78% because it counts
-> deploy scripts (out of scope) and test mocks. Every in-scope `src/` unit
-> (`SherpaRouter`, `SherpaTreasury`, `FeeCalculator`, `SafetyCheck`) is at 100%.
+> deploy scripts (out of scope) and test mocks. The router has a few defensive
+> revert branches that are not covered; the other three in-scope units are at
+> 100%.
 
 ## Contact
 

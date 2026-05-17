@@ -46,6 +46,8 @@ contract SherpaRouterTest is Test {
 
         // Pre-fund Aerodrome mock with tokenB so it can transfer on swaps
         tokenB.mint(address(mockAerodrome), 1_000_000e18);
+        // Pre-fund Aave mock so borrow() mirrors real Aave by sending assets to the router caller.
+        tokenA.mint(address(mockAave), 1_000_000e18);
     }
 
     // ─── Constructor Tests ──────────────────────────────────────────────
@@ -241,6 +243,20 @@ contract SherpaRouterTest is Test {
             IAerodromeRouter.Route({from: address(tokenA), to: address(tokenB), stable: false, factory: address(0)});
     }
 
+    function _mismatchedFromRoutes() internal view returns (IAerodromeRouter.Route[] memory routes) {
+        routes = new IAerodromeRouter.Route[](1);
+        routes[0] =
+            IAerodromeRouter.Route({from: address(tokenB), to: address(tokenA), stable: false, factory: address(0)});
+    }
+
+    function _multiHopRoutes() internal view returns (IAerodromeRouter.Route[] memory routes) {
+        routes = new IAerodromeRouter.Route[](2);
+        routes[0] =
+            IAerodromeRouter.Route({from: address(tokenA), to: address(tokenB), stable: false, factory: address(0)});
+        routes[1] =
+            IAerodromeRouter.Route({from: address(tokenB), to: address(tokenA), stable: false, factory: address(0)});
+    }
+
     function _amountAfterFee(uint256 amountIn) internal pure returns (uint256) {
         return amountIn - ((amountIn * 10) / 10_000);
     }
@@ -312,6 +328,42 @@ contract SherpaRouterTest is Test {
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(SherpaRouter.TokenNotAllowed.selector, address(unknownToken)));
         router.swap(address(tokenA), address(unknownToken), 100, 0, _swapRoutes(), block.timestamp + 100);
+    }
+
+    function test_swap_revertsMismatchedRouteEndpoints() public {
+        uint256 amountIn = 1000e18;
+        tokenA.mint(user, amountIn);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amountIn);
+        vm.expectRevert(SherpaRouter.InvalidRoute.selector);
+        router.swap(
+            address(tokenA),
+            address(tokenB),
+            amountIn,
+            _minOutForSlippage(amountIn, 50),
+            _mismatchedFromRoutes(),
+            block.timestamp + 100
+        );
+        vm.stopPrank();
+    }
+
+    function test_swap_revertsMultiHopRoutes() public {
+        uint256 amountIn = 1000e18;
+        tokenA.mint(user, amountIn);
+
+        vm.startPrank(user);
+        tokenA.approve(address(router), amountIn);
+        vm.expectRevert(SherpaRouter.InvalidRoute.selector);
+        router.swap(
+            address(tokenA),
+            address(tokenB),
+            amountIn,
+            _minOutForSlippage(amountIn, 50),
+            _multiHopRoutes(),
+            block.timestamp + 100
+        );
+        vm.stopPrank();
     }
 
     function test_swap_revertsExpiredDeadline() public {
@@ -462,6 +514,21 @@ contract SherpaRouterTest is Test {
         router.withdraw(address(unknownToken), 100);
     }
 
+    function test_withdraw_revertsWhenReserveDataHasNoAToken() public {
+        MockERC20 allowedWithoutAToken = new MockERC20("Allowed Without aToken", "AWA", 18);
+        vm.prank(owner);
+        router.setSwapTokenAllowed(address(allowedWithoutAToken), true);
+        allowedWithoutAToken.mint(user, 100e18);
+
+        vm.startPrank(user);
+        allowedWithoutAToken.approve(address(router), 100e18);
+        vm.expectRevert(
+            abi.encodeWithSelector(SherpaRouter.ReserveDataUnavailable.selector, address(allowedWithoutAToken))
+        );
+        router.withdraw(address(allowedWithoutAToken), 100e18);
+        vm.stopPrank();
+    }
+
     function test_withdraw_emitsWithdrawExecuted() public {
         uint256 amount = 200e18;
         aTokenA.mint(user, amount);
@@ -505,6 +572,7 @@ contract SherpaRouterTest is Test {
         router.borrow(address(tokenA), 100e18, 2);
 
         assertEq(mockAave.borrowed(address(tokenA)), 100e18);
+        assertEq(tokenA.balanceOf(user), 100e18);
     }
 
     function test_borrow_happyPath_stable() public {
@@ -514,6 +582,7 @@ contract SherpaRouterTest is Test {
         router.borrow(address(tokenA), 50e18, 1);
 
         assertEq(mockAave.borrowed(address(tokenA)), 50e18);
+        assertEq(tokenA.balanceOf(user), 50e18);
     }
 
     function test_borrow_revertsUnhealthyPosition() public {

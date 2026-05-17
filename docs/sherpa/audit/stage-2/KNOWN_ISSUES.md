@@ -57,14 +57,14 @@ Slither 0.11.5, run with the same args as CI
 `slither-summary.txt` / `slither.json`.
 
 **0 high, 0 critical.** Remaining reviewed findings are tracked in
-`slither-summary.txt` / `slither.json` and should be refreshed after code
-changes before final audit submission:
+`slither-summary.txt` / `slither.json`:
 
 | Severity | Detector | Count | Disposition |
 |---|---|---|---|
-| Medium | `unused-return` | TBD | Refresh before submission; `AAVE_POOL.withdraw` return is now consumed for actual-amount events. |
+| Medium | `unused-return` | 3 | Tuple return values from `getUserAccountData` are intentionally ignored except the fields needed for HF checks; `getUserPositions` directly returns Aave account data. |
 | Low | `calls-loop` | 1 | `batchWithdraw` external calls in a loop; `onlyOwner`, caller-bounded array. Acceptable. |
-| Low | `timestamp` | 1 | `swap` deadline comparison against `block.timestamp`. Intended. |
+| Informational | `assembly` | 1 | Bounded ABI word decode for Aave `aTokenAddress` from `getReserveData`; success, length, and zero-address checks are enforced. |
+| Informational | `low-level-calls` | 1 | Staticcall to Aave `getReserveData` to tolerate V3 reserve-data shape drift while preserving explicit failure checks. |
 | Informational | `naming-convention` | 5 | Immutables in SCREAMING_CASE. Style only. |
 
 Please do not file these as findings.

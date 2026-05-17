@@ -12,30 +12,36 @@ This folder contains everything needed to audit Stage 2 of Sherpa.
 6. **gas-snapshot.txt** — gas cost per test case
 7. **test-output.txt** — full test run output
 
-## Live deployed contracts (audit target)
+## Base Sepolia deployment status
 
 - Network: Base Sepolia (chainId 84532)
-- SherpaRouter: `0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032`
+- Previous verified SherpaRouter: `0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032`
 - SherpaTreasury: `0x70A58169BF96587E55F500c4b5cb9d956Ef826ee`
-- All contracts verified on basescan-sepolia
-- ⚠️ Aerodrome router on this target is a **mock** — see KNOWN_ISSUES.md
+- Previous contracts verified on basescan-sepolia
+- ⚠️ The router above predates the issue-report remediation that forwards
+  borrowed funds to the user, decodes Aave reserve data, and validates swap
+  route endpoints. Treat it as a historical smoke-test target until the patched
+  router is redeployed.
+- ⚠️ Aerodrome router on this testnet deployment is a **mock** — see
+  KNOWN_ISSUES.md
 
 ## Repository
 
 - GitHub: https://github.com/gnanam1990/sherpa
 - Audit tag: `stage-2-pre-audit-v1.0.0` — canonical immutable reference
-- Audit branch: `audit/stage-2` (frozen, points at the tag)
+- Audit branch: `audit/stage-2` (points at the tag)
 
-> Run `git checkout stage-2-pre-audit-v1.0.0`. Its parent `944d7e3` is the
-> deployment-record commit; this docs package sits one commit above it.
+> Run `git checkout stage-2-pre-audit-v1.0.0`. The tag is the canonical source
+> reference for review. The existing Base Sepolia address should be redeployed
+> from this tag before any auditor relies on live bytecode behavior.
 
 ## Snapshot of verification (reproducible)
 
 | Check | Result |
 |---|---|
-| Foundry tests | 101 passed, 0 failed, 0 skipped |
-| Coverage | 100% on all 4 in-scope units (SherpaRouter, SherpaTreasury, FeeCalculator, SafetyCheck) |
-| Slither | 0 high, 0 critical — 4 medium / 2 low / 5 informational, all disclosed in KNOWN_ISSUES.md |
+| Foundry tests | 113 passed, 0 failed, 0 skipped |
+| Coverage | SherpaRouter: 96.94% lines / 95.35% statements / 90.00% branches / 100% functions; SherpaTreasury, FeeCalculator, SafetyCheck: 100% |
+| Slither | 0 high, 0 critical — 3 medium / 1 low / 7 informational, all disclosed in KNOWN_ISSUES.md |
 
 ## Test the build
 

@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 /// @title MockAavePool
 /// @notice A mock Aave V3 pool for testing purposes
 contract MockAavePool {
+    using SafeERC20 for IERC20;
+
     uint256 public mockHealthFactor = 2e18;
     uint256 public mockTotalCollateral = 1000e8;
     uint256 public mockTotalDebt;
@@ -25,11 +30,7 @@ contract MockAavePool {
     /// @param totalCollateral The total collateral value
     /// @param totalDebt The total debt value
     /// @param availableBorrows The available borrows value
-    function setMockAccountData(
-        uint256 totalCollateral,
-        uint256 totalDebt,
-        uint256 availableBorrows
-    ) external {
+    function setMockAccountData(uint256 totalCollateral, uint256 totalDebt, uint256 availableBorrows) external {
         mockTotalCollateral = totalCollateral;
         mockTotalDebt = totalDebt;
         mockAvailableBorrows = availableBorrows;
@@ -49,10 +50,31 @@ contract MockAavePool {
         reserveAToken[asset] = aToken;
     }
 
-    /// @notice Returns the aToken address for an asset
-    /// @param asset The underlying asset
-    function getReserveAToken(address asset) external view returns (address) {
-        return reserveAToken[asset];
+    /// @notice Mock Aave V3 getReserveData implementation.
+    /// @dev Returns the same static layout position used by the real Pool:
+    ///      aTokenAddress is the ninth word in the reserve data tuple.
+    function getReserveData(address asset)
+        external
+        view
+        returns (
+            uint256 configuration,
+            uint128 liquidityIndex,
+            uint128 currentLiquidityRate,
+            uint128 variableBorrowIndex,
+            uint128 currentVariableBorrowRate,
+            uint128 currentStableBorrowRate,
+            uint40 lastUpdateTimestamp,
+            uint16 id,
+            address aTokenAddress,
+            address stableDebtTokenAddress,
+            address variableDebtTokenAddress,
+            address interestRateStrategyAddress,
+            uint128 accruedToTreasury,
+            uint128 unbacked,
+            uint128 isolationModeTotalDebt
+        )
+    {
+        return (0, 0, 0, 0, 0, 0, 0, 0, reserveAToken[asset], address(0), address(0), address(0), 0, 0, 0);
     }
 
     /// @notice Mock supply implementation
@@ -72,6 +94,7 @@ contract MockAavePool {
     /// @notice Mock borrow implementation
     function borrow(address asset, uint256 amount, uint256, uint16, address) external {
         borrowed[asset] += amount;
+        IERC20(asset).safeTransfer(msg.sender, amount);
     }
 
     /// @notice Mock repay implementation
@@ -84,9 +107,7 @@ contract MockAavePool {
     }
 
     /// @notice Mock getUserAccountData implementation
-    function getUserAccountData(
-        address
-    )
+    function getUserAccountData(address)
         external
         view
         returns (
