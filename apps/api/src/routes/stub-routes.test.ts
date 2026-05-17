@@ -104,7 +104,7 @@ describe('Stub ID routes return 501 not fake success (P1-3)', () => {
   });
 
   describe('strategies', () => {
-    test('POST /api/strategies returns 501 not stub-strategy-id', async () => {
+    test('POST /api/strategies creates a real in-memory strategy', async () => {
       const app = await makeApp(strategyRoutes);
       const res = await app.inject({
         method: 'POST',
@@ -116,17 +116,42 @@ describe('Stub ID routes return 501 not fake success (P1-3)', () => {
           intents: [{ type: 'swap', template: 'swap-usdc-eth' }],
         },
       });
-      expect(res.statusCode).toBe(501);
+      expect(res.statusCode).toBe(201);
       const body = JSON.parse(res.body);
-      expect(body.error).toBe('not_implemented');
+      expect(body.strategy.id).toEqual(expect.any(String));
+      expect(body.strategy.executionEnabled).toBe(false);
+      expect(JSON.stringify(body)).not.toContain('stub');
+
+      const lookup = await app.inject({ method: 'GET', url: `/api/strategies/${body.strategy.id}` });
+      expect(lookup.statusCode).toBe(200);
+      expect(JSON.parse(lookup.body).strategy.name).toBe('Test Strategy');
+    });
+
+    test('POST /api/strategies/:id/follow records follows without fake IDs', async () => {
+      const app = await makeApp(strategyRoutes);
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/strategies/dca-eth-weekly/follow',
+        payload: { userAddress: '0x1234567890123456789012345678901234567890' },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.following).toBe(true);
+      expect(body.strategy.id).toBe('dca-eth-weekly');
       expect(JSON.stringify(body)).not.toContain('stub');
     });
 
-    test('POST /api/strategies/:id/run returns 501 not stub-exec-id', async () => {
+    test('POST /api/strategies/:id/run is explicitly disabled, not fake success', async () => {
       const app = await makeApp(strategyRoutes);
-      const res = await app.inject({ method: 'POST', url: '/api/strategies/some-id/run', payload: {} });
-      expect(res.statusCode).toBe(501);
-      expect(JSON.stringify(JSON.parse(res.body))).not.toContain('stub');
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/strategies/dca-eth-weekly/run',
+        payload: { userAddress: '0x1234567890123456789012345678901234567890', parameters: {} },
+      });
+      expect(res.statusCode).toBe(409);
+      const body = JSON.parse(res.body);
+      expect(body.error).toBe('execution_disabled');
+      expect(JSON.stringify(body)).not.toContain('stub');
     });
   });
 
