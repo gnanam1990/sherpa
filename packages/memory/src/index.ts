@@ -32,6 +32,11 @@ import {
   InMemoryAutoRepayStore,
   type AutoRepayStore,
 } from './auto-repay.js';
+import {
+  InMemorySessionKeyStore,
+  PostgresSessionKeyStore,
+  type SessionKeyStore,
+} from './session-keys.js';
 
 export * from './audit.js';
 export * from './audit.postgres.js';
@@ -151,4 +156,17 @@ export function createAutoRepayStore(
   if (!config.useRealDb) return new InMemoryAutoRepayStore();
   const pool = getPool(config);
   return createPostgresAutoRepayStore(pool);
+}
+
+/**
+ * Pick the right SessionKeyStore implementation. This stores user-granted
+ * session-key metadata only. Actual unattended signing remains a separate
+ * fail-closed worker dependency.
+ */
+export function createSessionKeyStore(
+  config: Pick<SherpaConfig, 'useRealDb' | 'databaseUrl'>,
+): SessionKeyStore {
+  if (!config.useRealDb) return new InMemorySessionKeyStore();
+  const pool = getPool(config);
+  return new PostgresSessionKeyStore(pool);
 }

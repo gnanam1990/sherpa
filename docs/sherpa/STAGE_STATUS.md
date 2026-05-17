@@ -22,7 +22,7 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what re
 | **Stage 2** | DeFi positions + writes                               | ✅ Live on Base mainnet | Public mainnet cards with guarded amount caps and verified contracts |
 | **Stage 3** | Multi-surface (Farcaster/Base Mini App, Telegram bot) | ✅ Live                | Ongoing listing/discovery polish                                |
 | **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta / Partial      | Railway worker live; Telegram alert delivery verified; session-key execution remains |
-| **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace       | 🔵 Partial             | Read-only chain explorer live; session keys/marketplace pending |
+| **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace       | 🔵 Partial             | Read-only chain explorer live; durable session-key metadata API live; signing/marketplace pending |
 | **Stage 6** | Portfolio Dashboard, Notifications, Fee Taker         | 🔵 Partial             | Telegram alerts live; Farcaster/email/browser push + fee taker pending |
 | **Stage 7** | Governance, Social, Automation Deep Dive              | 🔵 Partial             | Read-only proposal browsing live; write actions pending         |
 | **Stage 8** | Developer API, Cross-chain, Mobile                    | ⚪ Planned             | Post Stage 7                                                    |
@@ -128,11 +128,12 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what re
 **What's live**:
 
 - Read-only multi-chain explorer surfaces
+- Session-key registration, listing, limit updates, revocation, and usage stats backed by durable storage
 
 **What's pending**:
 
 - Multi-chain write execution
-- Session keys for automated transactions
+- Session-key signing/broadcasting for automated transactions
 - Strategy marketplace
 
 **Dependencies**: Stage 4 live
@@ -212,6 +213,7 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what re
 - Sponsored gas
 - Read-only multi-chain and governance views
 - Telegram alert delivery through `@sherpaonbasebot`
+- Durable session-key metadata API
 
 ### Pending Production Hardening
 
@@ -219,6 +221,7 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what re
 - Farcaster/email/browser push notification channels
 - Auto-repay execution
 - DCA execution
+- Session-key signer/broadcaster
 - Monitoring and recovery loops
 
 ### Planned

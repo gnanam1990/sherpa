@@ -94,7 +94,7 @@ export interface SessionKeyStore {
   getActiveByOwner(ownerAddress: string): Promise<SessionKeyRecord[]>;
   getByOwner(ownerAddress: string): Promise<SessionKeyRecord[]>;
   updateStatus(id: string, status: string): Promise<void>;
-  updateLimits(id: string, limits: Partial<SessionKeyLimits>): Promise<void>;
+  updateLimits(id: string, limits: Partial<SessionKeyLimits>, spendLimit?: string): Promise<void>;
   incrementSpent(id: string, amount: string, gasUsed?: string): Promise<void>;
   logExecution(params: LogExecutionParams): Promise<ExecutionRecord>;
   getUsageStats(id: string): Promise<UsageStats>;
@@ -155,9 +155,16 @@ export class InMemorySessionKeyStore implements SessionKeyStore {
     if (key) key.status = status as SessionKeyRecord['status'];
   }
 
-  async updateLimits(id: string, limits: Partial<SessionKeyLimits>): Promise<void> {
+  async updateLimits(
+    id: string,
+    limits: Partial<SessionKeyLimits>,
+    spendLimit?: string,
+  ): Promise<void> {
     const key = this.keys.get(id);
-    if (key) key.limits = { ...key.limits, ...limits };
+    if (key) {
+      key.limits = { ...key.limits, ...limits };
+      if (spendLimit !== undefined) key.spend_limit = spendLimit;
+    }
   }
 
   async incrementSpent(id: string, amount: string, _gasUsed?: string): Promise<void> {
@@ -300,10 +307,25 @@ export class PostgresSessionKeyStore implements SessionKeyStore {
     await this.pool.query('UPDATE session_keys SET status = $1 WHERE id = $2', [status, id]);
   }
 
-  async updateLimits(id: string, limits: Partial<SessionKeyLimits>): Promise<void> {
+  async updateLimits(
+    id: string,
+    limits: Partial<SessionKeyLimits>,
+    spendLimit?: string,
+  ): Promise<void> {
+    if (spendLimit === undefined) {
+      await this.pool.query(
+        `UPDATE session_keys SET limits = limits || $1::jsonb WHERE id = $2`,
+        [JSON.stringify(limits), id],
+      );
+      return;
+    }
+
     await this.pool.query(
-      `UPDATE session_keys SET limits = limits || $1::jsonb WHERE id = $2`,
-      [JSON.stringify(limits), id],
+      `UPDATE session_keys
+       SET limits = limits || $1::jsonb,
+           spend_limit = $2::numeric
+       WHERE id = $3`,
+      [JSON.stringify(limits), spendLimit, id],
     );
   }
 

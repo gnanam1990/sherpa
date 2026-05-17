@@ -24,6 +24,7 @@ import {
   createInMemoryRateLimiter,
   createNotificationStore,
   createPaymasterRateLimiter,
+  createSessionKeyStore,
   createSpendCap,
   createUsageSink,
   fetchTodayUsage,
@@ -892,7 +893,9 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   dcaRoutes(app, dcaStore, automationPersistence);
   autoRepayRoutes(app, autoRepayStore, automationPersistence);
   alertRoutes(app, alertStore, automationPersistence);
-  sessionKeyRoutes(app);
+  sessionKeyRoutes(app, {
+    store: createSessionKeyStore(sharedAutomationConfig),
+  });
   strategyRoutes(app);
   notificationRoutes(app, {
     store:
