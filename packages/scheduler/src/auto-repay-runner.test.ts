@@ -526,14 +526,10 @@ describe('runAutoRepayCycle', () => {
       maxRepayPerExecution: '1000000000',
     });
     const notify = vi.fn().mockResolvedValue(undefined);
-    let callCount = 0;
     const deps = makeDeps({
       store,
       // First call: HF=1.2 triggers; second call: HF=1.2 (unchanged — did not improve)
-      fetchHealthFactor: async () => {
-        callCount++;
-        return 1.2;
-      },
+      fetchHealthFactor: async () => 1.2,
       notify,
     });
     const result = await runAutoRepayCycle(deps);
