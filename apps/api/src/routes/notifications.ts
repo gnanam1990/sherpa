@@ -1,9 +1,8 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { InMemoryNotificationStore } from '@sherpa/memory';
+import { InMemoryNotificationStore, type NotificationStore } from '@sherpa/memory';
 import { dispatchNotification, type NotificationPayload } from '@sherpa/tools';
 import { z } from 'zod';
 
-const notificationStore = new InMemoryNotificationStore();
 const AddressSchema = z.string().regex(/^0x[a-fA-F0-9]{40}$/);
 const ChannelSchema = z.enum(['push', 'email', 'farcaster', 'telegram']);
 
@@ -66,7 +65,16 @@ function statusForDispatchError(error?: string): number {
   return 502;
 }
 
-export async function notificationRoutes(app: FastifyInstance): Promise<void> {
+export type NotificationRoutesOptions = {
+  store?: NotificationStore;
+};
+
+export async function notificationRoutes(
+  app: FastifyInstance,
+  options: NotificationRoutesOptions = {},
+): Promise<void> {
+  const notificationStore = options.store ?? new InMemoryNotificationStore();
+
   app.post('/api/notifications/subscribe', async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = SubscribeBody.safeParse(req.body);
     if (!parsed.success) {
@@ -82,8 +90,6 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
       ...parsed.data,
       userAddress: parsed.data.userAddress.toLowerCase(),
       enabled: true,
-      createdAt: Date.now(),
-      storage: 'memory',
     });
 
     return reply.code(201).send({ subscription });

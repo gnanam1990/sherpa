@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # scripts/db/migrate.sh — apply Sherpa SQL migrations.
 #
-# Reads DATABASE_URL from env. Applies every .sql file in
+# Reads DATABASE_URL from env. Applies forward .sql migrations in
 # scripts/db/migrations/ in lexical order, tracking applied filenames in a
-# `_migrations` table. Idempotent: already-applied files are skipped.
+# `_migrations` table. Files ending in `_down.sql` are rollback scripts and
+# are intentionally skipped by this forward-only runner. Idempotent:
+# already-applied files are skipped.
 #
 # Usage:
 #   DATABASE_URL=postgres://... ./scripts/db/migrate.sh
@@ -53,6 +55,10 @@ unset IFS
 
 for path in "${sorted[@]}"; do
   fname="$(basename "${path}")"
+  if [[ "${fname}" == *_down.sql ]]; then
+    echo "skip  ${fname} (rollback script)"
+    continue
+  fi
   applied=$(psql "${DATABASE_URL}" -At -v "fname=${fname}" \
     -c "SELECT 1 FROM _migrations WHERE filename = :'fname' LIMIT 1;")
   if [[ "${applied}" == "1" ]]; then

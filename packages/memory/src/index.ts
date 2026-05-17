@@ -12,6 +12,11 @@ import { createInMemoryAuditStore, type AuditStore } from './audit.js';
 import { createPostgresAuditStore } from './audit.postgres.js';
 import { createPostgresSpendCap } from './spend-cap.postgres.js';
 import { createPostgresUsageSink, type UsageSink } from './llm-usage.postgres.js';
+import {
+  createPostgresNotificationStore,
+  InMemoryNotificationStore,
+  type NotificationStore,
+} from './notifications.js';
 
 export * from './audit.js';
 export * from './audit.postgres.js';
@@ -79,4 +84,17 @@ export function createUsageSink(
   if (!config.useRealDb) return undefined;
   const pool = getPool(config);
   return createPostgresUsageSink(pool);
+}
+
+/**
+ * Pick the right NotificationStore implementation. This keeps API route
+ * modules stateless in production while preserving isolated in-memory
+ * behavior for tests and local runs.
+ */
+export function createNotificationStore(
+  config: Pick<SherpaConfig, 'useRealDb' | 'databaseUrl'>,
+): NotificationStore {
+  if (!config.useRealDb) return new InMemoryNotificationStore();
+  const pool = getPool(config);
+  return createPostgresNotificationStore(pool);
 }

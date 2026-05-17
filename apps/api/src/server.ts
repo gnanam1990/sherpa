@@ -19,6 +19,7 @@ import {
   createAuditLog,
   createAuditStore,
   createInMemoryRateLimiter,
+  createNotificationStore,
   createPaymasterRateLimiter,
   createSpendCap,
   createUsageSink,
@@ -27,6 +28,7 @@ import {
   updateAuditLog,
   type AuditLogRow,
   type AuditStore,
+  type NotificationStore,
   type PaymasterRateLimiter,
   type RateLimiter,
 } from '@sherpa/memory';
@@ -247,6 +249,8 @@ export type BuildServerOptions = {
   cronTasks?: readonly HourlyTask[];
   /** Override the paymaster rate limiter (tests script consume/refund). */
   paymasterRateLimiter?: PaymasterRateLimiter;
+  /** Override notification persistence (tests can inject an isolated store). */
+  notificationStore?: NotificationStore;
   /** Override fetch for the paymaster proxy (tests assert request shape). */
   paymasterFetch?: typeof globalThis.fetch;
   /** Override Base Aave positions reader (tests inject a deterministic mock). */
@@ -871,7 +875,13 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   alertRoutes(app);
   sessionKeyRoutes(app);
   strategyRoutes(app);
-  notificationRoutes(app);
+  notificationRoutes(app, {
+    store:
+      options.notificationStore ??
+      createNotificationStore(
+        config.databaseUrl ? config : { ...config, useRealDb: false },
+      ),
+  });
   portfolioRoutes(app);
   governanceRoutes(app);
   analyticsRoutes(app);
