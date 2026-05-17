@@ -1,6 +1,13 @@
 import type pg from 'pg';
 import { query } from '@sherpa/config';
 
+export type NotificationTokenRecord = {
+  fid: string;
+  token: string;
+  url: string;
+  client: string;
+};
+
 export async function saveNotificationToken(
   pool: pg.Pool,
   fid: bigint,
@@ -28,10 +35,25 @@ export async function deactivateNotificationTokens(pool: pg.Pool, fid: bigint): 
 
 export async function listActiveTokens(
   pool: pg.Pool,
-): Promise<Array<{ fid: string; token: string; url: string; client: string }>> {
-  const res = await query<{ fid: string; token: string; url: string; client: string }>(
+): Promise<NotificationTokenRecord[]> {
+  const res = await query<NotificationTokenRecord>(
     pool,
     'SELECT fid, token, url, client FROM notification_tokens WHERE active = true',
   );
   return res.rows;
+}
+
+export async function getActiveNotificationToken(
+  pool: pg.Pool,
+  fid: bigint,
+): Promise<NotificationTokenRecord | null> {
+  const res = await query<NotificationTokenRecord>(
+    pool,
+    `SELECT fid, token, url, client
+     FROM notification_tokens
+     WHERE fid = $1 AND active = true
+     LIMIT 1`,
+    [fid.toString()],
+  );
+  return res.rows[0] ?? null;
 }

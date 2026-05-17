@@ -114,13 +114,18 @@ export function AlertsPanel() {
   const [comparison, setComparison] = useState('>');
   const [threshold, setThreshold] = useState('5000');
   const [conditionType, setConditionType] = useState('price');
-  const [notificationChannel, setNotificationChannel] = useState<'push' | 'telegram'>('push');
+  const [notificationChannel, setNotificationChannel] = useState<
+    'push' | 'telegram' | 'farcaster'
+  >('push');
   const [telegramChatId, setTelegramChatId] = useState('');
+  const [farcasterFid, setFarcasterFid] = useState('');
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [status, setStatus] = useState<string>('Ready');
   const canUse = Boolean(isConnected && address);
   const canCreate =
-    canUse && (notificationChannel !== 'telegram' || telegramChatId.trim().length > 0);
+    canUse &&
+    (notificationChannel !== 'telegram' || telegramChatId.trim().length > 0) &&
+    (notificationChannel !== 'farcaster' || /^\d+$/.test(farcasterFid.trim()));
 
   const loadRules = useCallback(async () => {
     if (!address) return;
@@ -146,10 +151,14 @@ export function AlertsPanel() {
             comparison,
             threshold: Number(threshold),
             notificationChannels: [notificationChannel],
-            params:
-              notificationChannel === 'telegram'
+            params: {
+              ...(notificationChannel === 'telegram'
                 ? { telegramChatId: telegramChatId.trim() }
-                : undefined,
+                : {}),
+              ...(notificationChannel === 'farcaster'
+                ? { farcasterFid: Number(farcasterFid.trim()) }
+                : {}),
+            },
           }),
           headers: { 'content-type': 'application/json' },
           method: 'POST',
@@ -199,10 +208,13 @@ export function AlertsPanel() {
           <select
             className={fieldClass}
             value={notificationChannel}
-            onChange={(e) => setNotificationChannel(e.target.value as 'push' | 'telegram')}
+            onChange={(e) =>
+              setNotificationChannel(e.target.value as 'push' | 'telegram' | 'farcaster')
+            }
           >
             <option value="push">In-app</option>
             <option value="telegram">Telegram</option>
+            <option value="farcaster">Farcaster</option>
           </select>
           {notificationChannel === 'telegram' ? (
             <input
@@ -211,6 +223,15 @@ export function AlertsPanel() {
               placeholder="Telegram chat ID"
               value={telegramChatId}
               onChange={(e) => setTelegramChatId(e.target.value)}
+            />
+          ) : null}
+          {notificationChannel === 'farcaster' ? (
+            <input
+              className={fieldClass}
+              inputMode="numeric"
+              placeholder="Farcaster FID"
+              value={farcasterFid}
+              onChange={(e) => setFarcasterFid(e.target.value)}
             />
           ) : null}
         </div>

@@ -21,9 +21,9 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what re
 | **Stage 1** | SEND, BALANCE, HISTORY, IDENTITY_LOOKUP               | ✅ Live                | Live on Base Sepolia                                            |
 | **Stage 2** | DeFi positions + writes                               | ✅ Live on Base mainnet | Public mainnet cards with guarded amount caps and verified contracts |
 | **Stage 3** | Multi-surface (Farcaster/Base Mini App, Telegram bot) | ✅ Live                | Ongoing listing/discovery polish                                |
-| **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta / Partial      | Railway worker live; Telegram alert delivery verified; session-key execution remains |
+| **Stage 4** | Automation (DCA, ALERT, AUTO_REPAY)                   | 🔵 Beta / Partial      | Railway worker live; Telegram verified; Farcaster wired for enabled Mini App tokens; session-key execution remains |
 | **Stage 5** | Multi-chain, Session Keys, Strategy Marketplace       | 🔵 Partial             | Read-only chain explorer live; durable session-key metadata API live; signing/marketplace pending |
-| **Stage 6** | Portfolio Dashboard, Notifications, Fee Taker         | 🔵 Partial             | Telegram alerts live; Farcaster/email/browser push + fee taker pending |
+| **Stage 6** | Portfolio Dashboard, Notifications, Fee Taker         | 🔵 Partial             | Telegram alerts live; Farcaster alerts wired for active Mini App tokens; email/browser push + fee taker pending |
 | **Stage 7** | Governance, Social, Automation Deep Dive              | 🔵 Partial             | Read-only proposal browsing live; write actions pending         |
 | **Stage 8** | Developer API, Cross-chain, Mobile                    | ⚪ Planned             | Post Stage 7                                                    |
 | **Stage 9** | Risk & Compliance                                     | ⚪ Planned             | Post Stage 8                                                    |
@@ -109,13 +109,15 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what re
 - Scheduler code and memory models
 - Alert framework
 - Telegram alert delivery from production bot to configured chat IDs
+- Farcaster alert delivery through stored Mini App notification tokens
 - Auto-repay rule configuration
 - Railway `apps/worker` service with durable stores and `/health`
 - Production worker health: https://sherpa-worker-production.up.railway.app/health
 
 **What's blocking production execution**:
 
-- Farcaster/email/browser push notification channel verification
+- Farcaster live smoke verification after a user enables Mini App notifications
+- Email/browser push notification channel verification
 - Session-key signing/broadcasting for unattended DCA and auto-repay writes
 - Worker monitoring and recovery
 
@@ -147,10 +149,12 @@ Sherpa is built in 9 stages. This document tracks what is actually live, what re
 - Portfolio and notification scaffolds
 - Channel abstractions for push/email/Farcaster/Telegram delivery
 - Telegram alert delivery verified against the production bot
+- Farcaster alert delivery wired to stored Mini App notification tokens
 
 **What's pending**:
 
-- Farcaster/email/browser push notification delivery
+- Farcaster live smoke verification after Mini App notification opt-in
+- Email/browser push notification delivery
 - Fee taker module
 - Full portfolio dashboard rollout
 

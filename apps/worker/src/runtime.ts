@@ -1,9 +1,10 @@
-import type { SherpaConfig } from '@sherpa/config';
+import { getPool, type SherpaConfig } from '@sherpa/config';
 import {
   createAlertStore,
   createAutoRepayStore,
   createDCAStore,
   createNotificationStore,
+  getActiveNotificationToken,
   type AlertStore,
   type AutoRepayStore,
   type DCAStore,
@@ -17,7 +18,7 @@ import {
 import { runAlertCycle } from './alert-runner.js';
 import { runAutoRepayWorkerCycle } from './auto-repay-runner.js';
 import { fetchAaveHealthFactor } from './evaluators/health-factor.js';
-import { setNotificationStore } from './notifiers/index.js';
+import { setFarcasterTokenResolver, setNotificationStore } from './notifiers/index.js';
 
 export type WorkerLogger = {
   info(message: string, meta?: Record<string, unknown>): void;
@@ -217,6 +218,19 @@ export async function workerHealthExtra(stores: WorkerStores): Promise<Record<st
   };
 }
 
-export function attachNotificationStore(stores: Pick<WorkerStores, 'notificationStore'>): void {
+export function attachNotificationStore(
+  stores: Pick<WorkerStores, 'notificationStore'>,
+  config?: Pick<SherpaConfig, 'useRealDb' | 'databaseUrl'>,
+): void {
   setNotificationStore(stores.notificationStore);
+  if (!config?.useRealDb || !config.databaseUrl) {
+    setFarcasterTokenResolver(undefined);
+    return;
+  }
+
+  const pool = getPool(config);
+  setFarcasterTokenResolver(async (fid) => {
+    const token = await getActiveNotificationToken(pool, BigInt(fid));
+    return token ? { token: token.token, url: token.url } : null;
+  });
 }

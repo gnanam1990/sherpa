@@ -85,4 +85,23 @@ describe('AlertsPanel', () => {
       expect(body.params).toEqual({ telegramChatId: '6102672721' });
     });
   });
+
+  it('requires and sends Farcaster FID for Farcaster alerts', async () => {
+    const fetchMock = mockFetch();
+    render(<AlertsPanel />);
+
+    await userEvent.selectOptions(screen.getByDisplayValue('In-app'), 'farcaster');
+    expect(screen.getByRole('button', { name: 'Create alert' })).toBeDisabled();
+
+    await userEvent.type(screen.getByPlaceholderText('Farcaster FID'), '976779');
+    await userEvent.click(screen.getByRole('button', { name: 'Create alert' }));
+
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find(([url, init]) => url === '/api/alerts' && init?.method === 'POST');
+      expect(post).toBeTruthy();
+      const body = JSON.parse(String(post?.[1]?.body));
+      expect(body.notificationChannels).toEqual(['farcaster']);
+      expect(body.params).toEqual({ farcasterFid: 976779 });
+    });
+  });
 });

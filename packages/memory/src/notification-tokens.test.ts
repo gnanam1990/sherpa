@@ -1,5 +1,10 @@
 import { describe, test, expect, vi } from 'vitest';
-import { saveNotificationToken, deactivateNotificationTokens, listActiveTokens } from './notification-tokens.js';
+import {
+  deactivateNotificationTokens,
+  getActiveNotificationToken,
+  listActiveTokens,
+  saveNotificationToken,
+} from './notification-tokens.js';
 
 function makePool(rows: unknown[] = []) {
   const queryFn = vi.fn().mockResolvedValue({ rows, rowCount: rows.length });
@@ -42,5 +47,20 @@ describe('notification-tokens', () => {
     const pool = makePool([]) as any;
     const result = await listActiveTokens(pool);
     expect(result).toHaveLength(0);
+  });
+
+  test('getActiveNotificationToken returns the active token for a fid', async () => {
+    const pool = makePool([{ fid: '976779', token: 'tok', url: 'https://client.example', client: 'farcaster' }]) as any;
+    const result = await getActiveNotificationToken(pool, 976779n);
+    expect(result?.fid).toBe('976779');
+    expect(result?.token).toBe('tok');
+    const sql = pool._queryFn.mock.calls[0][0] as string;
+    expect(sql).toContain('active = true');
+    expect(pool._queryFn.mock.calls[0][1][0]).toBe('976779');
+  });
+
+  test('getActiveNotificationToken returns null when no active token exists', async () => {
+    const pool = makePool([]) as any;
+    await expect(getActiveNotificationToken(pool, 976779n)).resolves.toBeNull();
   });
 });

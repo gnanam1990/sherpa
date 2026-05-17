@@ -1,5 +1,5 @@
 export { notifyTelegram } from './telegram.js';
-export { notifyFarcaster } from './farcaster.js';
+export { notifyFarcaster, setFarcasterTokenResolver } from './farcaster.js';
 export { notifyInApp, setNotificationStore } from './in-app.js';
 export type { NotifyResult, NotifyPayload } from './telegram.js';
 export type { AlertRow } from '../types.js';

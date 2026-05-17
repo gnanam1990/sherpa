@@ -20,7 +20,7 @@ async function main(): Promise<void> {
   const intervals = readWorkerIntervals();
   const toggles = readWorkerToggles();
 
-  attachNotificationStore(stores);
+  attachNotificationStore(stores, config);
   await startHealthServer(stores.alertStore, Number(process.env.PORT ?? 3001), () =>
     workerHealthExtra(stores),
   );

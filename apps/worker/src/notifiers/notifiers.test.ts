@@ -1,5 +1,6 @@
-import { describe, test, expect } from 'vitest';
+import { afterEach, describe, test, expect, vi } from 'vitest';
 import { formatAlertPayload, dispatchAlertNotification } from './index.js';
+import { notifyFarcaster, setFarcasterTokenResolver } from './farcaster.js';
 import type { AlertRow } from './telegram.js';
 
 function makeAlert(overrides: Partial<AlertRow> = {}): AlertRow {
@@ -26,6 +27,11 @@ function makeAlert(overrides: Partial<AlertRow> = {}): AlertRow {
     ...overrides,
   };
 }
+
+afterEach(() => {
+  setFarcasterTokenResolver(undefined);
+  vi.unstubAllGlobals();
+});
 
 describe('formatAlertPayload', () => {
   test('formats price alert payload', () => {
@@ -127,5 +133,87 @@ describe('dispatchAlertNotification', () => {
     results.forEach((r) => {
       expect(r).toHaveProperty('success');
     });
+  });
+});
+
+describe('notifyFarcaster', () => {
+  test('resolves notification token by FID and sends to the stored client URL', async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({ result: { successfulTokens: ['tok'], invalidTokens: [] } }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    setFarcasterTokenResolver(async (fid) =>
+      fid === 976779
+        ? { token: 'tok', url: 'https://api.farcaster.xyz/v1/frame-notifications' }
+        : null,
+    );
+
+    const result = await notifyFarcaster(
+      makeAlert({
+        notification_channels: ['farcaster'],
+        params: { farcasterFid: 976779 },
+      }),
+      {
+        title: 'Sherpa alert',
+        body: 'ETH crossed your threshold',
+      },
+    );
+
+    expect(result.success).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.farcaster.xyz/v1/frame-notifications',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(body.tokens).toEqual(['tok']);
+    expect(body.targetUrl).toBe('https://sherpa-miniapp.vercel.app');
+  });
+
+  test('fails closed when no notification token exists for the FID', async () => {
+    setFarcasterTokenResolver(async () => null);
+    const result = await notifyFarcaster(
+      makeAlert({
+        notification_channels: ['farcaster'],
+        params: { farcasterFid: 976779 },
+      }),
+      {
+        title: 'Sherpa alert',
+        body: 'ETH crossed your threshold',
+      },
+    );
+
+    expect(result).toEqual({
+      success: false,
+      error: 'missing farcaster notification token',
+    });
+  });
+
+  test('treats client responses with zero successful tokens as delivery failures', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          result: { successfulTokens: [], invalidTokens: ['tok'], rateLimitedTokens: [] },
+        }),
+      ),
+    );
+
+    const result = await notifyFarcaster(
+      makeAlert({
+        notification_channels: ['farcaster'],
+        params: {
+          farcasterFid: 976779,
+          notificationUrl: 'https://api.farcaster.xyz/v1/frame-notifications',
+          notificationToken: 'tok',
+        },
+      }),
+      {
+        title: 'Sherpa alert',
+        body: 'ETH crossed your threshold',
+      },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('invalid=1');
   });
 });

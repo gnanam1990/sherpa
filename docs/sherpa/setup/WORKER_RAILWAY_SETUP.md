@@ -4,7 +4,9 @@ The worker runs Stage 4 automation loops:
 
 - Alerts: evaluates active alerts and dispatches notifications. Telegram
   delivery is verified in production when an alert stores `telegramChatId` in
-  `params`.
+  `params`. Farcaster delivery is wired when an alert stores `farcasterFid`
+  in `params` and the Mini App webhook has stored an active notification token
+  for that FID.
 - DCA: checks due schedules and records fail-closed execution attempts until the session-key executor is configured.
 - Auto-repay: checks Aave health factors and records fail-closed execution attempts until the repay executor and broadcaster are configured.
 
@@ -35,6 +37,7 @@ BASE_RPC_URL=<base mainnet rpc>
 BASESCAN_API_KEY=<basescan key>
 TELEGRAM_BOT_TOKEN=<telegram bot token, if telegram alerts are enabled>
 ADMIN_TG_USER_IDS=<comma-separated admin telegram ids, optional>
+FARCASTER_NOTIFICATION_TARGET_URL=https://sherpa-miniapp.vercel.app
 ```
 
 Worker loop toggles:
@@ -78,4 +81,12 @@ Telegram smoke verification:
 ```text
 Bot API getMe resolves to @sherpaonbasebot, and a direct smoke message to the
 configured admin chat ID succeeded on 2026-05-17.
+```
+
+Farcaster delivery boundary:
+
+```text
+The worker resolves active Farcaster notification tokens from Postgres by FID
+and posts to the stored client notification URL. Live smoke requires a user to
+add the Mini App and enable notifications so the webhook can store a token.
 ```
