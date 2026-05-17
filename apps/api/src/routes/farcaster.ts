@@ -20,6 +20,10 @@ function hostnameOf(url: string): string | undefined {
   }
 }
 
+function normalizeEvent(event: string): string {
+  return event.replace(/-/g, '_').replace(/^miniapp_/, 'frame_');
+}
+
 export function registerFarcasterRoutes(app: FastifyInstance, config: SherpaConfig): void {
   app.get('/api/farcaster/notifications/:fid/status', async (req, reply) => {
     const params = req.params as { fid?: string };
@@ -57,23 +61,30 @@ export function registerFarcasterRoutes(app: FastifyInstance, config: SherpaConf
 
       if (body.header && body.payload && body.signature) {
         try {
+          const headerJson = decodeBase64Url(body.header as string);
+          const header = JSON.parse(headerJson) as Record<string, unknown>;
           const payloadJson = decodeBase64Url(body.payload as string);
           const payload = JSON.parse(payloadJson) as Record<string, unknown>;
           eventBody = payload;
           event = payload.event as string | undefined;
+          const headerFid = header.fid;
+          if (typeof headerFid === 'number' && Number.isInteger(headerFid)) {
+            fid = headerFid;
+          }
         } catch {
           return reply.code(400).send({ error: 'invalid payload encoding' });
         }
       } else {
-        event = eventBody.type as string | undefined;
+        event = (eventBody.type ?? eventBody.event) as string | undefined;
       }
 
       const rawFid = eventBody.fid;
-      if (typeof rawFid === 'number' && Number.isInteger(rawFid)) {
+      if (!fid && typeof rawFid === 'number' && Number.isInteger(rawFid)) {
         fid = rawFid;
       }
 
       if (!event) return reply.code(400).send({ error: 'missing event type' });
+      event = normalizeEvent(event);
 
       const pool = config.useRealDb ? getPool(config) : null;
 

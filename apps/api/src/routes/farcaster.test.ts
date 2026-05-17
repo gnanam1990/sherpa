@@ -27,14 +27,45 @@ describe('POST /api/webhooks/farcaster', () => {
     await app.close();
   });
 
+  it('accepts current hyphenated miniapp event names', async () => {
+    const app = buildServer({ config: offlineConfig() });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/webhooks/farcaster',
+      payload: { event: 'miniapp-added', fid: 1234 },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+    await app.close();
+  });
+
   it('accepts frame_added event (JFS format)', async () => {
     const app = buildServer({ config: offlineConfig() });
+    const header = encodeBase64Url(JSON.stringify({ fid: 5678 }));
     const payload = encodeBase64Url(JSON.stringify({ event: 'frame_added', fid: 5678 }));
     const res = await app.inject({
       method: 'POST',
       url: '/api/webhooks/farcaster',
       payload: {
-        header: 'hdr',
+        header,
+        payload,
+        signature: 'sig',
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+    await app.close();
+  });
+
+  it('accepts JFS format with FID in the header', async () => {
+    const app = buildServer({ config: offlineConfig() });
+    const header = encodeBase64Url(JSON.stringify({ fid: 976779 }));
+    const payload = encodeBase64Url(JSON.stringify({ event: 'notifications-enabled' }));
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/webhooks/farcaster',
+      payload: {
+        header,
         payload,
         signature: 'sig',
       },

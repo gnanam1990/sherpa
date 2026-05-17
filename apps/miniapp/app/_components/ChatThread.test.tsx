@@ -19,12 +19,29 @@ vi.mock('wagmi', async () => {
   };
 });
 
+const fcState = vi.hoisted(() => ({
+  user: null as null | { fid: number; username?: string },
+  status: false,
+  addResult: {
+    added: true,
+    notificationDetails: {
+      token: 'tok',
+      url: 'https://api.farcaster.xyz/v1/frame-notifications',
+    },
+  },
+}));
+
 vi.mock('../../lib/farcaster-connect', () => ({
-  getFarcasterUser: () => Promise.resolve(null),
+  getFarcasterUser: () => Promise.resolve(fcState.user),
+  getFarcasterNotificationStatus: () => Promise.resolve(fcState.status),
+  addSherpaMiniApp: vi.fn(() => Promise.resolve(fcState.addResult)),
+  saveFarcasterNotificationDetails: vi.fn(() => Promise.resolve()),
 }));
 
 describe('ChatThread', () => {
   afterEach(() => {
+    fcState.user = null;
+    fcState.status = false;
     vi.restoreAllMocks();
   });
 
@@ -36,6 +53,34 @@ describe('ChatThread', () => {
   test('renders send button', () => {
     render(<ChatThread />);
     expect(screen.getByText('Send')).toBeDefined();
+  });
+
+  test('shows Farcaster alert readiness when Mini App token is active', async () => {
+    fcState.user = { fid: 976779, username: 'gnanam' };
+    fcState.status = true;
+
+    render(<ChatThread />);
+
+    expect(await screen.findByText(/Farcaster alerts ready/)).toBeDefined();
+    expect(screen.queryByText('Enable alerts')).toBeNull();
+  });
+
+  test('can request Farcaster alert enablement from the Mini App', async () => {
+    const farcaster = await import('../../lib/farcaster-connect');
+    fcState.user = { fid: 976779, username: 'gnanam' };
+    fcState.status = false;
+
+    render(<ChatThread />);
+    const button = await screen.findByText('Enable alerts');
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(farcaster.addSherpaMiniApp).toHaveBeenCalled();
+      expect(farcaster.saveFarcasterNotificationDetails).toHaveBeenCalledWith(976779, {
+        token: 'tok',
+        url: 'https://api.farcaster.xyz/v1/frame-notifications',
+      });
+    });
   });
 
   test('shows user message after submit', async () => {
