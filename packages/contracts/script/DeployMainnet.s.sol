@@ -11,6 +11,7 @@ import {SherpaRouter} from "../src/SherpaRouter.sol";
 ///      addresses cannot be reused accidentally. Dry-run before broadcasting.
 contract DeployMainnet is Script {
     uint256 internal constant BASE_MAINNET_CHAIN_ID = 8453;
+    uint256 internal constant DEFAULT_MIN_DEPLOYER_BALANCE = 0.01 ether;
 
     address internal constant EXPECTED_AERODROME_ROUTER = 0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43;
     address internal constant EXPECTED_AAVE_POOL = 0xA238Dd80C259a72e81d7e4664a9801593F98d1c5;
@@ -27,11 +28,12 @@ contract DeployMainnet is Script {
         address safeOwner = vm.envAddress("MAINNET_SAFE_OWNER_ADDRESS");
         address aerodromeRouter = vm.envAddress("MAINNET_AERODROME_ROUTER_ADDRESS");
         address aavePool = vm.envAddress("MAINNET_AAVE_POOL_ADDRESS");
+        uint256 minDeployerBalance = vm.envOr("MAINNET_MIN_DEPLOYER_BALANCE_WEI", DEFAULT_MIN_DEPLOYER_BALANCE);
 
         require(safeOwner != address(0), "MAINNET_SAFE_OWNER_ADDRESS required");
         require(safeOwner != deployer, "safe owner must differ from deployer");
         require(safeOwner.code.length > 0, "safe owner must be deployed");
-        require(deployer.balance >= 0.01 ether, "deployer underfunded");
+        require(deployer.balance >= minDeployerBalance, "deployer underfunded");
 
         require(aerodromeRouter == EXPECTED_AERODROME_ROUTER, "unexpected Aerodrome router");
         require(aavePool == EXPECTED_AAVE_POOL, "unexpected Aave pool");

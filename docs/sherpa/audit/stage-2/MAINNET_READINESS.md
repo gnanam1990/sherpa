@@ -34,6 +34,20 @@ Latest readiness pass:
 | `pnpm -r typecheck` | Passed |
 | `pnpm -r build` | Passed with existing frontend dependency / lint warnings |
 
+Latest mainnet dry-run:
+
+| Item | Result |
+|---|---|
+| Dry-run command | `MAINNET_MIN_DEPLOYER_BALANCE_WEI=1000000000000000 forge script script/DeployMainnet.s.sol --rpc-url "$BASE_MAINNET_RPC_URL" -vvvv` |
+| Deployer | `0xFf525D6940Ad0e308ed6eda443c792694353F9Da` |
+| Safe owner | `0x53918b7635d2d2c2882b213E3321c03887C98D73` |
+| Predicted SherpaTreasury | `0xF4e72beAA559E1815f4671e39EDb1295aD975918` |
+| Predicted SherpaRouter | `0x00bfef87DD352D48F8572BcfA52E57870B35DE8b` |
+| Estimated gas used | `2,986,515` |
+| Estimated gas price | `0.01027 gwei` |
+| Estimated required ETH | `0.00003067150905 ETH` |
+| Result | Simulation complete, no broadcast |
+
 ## Mainnet blockers
 
 | Gate | Status | Required action |
@@ -63,7 +77,8 @@ Latest readiness pass:
 - Requires `MAINNET_SAFE_OWNER_ADDRESS`
 - Requires the Safe address to already have contract code
 - Requires `MAINNET_SAFE_OWNER_ADDRESS != deployer`
-- Requires the deployer to hold at least `0.01 ETH` on Base mainnet
+- Requires the deployer to hold at least `0.01 ETH` on Base mainnet by default
+  (`MAINNET_MIN_DEPLOYER_BALANCE_WEI` can lower the guard for dry-runs only)
 - Requires mainnet-specific env vars instead of Sepolia names
 - Requires Aerodrome and Aave addresses to match expected Base mainnet values
 - Requires protocol/token addresses to have bytecode
