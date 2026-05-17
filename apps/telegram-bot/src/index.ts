@@ -18,6 +18,8 @@ if (!token) {
   process.exit(1);
 }
 
+const POLLING_CONFLICT_RETRY_MS = Number(process.env.TELEGRAM_POLLING_CONFLICT_RETRY_MS ?? 35_000);
+
 const bot = new Bot(token);
 
 // Admin-only middleware for beta
@@ -53,9 +55,54 @@ bot.catch((err) => {
   }
 });
 
-// Start bot
-bot.start({
-  onStart: (botInfo) => {
-    console.log(`@${botInfo.username} is running`);
-  },
+let stopping = false;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isPollingConflict(err: unknown): boolean {
+  const candidate = err as { error_code?: number; description?: string; method?: string };
+  return (
+    candidate.error_code === 409 ||
+    candidate.method === 'getUpdates' ||
+    candidate.description?.includes('terminated by other getUpdates request') === true
+  );
+}
+
+async function startBotWithRetry(): Promise<void> {
+  while (!stopping) {
+    try {
+      await bot.start({
+        onStart: (botInfo) => {
+          console.log(`@${botInfo.username} is running`);
+        },
+      });
+      return;
+    } catch (err) {
+      if (isPollingConflict(err) && !stopping) {
+        console.warn(
+          `[telegram] another getUpdates poller is active; retrying in ${POLLING_CONFLICT_RETRY_MS}ms`,
+        );
+        await sleep(POLLING_CONFLICT_RETRY_MS);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+function shutdown(signal: NodeJS.Signals): void {
+  if (stopping) return;
+  stopping = true;
+  console.log(`[telegram] received ${signal}; stopping bot`);
+  bot.stop();
+}
+
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);
+
+startBotWithRetry().catch((err) => {
+  console.error('[telegram] fatal', err);
+  process.exit(1);
 });
