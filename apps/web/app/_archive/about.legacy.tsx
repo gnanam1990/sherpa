@@ -1,8 +1,9 @@
+/* Legacy /about page — preserved for Phase 4 Glass Aurora
+   migration rollback. Safe to delete after Phase 5 verification. */
+
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Github, MessageCircle, Sparkles, Wallet, Zap, Languages } from '../_components/icons';
-import { GLASS_AURORA_ENABLED } from '../../lib/feature-flags';
-import { GlassAbout } from '../_components/glass/glass-about';
 
 export const metadata: Metadata = {
   title: 'About · Sherpa',
@@ -82,7 +83,7 @@ const faqs = [
   },
 ];
 
-function LegacyAbout() {
+export default function AboutPage() {
   return (
     <main
       id="main-content"
@@ -227,14 +228,4 @@ function LegacyAbout() {
       </div>
     </main>
   );
-}
-
-/**
- * /about — static marketing/credibility page. Behind GLASS_AURORA_ENABLED:
- * the Glass redesign (adds the project credibility block) vs the unchanged
- * legacy page. about/page.test.tsx runs with the flag unset, so it
- * exercises (and pins) the legacy branch — kept byte-identical here.
- */
-export default function AboutPage() {
-  return GLASS_AURORA_ENABLED ? <GlassAbout /> : <LegacyAbout />;
 }
