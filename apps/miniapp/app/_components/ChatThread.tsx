@@ -3,6 +3,13 @@ import { useEffect, useState } from 'react';
 import { useMiniKit } from '@coinbase/onchainkit/minikit';
 import { useAccount } from 'wagmi';
 import {
+  GlassActionCard,
+  GlassDeviceFrame,
+  GlassPill,
+  GlassSurface,
+  SherpaGlassMark,
+} from '@sherpa/ui';
+import {
   addSherpaMiniApp,
   getFarcasterNotificationStatus,
   getFarcasterUser,
@@ -35,19 +42,32 @@ type ParseResponse = {
   message?: string;
 };
 
+const QUICK_LINKS = [
+  { href: 'https://sherpa-web.vercel.app/positions', label: 'Positions', meta: 'Aave health' },
+  { href: 'https://sherpa-web.vercel.app/swap', label: 'Swap', meta: 'Base mainnet' },
+  { href: 'https://sherpa-web.vercel.app/lend', label: 'Lend', meta: 'Aave V3' },
+  { href: 'https://sherpa-web.vercel.app/alerts', label: 'Alerts', meta: 'Beta' },
+];
+
 function stringSlot(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
+function shortAddress(address: string): string {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 export function formatAssistantText(data: ParseResponse): string {
-  if (data.error || data.message) return data.error ?? data.message ?? 'Sherpa could not parse that.';
+  if (data.error || data.message)
+    return data.error ?? data.message ?? 'Sherpa could not parse that.';
 
   const intent = data.parsed?.intent ?? data.card?.primary_action_label ?? 'UNKNOWN';
   const card = data.card;
   const slots = data.parsed?.slots ?? {};
 
   if (intent === 'IDENTITY_LOOKUP' && card) {
-    const query = stringSlot(card.recipient_metadata?.query) ?? stringSlot(slots.query) ?? 'identity';
+    const query =
+      stringSlot(card.recipient_metadata?.query) ?? stringSlot(slots.query) ?? 'identity';
     const source = stringSlot(card.recipient_metadata?.source);
     const address = card.recipient_display ?? card.secondary_amount_display;
     return [
@@ -103,7 +123,9 @@ export function ChatThread() {
       getFarcasterNotificationStatus(user.fid)
         .then((active) => {
           setNotificationStatus(active ? 'ready' : 'missing');
-          setNotificationText(active ? 'Farcaster alerts ready' : 'Enable alerts for this Mini App');
+          setNotificationText(
+            active ? 'Farcaster alerts ready' : 'Enable alerts for this Mini App',
+          );
         })
         .catch(() => {
           setNotificationStatus('error');
@@ -119,7 +141,9 @@ export function ChatThread() {
     const result = await addSherpaMiniApp();
     if (!result.added) {
       setNotificationStatus('missing');
-      setNotificationText(result.reason === 'rejected-by-user' ? 'Prompt rejected' : 'Could not add Mini App');
+      setNotificationText(
+        result.reason === 'rejected-by-user' ? 'Prompt rejected' : 'Could not add Mini App',
+      );
       return;
     }
     if (!result.notificationDetails) {
@@ -177,75 +201,122 @@ export function ChatThread() {
   }
 
   return (
-    <div className="flex flex-col h-full p-4 gap-3">
-      <header className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-3 py-2">
-        <div className="flex items-center gap-2">
-          <img src="/sherpa-icon-192.svg" alt="" className="h-8 w-8 rounded-lg" />
-          <div>
-            <div className="text-sm font-semibold text-white">Sherpa</div>
-            <div className="text-[11px] text-slate-400">Base mini app</div>
-          </div>
-        </div>
-        <div className="text-[11px] text-blue-300">sponsored gas</div>
-      </header>
-      {fcUser && (
-        <div className="mb-2 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2">
-          <div className="flex items-center justify-between gap-3">
+    <GlassDeviceFrame>
+      <div className="flex min-h-[calc(100dvh-2rem)] flex-col gap-3">
+        <header className="flex items-center justify-between gap-3 rounded-[22px] border border-white/12 bg-white/[0.07] px-3 py-2.5 backdrop-blur-2xl">
+          <div className="flex min-w-0 items-center gap-3">
+            <SherpaGlassMark className="h-10 w-10 shrink-0 rounded-xl" />
             <div>
-              <div className="text-xs text-blue-400">
-                FID: {fcUser.fid} · @{fcUser.username ?? 'unknown'}
-              </div>
-              <div
-                className={
-                  notificationStatus === 'ready'
-                    ? 'mt-1 text-[11px] text-emerald-400'
-                    : 'mt-1 text-[11px] text-slate-400'
-                }
-              >
-                {notificationText}
-              </div>
+              <div className="text-base font-bold leading-tight text-white">Sherpa</div>
+              <div className="font-mono text-[11px] text-white/55">Base Mini App</div>
             </div>
-            {notificationStatus !== 'ready' ? (
-              <button
-                className="rounded-md border border-blue-500/50 px-2 py-1 text-[11px] font-medium text-blue-200 disabled:opacity-50"
-                disabled={notificationStatus === 'checking' || notificationStatus === 'saving'}
-                onClick={enableFarcasterAlerts}
-                type="button"
-              >
-                {notificationStatus === 'saving' ? 'Saving...' : 'Enable alerts'}
-              </button>
+          </div>
+          <GlassPill className="shrink-0 normal-case tracking-normal">mainnet</GlassPill>
+        </header>
+
+        <GlassSurface className="p-4">
+          <GlassPill>Mini App surface</GlassPill>
+          <h1 className="mt-4 max-w-[14rem] text-4xl font-black leading-[0.98] tracking-tight text-white drop-shadow-[0_8px_30px_rgba(0,225,255,0.28)]">
+            Type once. Act on Base.
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-white/72">
+            Chat with Sherpa from Farcaster or Base App. Every state-changing action still goes
+            through explicit wallet confirmation.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {address ? (
+              <GlassPill className="normal-case tracking-normal">{shortAddress(address)}</GlassPill>
             ) : null}
+            <GlassPill className="normal-case tracking-normal">Farcaster ready</GlassPill>
           </div>
-        </div>
-      )}
-      <div className="flex-1 overflow-y-auto space-y-2">
-        {messages.map((m) => (
-          <div key={m.id} className={m.role === 'user' ? 'text-right' : 'text-left'}>
-            <div
-              className={`inline-block max-w-[90%] whitespace-pre-wrap break-words px-3 py-2 text-left text-sm leading-relaxed rounded ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-100'}`}
-            >
-              {m.text}
+        </GlassSurface>
+
+        <section className="grid grid-cols-2 gap-2">
+          {QUICK_LINKS.map((item) => (
+            <GlassActionCard href={item.href} key={item.href} label={item.label} meta={item.meta} />
+          ))}
+        </section>
+
+        {fcUser && (
+          <GlassSurface className="p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs text-[#A6F2FF]">
+                  FID: {fcUser.fid} · @{fcUser.username ?? 'unknown'}
+                </div>
+                <div
+                  className={
+                    notificationStatus === 'ready'
+                      ? 'mt-1 text-[11px] text-emerald-300'
+                      : 'mt-1 text-[11px] text-white/58'
+                  }
+                >
+                  {notificationText}
+                </div>
+              </div>
+              {notificationStatus !== 'ready' ? (
+                <button
+                  className="rounded-xl border border-[#00E1FF]/35 bg-[#00E1FF]/10 px-3 py-2 text-[11px] font-semibold text-[#A6F2FF] disabled:opacity-50"
+                  disabled={notificationStatus === 'checking' || notificationStatus === 'saving'}
+                  onClick={enableFarcasterAlerts}
+                  type="button"
+                >
+                  {notificationStatus === 'saving' ? 'Saving...' : 'Enable alerts'}
+                </button>
+              ) : null}
             </div>
+          </GlassSurface>
+        )}
+
+        <GlassSurface className="flex min-h-[17rem] flex-1 flex-col p-3">
+          <div className="flex-1 space-y-2 overflow-y-auto pr-1">
+            {messages.length === 0 ? (
+              <div className="flex min-h-52 flex-col items-center justify-center text-center">
+                <SherpaGlassMark className="h-12 w-12 rounded-2xl opacity-90" />
+                <div className="mt-3 text-sm font-semibold text-white">Ask Sherpa anything</div>
+                <p className="mt-1 max-w-52 text-xs leading-5 text-white/50">
+                  Try sending USDC, checking positions, or setting an alert.
+                </p>
+              </div>
+            ) : null}
+            {messages.map((m) => (
+              <div key={m.id} className={m.role === 'user' ? 'text-right' : 'text-left'}>
+                <div
+                  className={`inline-block max-w-[90%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-left text-sm leading-relaxed ${
+                    m.role === 'user'
+                      ? 'bg-[#0052FF] text-white shadow-[0_10px_28px_rgba(0,82,255,0.25)]'
+                      : 'border border-white/10 bg-white/[0.08] text-white/88'
+                  }`}
+                >
+                  {m.text}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+          <div className="mt-3 flex gap-2">
+            <input
+              className="min-w-0 flex-1 rounded-2xl border border-white/12 bg-white/[0.08] px-3 py-3 text-sm text-white placeholder:text-white/38 outline-none transition focus:border-[#00E1FF]/45 disabled:opacity-50"
+              disabled={busy}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
+              placeholder="send 0.01 usdc to vitalik.eth"
+              value={input}
+            />
+            <button
+              className="rounded-2xl bg-[linear-gradient(135deg,#CFF6FF_0%,#00E1FF_55%,#4D80FF_100%)] px-4 py-3 text-sm font-bold text-[#06081A] shadow-[0_14px_36px_rgba(0,225,255,0.32)] disabled:opacity-50"
+              disabled={busy}
+              onClick={onSubmit}
+              type="button"
+            >
+              {busy ? '...' : 'Send'}
+            </button>
+          </div>
+        </GlassSurface>
+
+        <footer className="pb-[env(safe-area-inset-bottom)] text-center font-mono text-[11px] text-white/45">
+          Farcaster / Base App / web surfaces share the same Sherpa engine
+        </footer>
       </div>
-      <div className="flex gap-2">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
-          placeholder="send 0.01 usdc to vitalik.eth"
-          className="flex-1 px-3 py-2 bg-slate-900 text-white rounded"
-          disabled={busy}
-        />
-        <button
-          onClick={onSubmit}
-          disabled={busy}
-          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-        >
-          {busy ? '...' : 'Send'}
-        </button>
-      </div>
-    </div>
+    </GlassDeviceFrame>
   );
 }
