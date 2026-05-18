@@ -30,7 +30,7 @@ Set environment variables on that Vercel project:
 NEXT_PUBLIC_URL=https://sherpa-miniapp.vercel.app
 SHERPA_API_BASE=<apps/api URL, used by /.well-known/farcaster.json and /api/* rewrites>
 NEXT_PUBLIC_ONCHAINKIT_API_KEY=<your CDP Client API Key, cdp_pk_...>
-NEXT_PUBLIC_SHERPA_CHAIN=base-sepolia
+NEXT_PUBLIC_SHERPA_CHAIN=base-mainnet
 NEXT_PUBLIC_BASE_APP_ID=<Base Dashboard app id>
 ```
 
@@ -38,16 +38,27 @@ Do not set `NEXT_PUBLIC_SHERPA_API_BASE` for production unless the API host has 
 
 Then deploy from Vercel's Git integration by pushing `main`, or click **Redeploy** in the Vercel dashboard after the env vars are saved.
 
-## C. Generate Account Association
+## C. Base App registration
 
-1. Visit [base.dev/preview](https://base.dev/preview) (same browser where Farcaster custody wallet is connected)
-2. Paste the apps/miniapp URL in "App URL"
-3. Click "Submit"
-4. Click "Verify" button
-5. Follow prompts to sign with custody wallet
+Base App discovery now uses the Base.dev project record and standard web app metadata.
+Keep the Vercel project live, verify mobile browser loading, and ensure the Base.dev
+project has the same URL, icon, screenshots, category, description, and Builder Code.
+The `base:app_id` meta tag in `apps/miniapp/app/layout.tsx` links this deployment to
+the Base.dev app record.
+
+## D. Generate Farcaster Account Association
+
+1. Visit [farcaster.xyz/~/developers/mini-apps/manifest](https://farcaster.xyz/~/developers/mini-apps/manifest)
+2. Enter the domain only, for example `sherpa-miniapp.vercel.app`
+3. Refresh/fetch the manifest
+4. Generate Account Association
+5. Follow prompts to sign with the Farcaster custody or auth wallet
 6. Copy header, payload, signature values
 
-## D. Set Account Association env vars
+The manifest must be served at `https://sherpa-miniapp.vercel.app/.well-known/farcaster.json`
+and the signed domain must exactly match the deployment domain.
+
+## E. Set Account Association env vars
 
 ```bash
 vercel env add FARCASTER_HEADER production --cwd apps/miniapp
@@ -58,19 +69,23 @@ vercel env add FARCASTER_SIGNATURE production --cwd apps/miniapp
 vercel --prod --cwd apps/miniapp
 ```
 
-## E. Verify in preview tools
+## F. Verify in preview tools
 
-1. [base.dev/preview](https://base.dev/preview) → enter URL → check "Account Association" tab
-2. [base.dev/preview](https://base.dev/preview) → "Metadata" tab → verify all fields
-3. [farcaster.xyz/~/developers/mini-apps/preview](https://farcaster.xyz/~/developers/mini-apps/preview) → enter URL → verify renders
+1. `curl https://sherpa-miniapp.vercel.app/.well-known/farcaster.json` → check `miniapp.version` is `1`
+2. [base.dev/preview](https://base.dev/preview) → enter URL → validate app launch + Base metadata
+3. [farcaster.xyz/~/developers/mini-apps/preview](https://farcaster.xyz/~/developers/mini-apps/preview) → enter URL → verify the `fc:miniapp` embed renders
+4. Confirm screenshot URLs load:
+   - `/screenshot-1.png`
+   - `/screenshot-2.png`
+   - `/screenshot-3.png`
 
-## F. Test in Warpcast
+## G. Test in Warpcast
 
 1. Cast the URL in Warpcast (your own timeline)
 2. Tap the embed → mini app loads
 3. Test SEND flow end-to-end
 
-## G. Deploy apps/telegram-bot to Railway
+## H. Deploy apps/telegram-bot to Railway
 
 ```bash
 # Create new Railway service
@@ -90,7 +105,7 @@ Linking and signing require the API service to have real database backing
 (`SHERPA_USE_REAL_DB=true` plus the surface-link migrations). If `/link`
 returns an error, fix API database configuration before debugging the bot.
 
-## H. Smoke test the bot
+## I. Smoke test the bot
 
 1. Open Telegram, DM your bot
 2. `/start` → welcome message
@@ -99,7 +114,7 @@ returns an error, fix API database configuration before debugging the bot.
 5. `/balance` → shows current balance
 6. `/history` → shows the SEND tx
 
-## I. Stage 1 verification
+## J. Stage 1 verification
 
 After all deploys, verify Stage 1 is still live:
 

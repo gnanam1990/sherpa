@@ -32,10 +32,17 @@ Copy `.env.example` to `.env.local` and fill in:
 To register this app as a Farcaster Mini App:
 
 1. Deploy the app and ensure `NEXT_PUBLIC_URL` is set to the public URL.
-2. Visit the [Farcaster Mini App Manifest Tool](https://warpcast.com/~/developers/mini-apps) in your Warpcast developer settings.
-3. Enter your app URL and follow the signing steps to obtain `FARCASTER_HEADER`, `FARCASTER_PAYLOAD`, and `FARCASTER_SIGNATURE`.
+2. Visit the [Farcaster Mini App Manifest Tool](https://farcaster.xyz/~/developers/mini-apps/manifest).
+3. Enter the domain only, for example `sherpa-miniapp.vercel.app`, and follow the signing steps to obtain `FARCASTER_HEADER`, `FARCASTER_PAYLOAD`, and `FARCASTER_SIGNATURE`.
 4. Add those values to your deployment environment variables.
 5. Verify the manifest at `https://your-app-url/.well-known/farcaster.json`.
+
+### Base App Registration
+
+Base App discovery uses the Base.dev project record and standard web app metadata.
+Keep the Base.dev app record pointed at this deployment, verify the `base:app_id`
+meta tag in `app/layout.tsx`, and make sure the project metadata includes the same
+icon, screenshots, category, description, and Builder Code.
 
 ## Architecture
 
@@ -43,5 +50,5 @@ To register this app as a Farcaster Mini App:
 - **ChatThread.tsx** — Chat UI using MiniKit hooks + `/api/parse`
 - **lib/farcaster-connect.ts** — Farcaster SDK context extraction
 - **lib/builder.ts** — Coinbase builder attribution (`NEXT_PUBLIC_BUILDER_CODE` → `dataSuffix`)
-- **.well-known/farcaster.json/** — Dynamic Farcaster manifest route
+- **.well-known/farcaster.json/** — Dynamic Farcaster manifest route with `miniapp` + `frame` fallback
 - **next.config.ts** — Same-origin `/api/*` rewrites to `SHERPA_API_BASE`

@@ -5,6 +5,31 @@ import './globals.css';
 export async function generateMetadata(): Promise<Metadata> {
   const appUrl = process.env.NEXT_PUBLIC_URL || 'https://sherpa-miniapp.vercel.app';
   const baseAppId = process.env.NEXT_PUBLIC_BASE_APP_ID || '6a06efd3067444793fb8ddba';
+  const miniappEmbed = {
+    version: '1',
+    imageUrl: `${appUrl}/og-image.png`,
+    button: {
+      title: 'Open Sherpa',
+      action: {
+        type: 'launch_miniapp',
+        name: 'Sherpa',
+        url: appUrl,
+        splashImageUrl: `${appUrl}/splash.png`,
+        splashBackgroundColor: '#0052FF',
+      },
+    },
+  };
+  const frameEmbed = {
+    ...miniappEmbed,
+    button: {
+      ...miniappEmbed.button,
+      action: {
+        ...miniappEmbed.button.action,
+        type: 'launch_frame',
+      },
+    },
+  };
+
   return {
     metadataBase: new URL(appUrl),
     applicationName: 'Sherpa',
@@ -24,6 +49,7 @@ export async function generateMetadata(): Promise<Metadata> {
       icon: [
         { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
         { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+        { url: '/icon-1024.png', sizes: '1024x1024', type: 'image/png' },
       ],
       apple: [{ url: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
     },
@@ -34,20 +60,8 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     other: {
       'base:app_id': baseAppId,
-      'fc:frame': JSON.stringify({
-        version: 'next',
-        imageUrl: `${appUrl}/og-image.png`,
-        button: {
-          title: 'Open Sherpa',
-          action: {
-            type: 'launch_frame',
-            name: 'Sherpa',
-            url: appUrl,
-            splashImageUrl: `${appUrl}/splash.png`,
-            splashBackgroundColor: '#0052FF',
-          },
-        },
-      }),
+      'fc:miniapp': JSON.stringify(miniappEmbed),
+      'fc:frame': JSON.stringify(frameEmbed),
     },
   };
 }
