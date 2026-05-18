@@ -1,4 +1,5 @@
-import { encodeFunctionData } from 'viem';
+import { encodeFunctionData, createPublicClient, http, type Address } from 'viem';
+import { optimism } from 'viem/chains';
 import type { ProposalMetadata } from './types.js';
 
 const OPTIMISM_GOVERNOR = '0xcDF27F1077cAD0D0A5DF56f8Ec97687B78a89EE4';
@@ -74,11 +75,82 @@ export const OPTIMISM_GOV_ABI = [
   },
 ] as const;
 
-export async function getProposals(): Promise<ProposalMetadata[]> {
-  // On-chain proposal reading requires a live RPC call to the Optimism Governor contract.
-  // Snapshot integration provides real proposal data. Return empty here until
-  // a readContract dependency is injected.
-  return [];
+const PROPOSAL_CREATED_EVENT = {
+  name: 'ProposalCreated',
+  type: 'event',
+  inputs: [
+    { name: 'id', type: 'uint256', indexed: true },
+    { name: 'proposer', type: 'address', indexed: false },
+    { name: 'targets', type: 'address[]', indexed: false },
+    { name: 'values', type: 'uint256[]', indexed: false },
+    { name: 'signatures', type: 'string[]', indexed: false },
+    { name: 'calldatas', type: 'bytes[]', indexed: false },
+    { name: 'startBlock', type: 'uint256', indexed: false },
+    { name: 'endBlock', type: 'uint256', indexed: false },
+    { name: 'description', type: 'string', indexed: false },
+  ],
+} as const;
+
+export type OptimismGovernanceDeps = {
+  rpcUrl?: string;
+  getLogs?: (params: any) => Promise<any[]>;
+  getBlockNumber?: () => Promise<bigint>;
+};
+
+const proposalCache = new Map<string, { data: ProposalMetadata[]; expires: number }>();
+const CACHE_TTL_MS = 300_000;
+
+export async function getProposals(deps?: OptimismGovernanceDeps): Promise<ProposalMetadata[]> {
+  const cacheKey = `optimism-${OPTIMISM_GOVERNOR}`;
+  const cached = proposalCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) {
+    return cached.data;
+  }
+
+  if (!deps?.rpcUrl && !deps?.getLogs) {
+    return [];
+  }
+
+  try {
+    const client = deps.getLogs
+      ? null
+      : createPublicClient({ chain: optimism, transport: http(deps.rpcUrl) });
+
+    const getLogs = deps.getLogs ?? ((params: any) => client!.getLogs(params));
+    const getBlockNumber = deps.getBlockNumber ?? (() => client!.getBlockNumber());
+
+    const latestBlock = await getBlockNumber();
+    const fromBlock = latestBlock > 10000n ? latestBlock - 10000n : 0n;
+
+    const logs = await getLogs({
+      address: OPTIMISM_GOVERNOR as Address,
+      event: PROPOSAL_CREATED_EVENT,
+      fromBlock,
+      toBlock: latestBlock,
+    });
+
+    const proposals: ProposalMetadata[] = logs.map((log: any) => {
+      const args = log.args ?? {};
+      return {
+        id: args.id?.toString() ?? '0',
+        title: (args.description ?? '').split('\n')[0]?.slice(0, 100) || 'Untitled',
+        description: args.description ?? '',
+        proposer: (args.proposer ?? '0x0000000000000000000000000000000000000000') as `0x${string}`,
+        status: 'active',
+        votesFor: '0',
+        votesAgainst: '0',
+        votesAbstain: '0',
+        quorum: '0',
+        startTime: Number(args.startBlock ?? 0),
+        endTime: Number(args.endBlock ?? 0),
+      };
+    });
+
+    proposalCache.set(cacheKey, { data: proposals, expires: Date.now() + CACHE_TTL_MS });
+    return proposals;
+  } catch {
+    return [];
+  }
 }
 
 export function buildVoteTx(
