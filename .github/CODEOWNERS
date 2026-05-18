@@ -1,0 +1,8 @@
+# Default ownership for Sherpa.
+* @gnanam1990
+
+# High-risk surfaces.
+/packages/contracts/ @gnanam1990
+/apps/api/ @gnanam1990
+/apps/worker/ @gnanam1990
+/.github/ @gnanam1990
