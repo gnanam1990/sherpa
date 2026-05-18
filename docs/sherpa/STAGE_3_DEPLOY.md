@@ -44,7 +44,8 @@ Base App discovery now uses the Base.dev project record and standard web app met
 Keep the Vercel project live, verify mobile browser loading, and ensure the Base.dev
 project has the same URL, icon, screenshots, category, description, and Builder Code.
 The `base:app_id` meta tag in `apps/miniapp/app/layout.tsx` links this deployment to
-the Base.dev app record.
+the Base.dev app record. Set `BASE_BUILDER_OWNER_ADDRESS` to the wallet that owns
+the imported Base.dev app record so the manifest includes `baseBuilder.ownerAddress`.
 
 ## D. Generate Farcaster Account Association
 

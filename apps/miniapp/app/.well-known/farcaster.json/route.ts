@@ -25,8 +25,20 @@ type MiniAppManifest = {
   canonicalDomain: string;
 };
 
+type BaseBuilderManifest = {
+  ownerAddress: `0x${string}`;
+};
+
 function appDomain(appUrl: string): string {
   return new URL(appUrl).hostname;
+}
+
+function baseBuilderManifest(ownerAddress?: string): BaseBuilderManifest | undefined {
+  if (!ownerAddress || !/^0x[a-fA-F0-9]{40}$/.test(ownerAddress)) {
+    return undefined;
+  }
+
+  return { ownerAddress: ownerAddress as `0x${string}` };
 }
 
 function buildMiniAppManifest(appUrl: string, apiBase: string): MiniAppManifest {
@@ -63,6 +75,9 @@ export async function GET() {
   const appUrl = process.env.NEXT_PUBLIC_URL || 'https://sherpa-miniapp.vercel.app';
   const apiBase = process.env.SHERPA_API_BASE || 'https://sherpa-api.up.railway.app';
   const miniapp = buildMiniAppManifest(appUrl, apiBase);
+  const baseBuilder = baseBuilderManifest(
+    process.env.BASE_BUILDER_OWNER_ADDRESS || process.env.NEXT_PUBLIC_BASE_BUILDER_OWNER_ADDRESS,
+  );
 
   return NextResponse.json({
     accountAssociation: {
@@ -70,6 +85,7 @@ export async function GET() {
       payload: process.env.FARCASTER_PAYLOAD || '',
       signature: process.env.FARCASTER_SIGNATURE || '',
     },
+    ...(baseBuilder ? { baseBuilder } : {}),
     miniapp,
     // Backward compatibility for older Farcaster clients that still read frame.
     frame: miniapp,

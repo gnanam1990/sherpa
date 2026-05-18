@@ -42,7 +42,9 @@ To register this app as a Farcaster Mini App:
 Base App discovery uses the Base.dev project record and standard web app metadata.
 Keep the Base.dev app record pointed at this deployment, verify the `base:app_id`
 meta tag in `app/layout.tsx`, and make sure the project metadata includes the same
-icon, screenshots, category, description, and Builder Code.
+icon, screenshots, category, description, and Builder Code. Set
+`BASE_BUILDER_OWNER_ADDRESS` to the wallet that owns the imported Base.dev app
+record so the manifest exposes `baseBuilder.ownerAddress`.
 
 ## Architecture
 

@@ -8,6 +8,7 @@ describe('Farcaster manifest route', () => {
     vi.stubEnv('FARCASTER_HEADER', 'header');
     vi.stubEnv('FARCASTER_PAYLOAD', 'payload');
     vi.stubEnv('FARCASTER_SIGNATURE', 'signature');
+    vi.stubEnv('BASE_BUILDER_OWNER_ADDRESS', '0x99f37717f2EB28955CFB553f3B7Eb4eFaDf4dA8C');
 
     const response = await GET();
     const manifest = await response.json();
@@ -16,6 +17,9 @@ describe('Farcaster manifest route', () => {
       header: 'header',
       payload: 'payload',
       signature: 'signature',
+    });
+    expect(manifest.baseBuilder).toEqual({
+      ownerAddress: '0x99f37717f2EB28955CFB553f3B7Eb4eFaDf4dA8C',
     });
     expect(manifest.miniapp).toMatchObject({
       version: '1',
@@ -29,5 +33,15 @@ describe('Farcaster manifest route', () => {
     expect(manifest.miniapp.tags).toEqual(['ai', 'agent', 'defi', 'base', 'aave']);
     expect(manifest.miniapp.requiredChains).toEqual(['eip155:8453']);
     expect(manifest.frame).toEqual(manifest.miniapp);
+  });
+
+  it('omits baseBuilder when the owner address is not configured', async () => {
+    vi.stubEnv('BASE_BUILDER_OWNER_ADDRESS', '');
+    vi.stubEnv('NEXT_PUBLIC_BASE_BUILDER_OWNER_ADDRESS', '');
+
+    const response = await GET();
+    const manifest = await response.json();
+
+    expect(manifest.baseBuilder).toBeUndefined();
   });
 });
