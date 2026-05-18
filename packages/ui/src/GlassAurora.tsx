@@ -7,6 +7,11 @@ type GlassSurfaceProps = {
   className?: string;
 };
 
+type GlassDeviceFrameProps = GlassSurfaceProps & {
+  contentClassName?: string;
+  maxWidth?: 'mobile' | 'wide';
+};
+
 type GlassActionCardProps = {
   href?: string;
   label: string;
@@ -140,11 +145,23 @@ export function GlassActionCard({ href, label, meta }: GlassActionCardProps) {
   );
 }
 
-export function GlassDeviceFrame({ children }: GlassSurfaceProps) {
+export function GlassDeviceFrame({
+  children,
+  contentClassName,
+  maxWidth = 'mobile',
+}: GlassDeviceFrameProps) {
+  const widthClass = maxWidth === 'wide' ? 'max-w-6xl' : 'max-w-md';
+
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-[#04061A] text-white">
       <GlassAuroraBackground />
-      <div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-md flex-col px-4 pb-6 pt-[max(1rem,env(safe-area-inset-top))]">
+      <div
+        className={cx(
+          'relative z-10 mx-auto flex min-h-[100dvh] flex-col px-4 pb-6 pt-[max(1rem,env(safe-area-inset-top))]',
+          widthClass,
+          contentClassName,
+        )}
+      >
         {children}
       </div>
     </main>
