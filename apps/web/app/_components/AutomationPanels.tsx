@@ -72,13 +72,13 @@ type GovernanceProposal = {
   link?: string;
 };
 
-const cardClass = 'rounded-lg border border-sherpa-surface2 bg-sherpa-surface p-4';
+const cardClass = 'base-card-soft p-4';
 const fieldClass =
-  'w-full rounded-md border border-sherpa-surface2 bg-sherpa-bg px-3 py-2 text-sm text-sherpa-fg outline-none transition focus:border-sherpa-blue';
+  'base-input w-full text-sm';
 const buttonClass =
-  'rounded-md bg-sherpa-blue px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50';
+  'base-btn text-sm disabled:cursor-not-allowed disabled:opacity-50';
 const ghostButtonClass =
-  'rounded-md border border-sherpa-surface2 px-3 py-2 text-sm text-sherpa-muted transition hover:border-sherpa-muted hover:text-sherpa-fg';
+  'base-btn-ghost text-sm';
 
 async function readJson<T>(res: Response): Promise<T> {
   const body = (await res.json()) as T & { error?: string; details?: string };
@@ -105,11 +105,9 @@ function SetupShell({
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-sherpa-blue">
-          {eyebrow}
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">{title}</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-sherpa-muted">{description}</p>
+        <p className="meta-label text-base-blue">{eyebrow}</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight">{title}</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
       {children}
     </div>
@@ -120,7 +118,7 @@ function WalletRequired() {
   return (
     <div className={cardClass}>
       <h2 className="font-medium">Connect wallet</h2>
-      <p className="mt-1 text-sm text-sherpa-muted">
+      <p className="mt-1 text-sm text-muted-foreground">
         Connect your wallet on the homepage, then return here to create user-scoped rules.
       </p>
     </div>
@@ -342,7 +340,7 @@ export function AlertsPanel() {
           {notificationChannel === 'web-push' ? (
             <div className="space-y-1">
               <button
-                className="rounded border border-sherpa-border px-3 py-2 text-sm text-sherpa-fg hover:border-sherpa-blue"
+                className="rounded border border-border px-3 py-2 text-sm text-foreground hover:border-base-blue"
                 onClick={() => void enableBrowserPush()}
                 type="button"
               >
@@ -350,7 +348,7 @@ export function AlertsPanel() {
               </button>
               <p
                 className={
-                  pushSubscription ? 'text-xs text-green-400' : 'text-xs text-sherpa-muted'
+                  pushSubscription ? 'text-xs text-green-400' : 'text-xs text-muted-foreground'
                 }
               >
                 {pushStatus}
@@ -388,7 +386,7 @@ export function AlertsPanel() {
                 className={
                   farcasterStatus === 'active'
                     ? 'text-xs text-green-400'
-                    : 'text-xs text-sherpa-muted'
+                    : 'text-xs text-muted-foreground'
                 }
               >
                 {farcasterStatusText}
@@ -397,7 +395,7 @@ export function AlertsPanel() {
           ) : null}
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-sherpa-muted">{status}</p>
+          <p className="text-xs text-muted-foreground">{status}</p>
           <button className={buttonClass} disabled={!canCreate} type="submit">
             Create alert
           </button>
@@ -494,7 +492,7 @@ export function DCAPanel() {
           </select>
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-sherpa-muted">{status}</p>
+          <p className="text-xs text-muted-foreground">{status}</p>
           <button className={buttonClass} disabled={!canUse} type="submit">
             Create schedule
           </button>
@@ -586,7 +584,7 @@ export function AutoRepayPanel() {
           />
         </div>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-xs text-sherpa-muted">{status}</p>
+          <p className="text-xs text-muted-foreground">{status}</p>
           <button className={buttonClass} disabled={!canUse} type="submit">
             Create rule
           </button>
@@ -623,17 +621,17 @@ function RuleList({
         </button>
       </div>
       {items.length === 0 ? (
-        <p className="text-sm text-sherpa-muted">{empty}</p>
+        <p className="text-sm text-muted-foreground">{empty}</p>
       ) : (
         <div className="space-y-2">
           {items.map((item) => (
             <div
-              className="rounded-md border border-sherpa-surface2 bg-sherpa-bg p-3"
+              className="rounded-md border border-border bg-background p-3"
               key={item.id}
             >
               <div className="font-medium">{item.title}</div>
-              <div className="mt-1 text-xs text-sherpa-muted">{item.meta}</div>
-              <div className="mt-2 font-mono text-xs text-sherpa-muted">{item.id}</div>
+              <div className="mt-1 text-xs text-muted-foreground">{item.meta}</div>
+              <div className="mt-2 font-mono text-xs text-muted-foreground">{item.id}</div>
             </div>
           ))}
         </div>
@@ -665,28 +663,28 @@ export function MultiChainPanel() {
       title="Multi-chain"
     >
       <div className={cardClass}>
-        <p className="text-sm text-sherpa-muted">{status}</p>
+        <p className="text-sm text-muted-foreground">{status}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {chains.map((chain) => (
           <div className={cardClass} key={chain.chainId}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-medium">{chain.name}</h2>
-              <span className="rounded-full border border-sherpa-surface2 px-2 py-0.5 text-xs text-sherpa-muted">
+              <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
                 {chain.chainId}
               </span>
             </div>
-            <p className="mt-2 text-xs text-sherpa-muted">
+            <p className="mt-2 text-xs text-muted-foreground">
               DEX: {chain.dex?.name ?? 'not configured'}
             </p>
-            <p className="mt-1 text-xs text-sherpa-muted">
+            <p className="mt-1 text-xs text-muted-foreground">
               Aave pool: {chain.aave?.poolAddress ?? 'none'}
             </p>
-            <p className="mt-1 text-xs text-sherpa-muted">
+            <p className="mt-1 text-xs text-muted-foreground">
               Bridges: {chain.bridgeProtocols.join(', ')}
             </p>
             <a
-              className="mt-3 inline-block text-sm text-sherpa-blue hover:underline"
+              className="mt-3 inline-block text-sm text-base-blue hover:underline"
               href={chain.explorerUrl}
               rel="noopener noreferrer"
               target="_blank"
@@ -732,13 +730,13 @@ export function GovernancePanel() {
       title="Governance"
     >
       <div className={cardClass}>
-        <p className="text-sm text-sherpa-muted">{status}</p>
+        <p className="text-sm text-muted-foreground">{status}</p>
       </div>
       <GovernanceActionsPanel />
       <div className="space-y-3">
         {proposals.length === 0 ? (
           <div className={cardClass}>
-            <p className="text-sm text-sherpa-muted">
+            <p className="text-sm text-muted-foreground">
               No proposals loaded from the selected source.
             </p>
           </div>
@@ -747,15 +745,15 @@ export function GovernancePanel() {
             <div className={cardClass} key={`${proposal.source}-${proposal.id}`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="font-medium">{proposal.title ?? proposal.id}</h2>
-                <span className="rounded-full border border-sherpa-surface2 px-2 py-0.5 text-xs text-sherpa-muted">
+                <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
                   {proposal.source ?? 'governance'} ·{' '}
                   {proposal.state ?? proposal.status ?? 'unknown'}
                 </span>
               </div>
-              <p className="mt-2 font-mono text-xs text-sherpa-muted">{proposal.id}</p>
+              <p className="mt-2 font-mono text-xs text-muted-foreground">{proposal.id}</p>
               {proposal.link ? (
                 <a
-                  className="mt-3 inline-block text-sm text-sherpa-blue hover:underline"
+                  className="mt-3 inline-block text-sm text-base-blue hover:underline"
                   href={proposal.link}
                   rel="noopener noreferrer"
                   target="_blank"
@@ -780,15 +778,15 @@ export function TelegramPanel() {
     >
       <div className={cardClass}>
         <h2 className="font-medium">Bot is online</h2>
-        <p className="mt-2 text-sm leading-6 text-sherpa-muted">
-          Open <span className="font-mono text-sherpa-fg">@sherpaonbasebot</span> in Telegram to use
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Open <span className="font-mono text-foreground">@sherpaonbasebot</span> in Telegram to use
           Sherpa from chat. Transaction signing still happens through the web app, so wallet
           approval stays explicit.
         </p>
-        <p className="mt-2 text-sm leading-6 text-sherpa-muted">
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
           The bot service runs from{' '}
-          <span className="font-mono text-sherpa-fg">apps/telegram-bot</span> and points at
-          <span className="font-mono text-sherpa-fg">
+          <span className="font-mono text-foreground">apps/telegram-bot</span> and points at
+          <span className="font-mono text-foreground">
             {' '}
             https://sherpaapi-production.up.railway.app
           </span>

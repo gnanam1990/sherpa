@@ -16,14 +16,14 @@ export function healthFactorLabel(hf: bigint | null): {
   if (hf === null || hf === MAX_HEALTH_FACTOR) {
     return {
       label: 'HF ∞ · No debt',
-      classes: 'border-sherpa-success/30 bg-sherpa-success/10 text-sherpa-success',
+      classes: 'border-base-green/30 bg-base-green/10 text-base-green',
     };
   }
 
   if (hf >= 2n * ONE) {
     return {
       label: `HF ${formatScaled(hf, 18)} · Safe`,
-      classes: 'border-sherpa-success/30 bg-sherpa-success/10 text-sherpa-success',
+      classes: 'border-base-green/30 bg-base-green/10 text-base-green',
     };
   }
   if (hf >= (15n * ONE) / 10n) {
@@ -40,7 +40,7 @@ export function healthFactorLabel(hf: bigint | null): {
   }
   return {
     label: `HF ${formatScaled(hf, 18)} · Danger`,
-    classes: 'border-sherpa-danger/30 bg-sherpa-danger/10 text-sherpa-danger',
+    classes: 'border-base-red/30 bg-base-red/10 text-base-red',
   };
 }
 

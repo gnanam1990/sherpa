@@ -70,26 +70,26 @@ export function PositionsView({ initialData, addressOverride }: PositionsViewPro
 
   if (!connected) {
     return (
-      <div className="rounded-lg border border-sherpa-surface2 bg-sherpa-surface p-6">
-        <p className="text-sm text-sherpa-muted">Connect your wallet to view Aave positions.</p>
+      <div className="rounded-lg border border-border bg-card p-6">
+        <p className="text-sm text-muted-foreground">Connect your wallet to view Aave positions.</p>
       </div>
     );
   }
 
   if (loading && !data) {
     return (
-      <div className="rounded-lg border border-sherpa-surface2 bg-sherpa-surface p-6">
-        <p className="text-sm text-sherpa-muted">Loading positions...</p>
+      <div className="rounded-lg border border-border bg-card p-6">
+        <p className="text-sm text-muted-foreground">Loading positions...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-lg border border-sherpa-danger/40 bg-sherpa-danger/10 p-6">
-        <p className="text-sm text-sherpa-danger">Error: {error}</p>
+      <div className="rounded-lg border border-base-red/40 bg-base-red/10 p-6">
+        <p className="text-sm text-base-red">Error: {error}</p>
         <button
-          className="mt-3 rounded-full border border-sherpa-danger/40 px-3 py-1 text-sm text-sherpa-fg transition hover:border-sherpa-danger"
+          className="mt-3 rounded-full border border-base-red/40 px-3 py-1 text-sm text-foreground transition hover:border-base-red"
           onClick={() => void fetchPositions()}
           type="button"
         >
@@ -101,17 +101,17 @@ export function PositionsView({ initialData, addressOverride }: PositionsViewPro
 
   if (!data || !data.hasPosition) {
     return (
-      <div className="rounded-lg border border-sherpa-surface2 bg-sherpa-surface p-6">
+      <div className="rounded-lg border border-border bg-card p-6">
         <h3 className="mb-2 text-lg font-semibold">No Aave positions</h3>
-        <p className="text-sm text-sherpa-muted">
+        <p className="text-sm text-muted-foreground">
           This wallet has no supplied collateral or borrowed debt on Aave V3 Base yet.
         </p>
-        <p className="mt-2 text-xs text-sherpa-muted">
+        <p className="mt-2 text-xs text-muted-foreground">
           Lending and borrowing through Sherpa are live on Base mainnet with guarded amount caps.
           Start with a tiny transaction and review every wallet prompt before signing.
         </p>
         <button
-          className="mt-4 rounded-full border border-sherpa-surface2 px-3 py-1 text-sm text-sherpa-muted transition hover:border-sherpa-muted hover:text-sherpa-fg"
+          className="mt-4 rounded-full border border-border px-3 py-1 text-sm text-muted-foreground transition hover:border-muted-foreground hover:text-foreground"
           onClick={() => void fetchPositions()}
           type="button"
         >
@@ -124,26 +124,26 @@ export function PositionsView({ initialData, addressOverride }: PositionsViewPro
   const hf = BigInt(data.healthFactor);
 
   return (
-    <div className="rounded-lg border border-sherpa-surface2 bg-sherpa-surface p-6">
+    <div className="rounded-lg border border-border bg-card p-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold">Your Aave V3 Position</h3>
-          <p className="text-xs text-sherpa-muted">Base mainnet, read-only from Aave Pool</p>
+          <p className="text-xs text-muted-foreground">Base mainnet, read-only from Aave Pool</p>
         </div>
         <HealthFactorBadge hf={hf} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-sherpa-surface2 bg-sherpa-bg p-3">
-          <div className="text-xs text-sherpa-muted">Collateral</div>
+        <div className="rounded-lg border border-border bg-background p-3">
+          <div className="text-xs text-muted-foreground">Collateral</div>
           <div className="mt-1 font-mono text-xl">{formatUsdBase(data.totalCollateralBase)}</div>
         </div>
-        <div className="rounded-lg border border-sherpa-surface2 bg-sherpa-bg p-3">
-          <div className="text-xs text-sherpa-muted">Debt</div>
+        <div className="rounded-lg border border-border bg-background p-3">
+          <div className="text-xs text-muted-foreground">Debt</div>
           <div className="mt-1 font-mono text-xl">{formatUsdBase(data.totalDebtBase)}</div>
         </div>
-        <div className="rounded-lg border border-sherpa-surface2 bg-sherpa-bg p-3">
-          <div className="text-xs text-sherpa-muted">Available</div>
+        <div className="rounded-lg border border-border bg-background p-3">
+          <div className="text-xs text-muted-foreground">Available</div>
           <div className="mt-1 font-mono text-xl">
             {formatUsdBase(data.availableBorrowsBase)}
           </div>
@@ -151,20 +151,20 @@ export function PositionsView({ initialData, addressOverride }: PositionsViewPro
       </div>
 
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-        <div className="rounded-lg border border-sherpa-surface2 bg-sherpa-bg p-3">
-          <div className="text-xs text-sherpa-muted">Liquidation threshold</div>
+        <div className="rounded-lg border border-border bg-background p-3">
+          <div className="text-xs text-muted-foreground">Liquidation threshold</div>
           <div className="mt-1 font-mono">{formatBps(data.currentLiquidationThreshold)}</div>
         </div>
-        <div className="rounded-lg border border-sherpa-surface2 bg-sherpa-bg p-3">
-          <div className="text-xs text-sherpa-muted">Loan to value</div>
+        <div className="rounded-lg border border-border bg-background p-3">
+          <div className="text-xs text-muted-foreground">Loan to value</div>
           <div className="mt-1 font-mono">{formatBps(data.ltv)}</div>
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-sherpa-surface2 pt-4 text-xs text-sherpa-muted">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-xs text-muted-foreground">
         <span>Updated {new Date(data.fetchedAt).toLocaleTimeString()}</span>
         <button
-          className="rounded-full border border-sherpa-surface2 px-3 py-1 transition hover:border-sherpa-muted hover:text-sherpa-fg"
+          className="rounded-full border border-border px-3 py-1 transition hover:border-muted-foreground hover:text-foreground"
           disabled={loading}
           onClick={() => void fetchPositions()}
           type="button"
@@ -173,7 +173,7 @@ export function PositionsView({ initialData, addressOverride }: PositionsViewPro
         </button>
       </div>
 
-      <p className="mt-4 text-xs text-sherpa-muted">
+      <p className="mt-4 text-xs text-muted-foreground">
         Lend, borrow, withdraw, and repay through Sherpa are live on Base mainnet
         through verified, Safe-owned contracts.
       </p>
