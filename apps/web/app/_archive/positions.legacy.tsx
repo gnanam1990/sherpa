@@ -1,22 +1,12 @@
-import { GLASS_AURORA_ENABLED } from '../../lib/feature-flags';
+/* Legacy /positions page — preserved for Phase 4 Glass Aurora
+   migration rollback. Safe to delete after Phase 5 verification. */
+
 import { AppShell } from '../_components/app-shell';
 import { KpiTile } from '../_components/kpi-tile';
 import { NetWorthCard } from '../_components/net-worth-card';
 import { PositionsView } from '../_components/PositionsView';
-import { GlassPositions } from '../_components/glass/glass-positions';
 
-/**
- * /positions — Aave V3 read-only view. Behind GLASS_AURORA_ENABLED:
- * Glass screen vs the unchanged legacy AppShell layout. Both consume the
- * same usePositionsData hook (one source of truth).
- *
- * Rendered per-request: this surface is entirely wallet-state-driven and
- * `/api/*` is rewritten to a runtime backend, so a statically prerendered
- * logged-out shell has no value. force-dynamic also sidesteps SSG-time
- * evaluation of wagmi hooks (which require the client WagmiProvider).
- */
-export const dynamic = 'force-dynamic';
-function LegacyPositions() {
+export default function PositionsPage() {
   return (
     <AppShell hideRightPanel>
       <div className="mx-auto max-w-5xl">
@@ -39,8 +29,4 @@ function LegacyPositions() {
       </div>
     </AppShell>
   );
-}
-
-export default function PositionsPage() {
-  return GLASS_AURORA_ENABLED ? <GlassPositions /> : <LegacyPositions />;
 }

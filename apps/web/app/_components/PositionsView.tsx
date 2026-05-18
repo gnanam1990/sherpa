@@ -1,29 +1,35 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
+import {
+  usePositionsData,
+  type PositionsResponse,
+  type UsePositionsDataOptions,
+} from '../../hooks/usePositionsData';
 import { HealthFactorBadge } from './HealthFactorBadge';
 
-export type PositionsResponse = {
-  address: string;
-  chain: string;
-  pool: string;
-  totalCollateralBase: string;
-  totalDebtBase: string;
-  availableBorrowsBase: string;
-  currentLiquidationThreshold: string;
-  ltv: string;
-  healthFactor: string;
-  hasPosition: boolean;
-  fetchedAt: string;
-};
+/**
+ * Legacy Aave positions view.
+ *
+ * As of the Glass Aurora migration this is a thin renderer over
+ * {@link usePositionsData}; the data behaviour is unchanged
+ * (PositionsView.test.tsx is the contract) and the Glass positions
+ * screen consumes the same hook.
+ */
 
-function decimalStringFromBaseUnits(value: bigint, decimals: number, displayDecimals = 2): string {
+export type { PositionsResponse };
+
+function decimalStringFromBaseUnits(
+  value: bigint,
+  decimals: number,
+  displayDecimals = 2,
+): string {
   const scale = 10n ** BigInt(decimals);
   const whole = value / scale;
   const remainder = value % scale;
   const displayScale = 10n ** BigInt(displayDecimals);
-  const fraction = ((remainder * displayScale) / scale).toString().padStart(displayDecimals, '0');
+  const fraction = ((remainder * displayScale) / scale)
+    .toString()
+    .padStart(displayDecimals, '0');
   return `${whole}.${fraction}`;
 }
 
@@ -31,59 +37,18 @@ export function formatUsdBase(value: string): string {
   return `$${decimalStringFromBaseUnits(BigInt(value), 8, 2)}`;
 }
 
-async function readPositionsResponse(res: Response): Promise<PositionsResponse> {
-  const text = await res.text();
-  let body: (PositionsResponse & { error?: string; details?: string }) | null = null;
-  if (text) {
-    try {
-      body = JSON.parse(text) as PositionsResponse & { error?: string; details?: string };
-    } catch {
-      if (!res.ok) throw new Error(`Positions API unavailable (${res.status})`);
-      throw new Error('Positions API returned an invalid response');
-    }
-  }
-  if (!res.ok) {
-    throw new Error(body?.details ?? body?.error ?? `Positions API unavailable (${res.status})`);
-  }
-  if (!body) throw new Error('Positions API returned an empty response');
-  return body;
-}
-
 function formatBps(value: string): string {
   return `${decimalStringFromBaseUnits(BigInt(value), 2, 2)}%`;
 }
 
-type PositionsViewProps = {
-  initialData?: PositionsResponse;
-  addressOverride?: `0x${string}`;
-};
-
-export function PositionsView({ initialData, addressOverride }: PositionsViewProps = {}) {
-  const { address: accountAddress, isConnected } = useAccount();
-  const address = addressOverride ?? accountAddress;
-  const connected = Boolean(addressOverride || (isConnected && accountAddress));
-  const [data, setData] = useState<PositionsResponse | null>(initialData ?? null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchPositions = useCallback(async () => {
-    if (!address) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/positions/${address}`);
-      const json = await readPositionsResponse(res);
-      setData(json);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [address]);
-
-  useEffect(() => {
-    if (!initialData && connected && address) void fetchPositions();
-  }, [address, connected, fetchPositions, initialData]);
+export function PositionsView({
+  initialData,
+  addressOverride,
+}: UsePositionsDataOptions = {}) {
+  const { connected, data, loading, error, refresh } = usePositionsData({
+    initialData,
+    addressOverride,
+  });
 
   if (!connected) {
     return (
@@ -107,7 +72,7 @@ export function PositionsView({ initialData, addressOverride }: PositionsViewPro
         <p className="text-sm text-base-red">Error: {error}</p>
         <button
           className="mt-3 rounded-full border border-base-red/40 px-3 py-1 text-sm text-foreground transition hover:border-base-red"
-          onClick={() => void fetchPositions()}
+          onClick={() => void refresh()}
           type="button"
         >
           Retry
@@ -129,7 +94,7 @@ export function PositionsView({ initialData, addressOverride }: PositionsViewPro
         </p>
         <button
           className="mt-4 rounded-full border border-border px-3 py-1 text-sm text-muted-foreground transition hover:border-muted-foreground hover:text-foreground"
-          onClick={() => void fetchPositions()}
+          onClick={() => void refresh()}
           type="button"
         >
           Refresh
@@ -183,7 +148,7 @@ export function PositionsView({ initialData, addressOverride }: PositionsViewPro
         <button
           className="rounded-full border border-border px-3 py-1 transition hover:border-muted-foreground hover:text-foreground"
           disabled={loading}
-          onClick={() => void fetchPositions()}
+          onClick={() => void refresh()}
           type="button"
         >
           {loading ? 'Refreshing...' : 'Refresh'}
