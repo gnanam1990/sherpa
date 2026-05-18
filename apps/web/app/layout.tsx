@@ -5,8 +5,35 @@ import { RegisterSW } from './_components/RegisterSW';
 import '@rainbow-me/rainbowkit/styles.css';
 import './globals.css';
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://sherpa-web.vercel.app';
+const baseAppId = process.env.NEXT_PUBLIC_BASE_APP_ID || '6a06efd3067444793fb8ddba';
+const baseAppEmbed = {
+  version: '1',
+  imageUrl: `${appUrl}/og-image.png`,
+  button: {
+    title: 'Open Sherpa',
+    action: {
+      type: 'launch_miniapp',
+      name: 'Sherpa',
+      url: `${appUrl}/base`,
+      splashImageUrl: `${appUrl}/icon-512.png`,
+      splashBackgroundColor: '#0052FF',
+    },
+  },
+};
+const frameEmbed = {
+  ...baseAppEmbed,
+  button: {
+    ...baseAppEmbed.button,
+    action: {
+      ...baseAppEmbed.button.action,
+      type: 'launch_frame',
+    },
+  },
+};
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://sherpa-web.vercel.app'),
+  metadataBase: new URL(appUrl),
   applicationName: 'Sherpa',
   title: 'Sherpa',
   description: 'The natural-language Base agent.',
@@ -22,6 +49,9 @@ export const metadata: Metadata = {
   category: 'AI Agents',
   manifest: '/manifest.json',
   other: {
+    'base:app_id': baseAppId,
+    'fc:miniapp': JSON.stringify(baseAppEmbed),
+    'fc:frame': JSON.stringify(frameEmbed),
     'talentapp:project_verification':
       'b7e6ba47c5060c17951c92322b6a5bb719093bfcef6ca7ec9a763f29d02a476b4b7ee131a0e30c58b0628dfc60279b6cee51873b359ef1e394ddc8fffdd6ad6a',
   },

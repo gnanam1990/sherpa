@@ -2,7 +2,9 @@
   "name": "Sherpa",
   "short_name": "Sherpa",
   "description": "Type what you want. Sherpa does the onchain.",
-  "start_url": "/",
+  "id": "/base",
+  "start_url": "/base",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0A0A0A",
   "theme_color": "#0052FF",
@@ -20,6 +22,39 @@
     }
   ],
   "categories": ["ai", "finance", "productivity", "utilities"],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/sherpa-profile-pic-400.png",
+      "sizes": "400x400",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ask Sherpa",
+      "short_name": "Ask",
+      "url": "/base",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Positions",
+      "short_name": "Positions",
+      "url": "/positions",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Swap",
+      "short_name": "Swap",
+      "url": "/swap",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "prefer_related_applications": false
 }
