@@ -382,7 +382,12 @@ export interface AutoRepayDeps {
     repayAsset: string;
     amount: bigint;
   }) => Promise<{ to: string; data: string; value: string }>;
-  signAndBroadcast: (tx: { to: string; data: string; value: string }) => Promise<string>;
+  signAndBroadcast: (tx: {
+    to: string;
+    data: string;
+    value: string;
+    userAddress?: string;
+  }) => Promise<string>;
   notify: (userAddress: string, message: string) => Promise<void>;
 }
 
@@ -476,7 +481,7 @@ export async function runAutoRepayCycle(deps: AutoRepayDeps): Promise<AutoRepayC
           repayAsset,
           amount: repayAmount,
         });
-        txHash = await deps.signAndBroadcast(tx);
+        txHash = await deps.signAndBroadcast({ ...tx, userAddress: rule.user_address });
       } catch (txErr) {
         const msg = txErr instanceof Error ? txErr.message : 'tx build/broadcast failed';
         await deps.store.incrementFailures(rule.id);

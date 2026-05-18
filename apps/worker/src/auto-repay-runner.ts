@@ -25,8 +25,15 @@ export async function autoRepaySignerNotConfigured(): ReturnType<AutoRepayDeps['
 }
 
 export type RepaySessionKeyDeps = {
-  executeWithSessionKey: (tx: { to: string; data: string; value: string }) => Promise<{ ok: boolean; txHash?: string; error?: string }>;
+  executeWithSessionKey: (tx: RepayBroadcastTx & { userAddress: string }) => Promise<{ ok: boolean; txHash?: string; error?: string }>;
   hasActiveSessionKey: (userAddress: string) => Promise<boolean>;
+};
+
+export type RepayBroadcastTx = {
+  to: string;
+  data: string;
+  value: string;
+  userAddress?: string;
 };
 
 /**
@@ -66,12 +73,20 @@ export function createRepayTxBuilder(
  */
 export function createRepaySigner(
   sessionKeyDeps?: RepaySessionKeyDeps,
-): AutoRepayDeps['signAndBroadcast'] {
+): (tx: RepayBroadcastTx) => Promise<string> {
   return async (tx) => {
+    if (!tx.userAddress) {
+      throw new Error('Session key signing requires the auto-repay user address.');
+    }
     if (sessionKeyDeps) {
-      const hasKey = await sessionKeyDeps.hasActiveSessionKey('');
+      const hasKey = await sessionKeyDeps.hasActiveSessionKey(tx.userAddress);
       if (hasKey) {
-        const result = await sessionKeyDeps.executeWithSessionKey(tx);
+        const result = await sessionKeyDeps.executeWithSessionKey({
+          to: tx.to,
+          data: tx.data,
+          value: tx.value,
+          userAddress: tx.userAddress,
+        });
         if (result.ok) return result.txHash!;
         throw new Error(result.error ?? 'session key execution failed');
       }

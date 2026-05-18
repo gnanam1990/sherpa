@@ -109,27 +109,51 @@ describe('createRepaySigner', () => {
   test('throws manual-required error when no session key deps provided', async () => {
     const signer = createRepaySigner();
     await expect(
-      signer({ to: '0xRouter', data: '0xabcdef', value: '0' }),
+      signer({
+        to: '0xRouter',
+        data: '0xabcdef',
+        value: '0',
+        userAddress: '0x1111111111111111111111111111111111111111',
+      }),
     ).rejects.toThrow('Session key signing is not configured');
   });
 
   test('throws manual-required error when user has no active session key', async () => {
+    const hasActiveSessionKey = vi.fn(async () => false);
     const signer = createRepaySigner({
       executeWithSessionKey: vi.fn(async () => ({ ok: true, txHash: '0xabc' })),
-      hasActiveSessionKey: vi.fn(async () => false),
+      hasActiveSessionKey,
     });
     await expect(
-      signer({ to: '0xRouter', data: '0xabcdef', value: '0' }),
+      signer({
+        to: '0xRouter',
+        data: '0xabcdef',
+        value: '0',
+        userAddress: '0x1111111111111111111111111111111111111111',
+      }),
     ).rejects.toThrow('Session key signing is not configured');
+    expect(hasActiveSessionKey).toHaveBeenCalledWith('0x1111111111111111111111111111111111111111');
   });
 
   test('returns txHash when session key execution succeeds', async () => {
+    const executeWithSessionKey = vi.fn(async () => ({ ok: true, txHash: '0xdef456' }));
     const signer = createRepaySigner({
-      executeWithSessionKey: vi.fn(async () => ({ ok: true, txHash: '0xdef456' })),
+      executeWithSessionKey,
       hasActiveSessionKey: vi.fn(async () => true),
     });
-    const txHash = await signer({ to: '0xRouter', data: '0xabcdef', value: '0' });
+    const txHash = await signer({
+      to: '0xRouter',
+      data: '0xabcdef',
+      value: '0',
+      userAddress: '0x1111111111111111111111111111111111111111',
+    });
     expect(txHash).toBe('0xdef456');
+    expect(executeWithSessionKey).toHaveBeenCalledWith({
+      to: '0xRouter',
+      data: '0xabcdef',
+      value: '0',
+      userAddress: '0x1111111111111111111111111111111111111111',
+    });
   });
 
   test('throws error when session key execution fails', async () => {
@@ -138,7 +162,24 @@ describe('createRepaySigner', () => {
       hasActiveSessionKey: vi.fn(async () => true),
     });
     await expect(
-      signer({ to: '0xRouter', data: '0xabcdef', value: '0' }),
+      signer({
+        to: '0xRouter',
+        data: '0xabcdef',
+        value: '0',
+        userAddress: '0x1111111111111111111111111111111111111111',
+      }),
     ).rejects.toThrow('Spend limit exceeded');
+  });
+
+  test('throws before lookup when user address is missing', async () => {
+    const hasActiveSessionKey = vi.fn(async () => true);
+    const signer = createRepaySigner({
+      executeWithSessionKey: vi.fn(async () => ({ ok: true, txHash: '0xabc' })),
+      hasActiveSessionKey,
+    });
+    await expect(
+      signer({ to: '0xRouter', data: '0xabcdef', value: '0' }),
+    ).rejects.toThrow('requires the auto-repay user address');
+    expect(hasActiveSessionKey).not.toHaveBeenCalled();
   });
 });
