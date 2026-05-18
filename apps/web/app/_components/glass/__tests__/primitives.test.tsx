@@ -26,22 +26,19 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+vi.mock('next/image', () => ({
+  __esModule: true,
+  default: ({
+    priority: _priority,
+    ...props
+  }: React.ImgHTMLAttributes<HTMLImageElement> & { priority?: boolean }) => <img {...props} />,
+}));
+
 import { matchRoute, useRoute, ROUTES } from '../route-context';
-import {
-  GlassPanel,
-  GlassChip,
-  MetaLabel,
-  Pip,
-  LensBorder,
-} from '../primitives';
+import { GlassPanel, GlassChip, MetaLabel, Pip, LensBorder } from '../primitives';
 import { SherpaMark, Avatar, TokenIcon, ChainPill, shortHex } from '../brand';
 import { ROUTE_ICONS, ArrowIcon, CheckIcon, SettingsIcon } from '../icons';
-import {
-  UserBubble,
-  SherpaBubble,
-  SherpaAvatar,
-  IntentChips,
-} from '../chat-bubbles';
+import { UserBubble, SherpaBubble, SherpaAvatar, IntentChips } from '../chat-bubbles';
 import { AuroraBackground } from '../background/aurora-background';
 import { AppFrame } from '../app-frame';
 import { IconRail } from '../icon-rail';
@@ -111,9 +108,7 @@ describe('primitives render without throwing', () => {
         <GlassChip tone="info">info</GlassChip>
       </>,
     );
-    const chips = Array.from(
-      container.querySelectorAll('span.inline-flex'),
-    );
+    const chips = Array.from(container.querySelectorAll('span.inline-flex'));
     expect(chips).toHaveLength(5);
     const [neutral, success, , danger] = chips;
     // Neutral chip uses glass-thin; toned chips use inline tone style.
@@ -144,9 +139,7 @@ describe('brand', () => {
     expect(shortHex(undefined)).toBe('');
     expect(shortHex(null)).toBe('');
     expect(shortHex('0xabc')).toBe('0xabc');
-    expect(shortHex('0x036CbD53842c5426634e7929541eC2318f3dCF7e')).toBe(
-      '0x036C…CF7e',
-    );
+    expect(shortHex('0x036CbD53842c5426634e7929541eC2318f3dCF7e')).toBe('0x036C…CF7e');
   });
 
   it('renders mark, avatars, token icons, chain pills', () => {
@@ -241,8 +234,9 @@ describe('shell + nav', () => {
   it('IconRail renders default table, override, badges, footer', () => {
     nav.pathname = '/swap';
     const { rerender } = render(<IconRail />);
-    expect(screen.getByLabelText('Swap').getAttribute('aria-current')).toBe(
-      'page',
+    expect(screen.getByLabelText('Swap').getAttribute('aria-current')).toBe('page');
+    expect(screen.getByLabelText('Sherpa home').querySelector('img')?.getAttribute('src')).toBe(
+      '/sherpa-icon-192.png',
     );
     rerender(
       <IconRail
@@ -303,24 +297,14 @@ describe('composer pill', () => {
     });
     expect(onChange).toHaveBeenLastCalledWith('swap 1 usdc');
 
-    rerender(
-      <ComposerPill
-        value="  swap 1 usdc  "
-        onChange={onChange}
-        onSubmit={onSubmit}
-      />,
-    );
+    rerender(<ComposerPill value="  swap 1 usdc  " onChange={onChange} onSubmit={onSubmit} />);
     const form = screen.getByLabelText('Intent').closest('form');
     expect(form).not.toBeNull();
     fireEvent.submit(form as HTMLFormElement);
     expect(onSubmit).toHaveBeenCalledWith('swap 1 usdc');
 
-    rerender(
-      <ComposerPill value="x" onChange={onChange} onSubmit={onSubmit} busy />,
-    );
-    expect((screen.getByText('Parsing…') as HTMLButtonElement).disabled).toBe(
-      true,
-    );
+    rerender(<ComposerPill value="x" onChange={onChange} onSubmit={onSubmit} busy />);
+    expect((screen.getByText('Parsing…') as HTMLButtonElement).disabled).toBe(true);
   });
 });
 
@@ -362,9 +346,7 @@ describe('HeroConfirmCard', () => {
     expect(html).toContain('gradient-cerulean cerulean-glow-fx');
     // Real risk surface, not a fabricated pip cluster.
     expect(screen.getByText('Allowlisted recipient')).toBeTruthy();
-    expect(
-      screen.getByText('Double-check the recipient address.'),
-    ).toBeTruthy();
+    expect(screen.getByText('Double-check the recipient address.')).toBeTruthy();
     expect(container.querySelector('[aria-label^="Safety"]')).toBeNull();
   });
 
