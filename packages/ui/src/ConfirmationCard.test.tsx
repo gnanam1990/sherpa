@@ -40,9 +40,8 @@ function makeCard(
       risk_indicators: [{ level: 'warning', label: 'New recipient' }],
       batch: {
         version: '1.0',
-        chainId: '0x14a34',
+        chainId: '0x2105',
         calls: [{ to: baseStep.to, data: baseStep.data, value: baseStep.value }],
-        capabilities: { paymasterService: { url: '/api/paymaster' } },
       },
     };
   }
@@ -107,16 +106,15 @@ describe('ConfirmationCard', () => {
     },
   );
 
-  it('renders SEND recipient metadata, risk, and sponsored state', () => {
+  it('renders SEND recipient metadata, risk, and Base mainnet state', () => {
     render(<ConfirmationCard card={makeCard('SEND')} onConfirm={vi.fn()} onCancel={vi.fn()} />);
 
     expect(screen.getByRole('heading', { name: 'Send 5 USDC' })).toBeTruthy();
-    expect(screen.getByText('Base Sepolia')).toBeTruthy();
+    expect(screen.getByText('Base')).toBeTruthy();
     expect(screen.getByText('alice.base.eth')).toBeTruthy();
     expect(screen.getByText('basename')).toBeTruthy();
     expect(screen.getByText('basename: alice.base.eth')).toBeTruthy();
     expect(screen.getByText('New recipient')).toBeTruthy();
-    expect(screen.getByText('Sponsored')).toBeTruthy();
   });
 
   it('renders Base mainnet when the batch targets chain 8453', () => {
@@ -190,7 +188,7 @@ describe('execution result cards', () => {
     );
 
     expect(screen.getByRole('link', { name: /view on basescan/i }).getAttribute('href')).toBe(
-      `https://sepolia.basescan.org/tx/${txHash}`,
+      `https://basescan.org/tx/${txHash}`,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Send another' }));
     expect(onSendAnother).toHaveBeenCalledTimes(1);
@@ -228,9 +226,7 @@ describe('execution result cards', () => {
     const rejectedError =
       'User rejected the request. Request Arguments: chain: undefined (id: 84532) Details: User cancelled transaction Version: viem@2.48.4';
 
-    expect(formatExecutionError('INSUFFICIENT_FUNDS_FOR_GAS')).toBe(
-      'Not enough Sepolia ETH for gas',
-    );
+    expect(formatExecutionError('INSUFFICIENT_FUNDS_FOR_GAS')).toBe('Not enough ETH for gas');
     expect(formatExecutionError('RECIPIENT_INVALID')).toBe(
       "Recipient address couldn't be resolved",
     );

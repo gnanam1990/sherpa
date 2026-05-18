@@ -11,7 +11,7 @@ const FEATURES: Array<{
   {
     name: 'Send tokens',
     status: 'live',
-    description: 'Send USDC on Base Sepolia with sponsored gas.',
+    description: 'Send USDC on Base mainnet with wallet confirmation.',
   },
   {
     name: 'Aave positions',
@@ -112,7 +112,7 @@ export function FeatureRoadmap() {
       <div className="mb-5">
         <h2 className="text-xl font-semibold tracking-[-0.02em]">What Sherpa can do</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Stage 1 send is live on Base Sepolia. Stage 2 swap and Aave actions are live on Base mainnet with guarded amount caps.
+          Send, swap, and Aave actions are live on Base mainnet with guarded amount caps.
         </p>
       </div>
 

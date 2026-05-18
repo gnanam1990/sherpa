@@ -38,7 +38,7 @@ describe('useChatHistory', () => {
       expect(url).toBe(`/api/history/${ADDRESS}?limit=50`);
       return response({
         address: ADDRESS,
-        chain: 'base-sepolia',
+        chain: 'base',
         items: [item(`0x${'a'.repeat(64)}`)],
       });
     });
@@ -70,7 +70,7 @@ describe('useChatHistory', () => {
     const fetcher = vi.fn((url: string) =>
       response({
         address: ADDRESS,
-        chain: 'base-sepolia',
+        chain: 'base',
         items: url.endsWith('limit=50') ? fifty : twoHundred,
       }),
     );
@@ -86,7 +86,7 @@ describe('useChatHistory', () => {
 
   it('appends and updates in-session messages in memory without POSTing', async () => {
     const fetcher = vi.fn(async () =>
-      response({ address: ADDRESS, chain: 'base-sepolia', items: [] }),
+      response({ address: ADDRESS, chain: 'base', items: [] }),
     );
     const { result } = renderHook(() => useChatHistory(ADDRESS, { fetcher }));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -116,7 +116,7 @@ describe('useChatHistory', () => {
 
   it('restores in-browser session messages after remount', async () => {
     const fetcher = vi.fn(async () =>
-      response({ address: ADDRESS, chain: 'base-sepolia', items: [] }),
+      response({ address: ADDRESS, chain: 'base', items: [] }),
     );
     const first = renderHook(() => useChatHistory(ADDRESS, { fetcher }));
     await waitFor(() => expect(first.result.current.isLoading).toBe(false));
@@ -175,7 +175,7 @@ describe('useChatHistory', () => {
     const fetcher = vi.fn(async () =>
       response({
         address: ADDRESS,
-        chain: 'base-sepolia',
+        chain: 'base',
         items: [item(txHash, now)],
       }),
     );
@@ -196,7 +196,7 @@ describe('useChatHistory', () => {
     const fetcher = vi.fn(async (url: string) =>
       response({
         address: url.includes(OTHER_ADDRESS) ? OTHER_ADDRESS : ADDRESS,
-        chain: 'base-sepolia',
+        chain: 'base',
         items: [],
       }),
     );

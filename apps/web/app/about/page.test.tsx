@@ -24,7 +24,7 @@ describe('AboutPage', () => {
     expect(items).toHaveLength(4);
     expect(within(features).getByText('Natural language')).toBeInTheDocument();
     expect(within(features).getByText('Smart Wallet')).toBeInTheDocument();
-    expect(within(features).getByText('Sponsored gas')).toBeInTheDocument();
+    expect(within(features).getByText('Base mainnet')).toBeInTheDocument();
     expect(within(features).getByText('30+ intents')).toBeInTheDocument();
   });
 

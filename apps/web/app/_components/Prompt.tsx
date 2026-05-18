@@ -244,17 +244,18 @@ async function readJson<T>(res: Response): Promise<T> {
 }
 
 function balanceSummary(data: BalanceResponse): string {
-  const chain =
-    data.chain === 'base'
-      ? 'Base mainnet'
-      : data.chain === 'base-sepolia'
-        ? 'Base Sepolia'
-        : data.chain;
+  const chain = displayChainName(data.chain);
   return [
     `Balance on ${chain}`,
     `ETH: ${data.balances.ETH}`,
     `USDC: ${data.balances.USDC}`,
   ].join('\n');
+}
+
+function displayChainName(chain: string): string {
+  if (chain === 'base' || chain === 'base-mainnet') return 'Base mainnet';
+  if (chain === 'base-sepolia') return 'Base Sepolia';
+  return chain;
 }
 
 function shortTxHash(txHash: string): string {
@@ -263,7 +264,8 @@ function shortTxHash(txHash: string): string {
 }
 
 function historySummary(data: HistoryResponse): string {
-  if (data.items.length === 0) return `No recent transactions on ${data.chain}.`;
+  const chain = displayChainName(data.chain);
+  if (data.items.length === 0) return `No recent transactions on ${chain}.`;
   const rows = data.items.slice(0, 5).map((item) => {
     const relation = item.direction === 'in' ? 'from' : item.direction === 'self' ? 'with' : 'to';
     return [
@@ -274,7 +276,7 @@ function historySummary(data: HistoryResponse): string {
       .filter(Boolean)
       .join('\n');
   });
-  return [`Recent transactions on ${data.chain}`, ...rows].join('\n\n');
+  return [`Recent transactions on ${chain}`, ...rows].join('\n\n');
 }
 
 function formatBaseUsd(value: string): string {

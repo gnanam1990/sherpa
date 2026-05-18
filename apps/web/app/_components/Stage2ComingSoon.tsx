@@ -46,20 +46,14 @@ export function Stage2ComingSoon({
   feature,
   parsedIntent,
   mainnetEnabled = false,
-  testnetEnabled = false,
 }: {
   feature: Stage2Feature;
   parsedIntent?: unknown;
   mainnetEnabled?: boolean;
-  testnetEnabled?: boolean;
 }) {
   const info = FEATURE_INFO[feature];
-  const testnetExecutable = testnetEnabled && ['swap', 'lend', 'borrow'].includes(feature);
-  const executable = mainnetEnabled || testnetExecutable;
-  const showingTestnet = testnetExecutable && !mainnetEnabled;
-  const contractHref = showingTestnet
-    ? 'https://sepolia.basescan.org/address/0xDfe689ec2f0Ae3635C372DfaB7b6581bBb7c4032'
-    : 'https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b';
+  const executable = mainnetEnabled;
+  const contractHref = 'https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b';
   return (
     <section
       className={`rounded-lg border p-6 ${
@@ -75,18 +69,14 @@ export function Stage2ComingSoon({
               executable ? 'text-blue-300' : 'text-yellow-300'
             }`}
           >
-            {mainnetEnabled ? 'Mainnet live' : executable ? 'Testnet enabled' : 'Connect wallet'}
+            {mainnetEnabled ? 'Mainnet live' : 'Connect wallet'}
           </p>
           <h2
             className={`mt-1 text-2xl font-semibold tracking-[-0.03em] ${
               executable ? 'text-blue-100' : 'text-yellow-100'
             }`}
           >
-            {mainnetEnabled
-              ? `${info.title} is live on Base`
-              : executable
-                ? `${info.title} is live on testnet`
-                : `${info.title} needs a connected wallet`}
+            {mainnetEnabled ? `${info.title} is live on Base` : `${info.title} needs a connected wallet`}
           </h2>
           <p className={`mt-2 text-sm ${executable ? 'text-blue-100/80' : 'text-yellow-100/80'}`}>
             {info.description}
@@ -99,7 +89,7 @@ export function Stage2ComingSoon({
               : 'border-yellow-400/30 text-yellow-200'
           }`}
         >
-          {mainnetEnabled ? 'Base mainnet' : executable ? 'Base Sepolia only' : 'Base mainnet ready'}
+          {mainnetEnabled ? 'Base mainnet' : 'Base mainnet ready'}
         </span>
       </div>
 
@@ -123,16 +113,6 @@ export function Stage2ComingSoon({
               Open the chat and try: <span className="font-mono text-sherpa-fg">{info.command}</span>
             </p>
           </>
-        ) : executable ? (
-          <>
-            <p>
-              This action is enabled only on Base Sepolia with small demo amount caps.
-              Mainnet production uses the separate Base mainnet flow.
-            </p>
-            <p>
-              Open the chat and try: <span className="font-mono text-sherpa-fg">{info.command}</span>
-            </p>
-          </>
         ) : (
           <p>
             SherpaRouter and SherpaTreasury are verified on Base mainnet. Connect a wallet
@@ -142,9 +122,7 @@ export function Stage2ComingSoon({
         <p>
           {mainnetEnabled
             ? 'Mainnet warning: use small amounts first.'
-            : executable
-              ? 'Testnet warning: use faucet assets only.'
-              : 'Try after connecting:'}{' '}
+            : 'Try after connecting:'}{' '}
           <span className="font-mono text-sherpa-fg">{info.command}</span>
         </p>
       </div>
@@ -156,7 +134,7 @@ export function Stage2ComingSoon({
           rel="noopener noreferrer"
           target="_blank"
         >
-          {showingTestnet ? 'Sepolia contracts' : 'Mainnet contracts'}
+          Mainnet contracts
         </a>
         <a
           className="rounded-full border border-sherpa-surface2 px-3 py-1 text-sherpa-muted transition hover:border-sherpa-muted hover:text-sherpa-fg"

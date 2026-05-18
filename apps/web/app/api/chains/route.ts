@@ -2,6 +2,22 @@ import { NextResponse } from 'next/server';
 
 const CHAINS = [
   {
+    chainId: 8453,
+    name: 'Base',
+    shortName: 'base',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrl: 'https://mainnet.base.org',
+    explorerUrl: 'https://basescan.org',
+    dex: { name: 'Aerodrome', routerAddress: '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43' },
+    aave: { poolAddress: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5' },
+    bridgeProtocols: ['across'],
+    contracts: {
+      router: '0x00bfef87DD352D48F8572BcfA52E57870B35DE8b',
+      treasury: '0xF4e72beAA559E1815f4671e39EDb1295aD975918',
+    },
+    status: 'mainnet',
+  },
+  {
     chainId: 84532,
     name: 'Base Sepolia',
     shortName: 'base-sepolia',
@@ -31,22 +47,6 @@ const CHAINS = [
     contracts: {},
     status: 'experimental',
     note: 'Experimental. No contracts deployed. Deployment script available at scripts/deploy-arbitrum-sepolia.ts',
-  },
-  {
-    chainId: 8453,
-    name: 'Base',
-    shortName: 'base',
-    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-    rpcUrl: 'https://mainnet.base.org',
-    explorerUrl: 'https://basescan.org',
-    dex: { name: 'Aerodrome', routerAddress: '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43' },
-    aave: { poolAddress: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5' },
-    bridgeProtocols: ['across'],
-    contracts: {
-      router: '0x00bfef87DD352D48F8572BcfA52E57870B35DE8b',
-      treasury: '0xF4e72beAA559E1815f4671e39EDb1295aD975918',
-    },
-    status: 'mainnet',
   },
   {
     chainId: 137,
@@ -89,6 +89,10 @@ const CHAINS = [
   },
 ];
 
-export async function GET() {
-  return NextResponse.json({ chains: CHAINS });
+export async function GET(req: Request) {
+  const includeTestnets = new URL(req.url).searchParams.get('includeTestnets') === 'true';
+  const chains = includeTestnets
+    ? CHAINS
+    : CHAINS.filter((chain) => chain.status !== 'testnet' && chain.status !== 'experimental');
+  return NextResponse.json({ chains });
 }

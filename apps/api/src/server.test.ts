@@ -67,11 +67,12 @@ describe('apps/api', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/parse',
-      payload: { input: `send 5 usdc to ${USDC_RECIPIENT}`, userKey: 'test' },
+      payload: { input: `send 5 usdc to ${USDC_RECIPIENT}`, userKey: USDC_RECIPIENT },
     });
     expect(res.statusCode).toBe(200);
-    const body = res.json() as { card?: { intent: string; steps: unknown[] } };
+    const body = res.json() as { card?: { intent: string; batch?: { chainId: string }; steps: unknown[] } };
     expect(body.card?.intent).toBe('SEND');
+    expect(body.card?.batch?.chainId).toBe('0x2105');
     expect(body.card?.steps.length).toBe(1);
     await app.close();
   });

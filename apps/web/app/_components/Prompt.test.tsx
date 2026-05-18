@@ -111,7 +111,7 @@ describe('Prompt', () => {
     });
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
-        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
       }
       if (url === '/api/parse') {
         expect(JSON.parse(init?.body as string)).toMatchObject({ input: DEFAULT_INPUT });
@@ -145,7 +145,7 @@ describe('Prompt', () => {
   it('renders BALANCE results directly in the thread', async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
-        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
       }
       if (url === '/api/parse') {
         return jsonResponse({ parsed: { intent: 'BALANCE', confidence: 0.95 } });
@@ -176,7 +176,7 @@ describe('Prompt', () => {
   it('renders HISTORY results directly in the thread', async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
-        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
       }
       if (url === '/api/parse') {
         return jsonResponse({
@@ -186,7 +186,7 @@ describe('Prompt', () => {
       if (url === `/api/history/${USER_ADDRESS}?limit=5`) {
         return jsonResponse({
           address: USER_ADDRESS,
-          chain: 'base-sepolia',
+          chain: 'base',
           items: [
             {
               txHash: TX_HASH,
@@ -210,7 +210,7 @@ describe('Prompt', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
 
-    const history = await screen.findByText(/Recent transactions on base-sepolia/);
+    const history = await screen.findByText(/Recent transactions on Base mainnet/);
     expect(history.textContent).toContain(`OUT 5.00 USDC to ${USER_ADDRESS}`);
     expect(history.textContent).toContain(`Tx: ${TX_HASH.slice(0, 10)}...${TX_HASH.slice(-8)}`);
     expect(history.textContent).toContain('Intent: SEND');
@@ -220,7 +220,7 @@ describe('Prompt', () => {
   it('renders POSITIONS results directly in the thread', async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
-        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
       }
       if (url === '/api/parse') {
         return jsonResponse({ parsed: { intent: 'POSITIONS', confidence: 0.92 } });
@@ -257,7 +257,7 @@ describe('Prompt', () => {
   it('renders empty POSITIONS state directly in the thread', async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
-        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
       }
       if (url === '/api/parse') {
         return jsonResponse({ parsed: { intent: 'POSITIONS', confidence: 0.92 } });
@@ -291,7 +291,7 @@ describe('Prompt', () => {
   it('renders Stage 2 coming-soon results without a confirmation card', async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
-        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
       }
       if (url === '/api/parse') {
         return jsonResponse({
@@ -321,7 +321,7 @@ describe('Prompt', () => {
   it('renders IDENTITY_LOOKUP results directly in the thread', async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
-        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
       }
       if (url === '/api/parse') {
         return jsonResponse({
@@ -364,7 +364,7 @@ describe('Prompt', () => {
     };
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
-        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
       }
       if (url === '/api/parse') {
         expect(JSON.parse(init?.body as string)).toMatchObject({ userKey: USER_ADDRESS });
@@ -396,7 +396,7 @@ describe('Prompt', () => {
     expect(screen.getByText('Sent 5 USDC')).toBeTruthy();
     expect(screen.getByText(`to ${USER_ADDRESS}`)).toBeTruthy();
     expect(screen.getByRole('link', { name: /view on basescan/i }).getAttribute('href')).toBe(
-      `https://sepolia.basescan.org/tx/${TX_HASH}`,
+      `https://basescan.org/tx/${TX_HASH}`,
     );
   });
 
@@ -404,7 +404,7 @@ describe('Prompt', () => {
     sendSponsoredCallsAsync.mockRejectedValueOnce(new Error('SIMULATION_FAILED'));
     const fetchMock = vi.fn((url: string) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
-        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
       }
       if (url === '/api/parse') {
         return jsonResponse({ parsed: { intent: 'SEND', confidence: 1 }, card: sendCard() });
@@ -429,7 +429,7 @@ describe('Prompt', () => {
     sendSponsoredCallsAsync.mockRejectedValueOnce(new Error(WALLET_REJECTED_ERROR));
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
-        return jsonResponse({ address: USER_ADDRESS, chain: 'base-sepolia', items: [] });
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
       }
       if (url === '/api/parse') {
         return jsonResponse({ parsed: { intent: 'SEND', confidence: 1 }, card: sendCard() });

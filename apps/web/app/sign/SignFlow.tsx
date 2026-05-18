@@ -68,6 +68,12 @@ function toSendCallsVariables(batch: SerializedSendCallsEnvelope) {
   };
 }
 
+function explorerTxPrefixFromCard(card: SerializedConfirmationCardProps | undefined): string {
+  const chainId = card?.batch?.chainId?.toLowerCase();
+  if (chainId === '0x14a34' || chainId === '84532') return 'https://sepolia.basescan.org/tx/';
+  return 'https://basescan.org/tx/';
+}
+
 export function SignFlow() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -159,12 +165,15 @@ export function SignFlow() {
     return <div className="text-slate-400">Loading token...</div>;
   }
 
+  const payload = isRecord(tokenData.intentPayload) ? tokenData.intentPayload : {};
+  const card = cardFromPayload(tokenData.intentPayload);
+
   if (txHash) {
     return (
       <div className="max-w-md w-full bg-slate-900 rounded-xl p-6 text-center">
         <div className="text-green-400 text-lg font-medium mb-2">Transaction Sent</div>
         <a
-          href={`https://sepolia.basescan.org/tx/${txHash}`}
+          href={`${explorerTxPrefixFromCard(card)}${txHash}`}
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-400 hover:underline break-all"
@@ -182,9 +191,6 @@ export function SignFlow() {
       </div>
     );
   }
-
-  const payload = isRecord(tokenData.intentPayload) ? tokenData.intentPayload : {};
-  const card = cardFromPayload(tokenData.intentPayload);
 
   return (
     <div className="max-w-md w-full bg-slate-900 rounded-xl p-6">

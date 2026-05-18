@@ -18,13 +18,6 @@ describe('Stage2ComingSoon', () => {
     expect(screen.getByText(/lend 100 usdc to aave/)).toBeTruthy();
   });
 
-  it('renders testnet-enabled copy for executable demos', () => {
-    render(<Stage2ComingSoon feature="swap" testnetEnabled />);
-    expect(screen.getByText('Swap is live on testnet')).toBeTruthy();
-    expect(screen.getByText('Testnet enabled')).toBeTruthy();
-    expect(screen.getByText(/Base Sepolia with small demo amount caps/)).toBeTruthy();
-  });
-
   it('renders mainnet-enabled copy for public Stage 2 pages', () => {
     render(<Stage2ComingSoon feature="swap" mainnetEnabled />);
     expect(screen.getByText('Swap is live on Base')).toBeTruthy();

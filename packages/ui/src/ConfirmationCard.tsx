@@ -63,7 +63,7 @@ const CHAIN_DISPLAY: Record<string, { explorerTxPrefix: string; name: string }> 
   '0x14a34': { explorerTxPrefix: 'https://sepolia.basescan.org/tx/', name: 'Base Sepolia' },
   '84532': { explorerTxPrefix: 'https://sepolia.basescan.org/tx/', name: 'Base Sepolia' },
 };
-const BASESCAN_TX_PREFIX = CHAIN_DISPLAY['0x14a34']!.explorerTxPrefix;
+const BASESCAN_TX_PREFIX = CHAIN_DISPLAY['0x2105']!.explorerTxPrefix;
 
 const intentVerb: Record<string, string> = {
   SEND: 'Send',
@@ -114,7 +114,7 @@ function isSponsored(card: SerializedConfirmationCardProps): boolean {
 }
 
 function chainDisplayName(card: SerializedConfirmationCardProps): string {
-  if (!card.batch?.chainId) return 'Base Sepolia';
+  if (!card.batch?.chainId) return 'Base';
   return CHAIN_DISPLAY[card.batch.chainId.toLowerCase()]?.name ?? `Chain ${card.batch.chainId}`;
 }
 
@@ -377,7 +377,7 @@ export function isUserRejectedExecutionError(errorDetail: string): boolean {
 
 export function formatExecutionError(errorDetail: string): string {
   if (isUserRejectedExecutionError(errorDetail)) return 'Wallet request was cancelled.';
-  if (errorDetail === 'INSUFFICIENT_FUNDS_FOR_GAS') return 'Not enough Sepolia ETH for gas';
+  if (errorDetail === 'INSUFFICIENT_FUNDS_FOR_GAS') return 'Not enough ETH for gas';
   if (errorDetail === 'RECIPIENT_INVALID') return "Recipient address couldn't be resolved";
   if (errorDetail === 'SIMULATION_FAILED') {
     return 'Transaction would fail. Try a smaller amount or different recipient.';

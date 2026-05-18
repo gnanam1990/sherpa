@@ -3,7 +3,7 @@ import rateLimit from '@fastify/rate-limit';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
-import { loadConfig, type SherpaConfig } from '@sherpa/config';
+import { CHAINS, loadConfig, type SherpaConfig } from '@sherpa/config';
 import { createLogger, initSentry, type Logger, type SentryLike } from '@sherpa/logger';
 import {
   parseDeterministic,
@@ -482,7 +482,26 @@ function stage2PlanDeps(
     aave: config.aavePoolAddress
       ? createAave({ chainId: 84532, poolAddress: config.aavePoolAddress })
       : undefined,
+    chainId: 84532,
+    paymasterUrl: config.paymasterUrl,
     stage2Testnet: true,
+  };
+}
+
+function stage2PlanDepsForIntent(
+  intent: string,
+  config: SherpaConfig,
+  userAddress: `0x${string}` | undefined,
+  readContract?: SherpaRouterReadContract,
+) {
+  if (!stage2ComingSoonIntents.has(intent)) return {};
+  return stage2PlanDeps(config, userAddress, readContract);
+}
+
+function publicMainnetPlanDeps(config: SherpaConfig) {
+  return {
+    chainId: CHAINS['base-mainnet'].chainId,
+    paymasterUrl: config.chainEnv === 'base-mainnet' ? config.paymasterUrl : undefined,
   };
 }
 
@@ -549,10 +568,11 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     llmComplete
       ? parseWithLLM(input, (req) => llmComplete({ ...req, userAddress }))
       : Promise.resolve(parseDeterministic(input));
+  const publicReadChain = CHAINS['base-mainnet'];
   const indexer =
     options.indexer ??
     (config.basescanApiKey
-      ? createBasescanIndexer({ apiUrl: config.chain.basescanUrl, apiKey: config.basescanApiKey })
+      ? createBasescanIndexer({ apiUrl: publicReadChain.basescanUrl, apiKey: config.basescanApiKey })
       : emptyIndexer);
 
   app.get('/api/health', async () => ({ ok: true, ts: Date.now() }));
@@ -576,11 +596,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     const planResult = await plan(parsedIntent, {
       userKey: parsed.data.userKey,
       userAddress,
-      chainId: config.chain.chainId,
-      paymasterUrl: config.paymasterUrl,
+      ...publicMainnetPlanDeps(config),
       rateLimiter,
       resolver,
-      ...stage2PlanDeps(config, userAddress, options.stage2ReadContract),
+      ...stage2PlanDepsForIntent(parsedIntent.intent, config, userAddress, options.stage2ReadContract),
     });
     if (!planResult.ok) {
       return reply.send({ parsed: parsedIntent, error: planResult.error });
@@ -609,11 +628,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     const planResult = await plan(parsedIntent, {
       userKey: parsed.data.userAddress,
       userAddress: parsed.data.userAddress,
-      chainId: config.chain.chainId,
-      paymasterUrl: config.paymasterUrl,
+      ...publicMainnetPlanDeps(config),
       rateLimiter,
       resolver,
-      ...stage2PlanDeps(config, parsed.data.userAddress, options.stage2ReadContract),
+      ...stage2PlanDepsForIntent(parsedIntent.intent, config, parsed.data.userAddress, options.stage2ReadContract),
     });
     if (!planResult.ok) {
       return reply.code(400).send({ ok: false, error: planResult.error });
@@ -673,9 +691,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
   app.get<{ Params: { addr: string } }>('/api/balance/:addr', async (req, reply) => {
     const resolved = await resolver(req.params.addr);
     if (!isResolved(resolved)) return reply.code(400).send({ error: resolved });
-    const balanceChain = config.stage2PublicMainnetEnabled
-      ? { chainId: 8453, rpcUrl: config.baseMainnetRpcUrl, name: 'base' }
-      : { chainId: config.chain.chainId, rpcUrl: config.rpcUrl, name: config.chain.name };
+    const balanceChain = { chainId: publicReadChain.chainId, rpcUrl: config.baseMainnetRpcUrl, name: 'base' };
     if (!config.useRealRpc) {
       return reply.send({
         address: resolved.address,
@@ -858,7 +874,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
           listAuditHistory(auditStore, resolved.address),
         ]);
         const items = mergeHistoryItems(indexedItems, auditItems, limit);
-        return reply.send({ address: resolved.address, chain: config.chain.name, items });
+        return reply.send({ address: resolved.address, chain: 'base', items });
       } catch (err) {
         return reply.code(502).send({ error: 'indexer_error', message: (err as Error).message });
       }
@@ -947,11 +963,10 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
     const planResult = await plan(parsedIntent, {
       userKey: userAddress,
       userAddress,
-      chainId: config.chain.chainId,
-      paymasterUrl: config.paymasterUrl,
+      ...publicMainnetPlanDeps(config),
       rateLimiter,
       resolver,
-      ...stage2PlanDeps(config, userAddress, options.stage2ReadContract),
+      ...stage2PlanDepsForIntent(parsedIntent.intent, config, userAddress, options.stage2ReadContract),
     });
     if (!planResult.ok) {
       return {

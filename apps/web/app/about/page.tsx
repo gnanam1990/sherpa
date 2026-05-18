@@ -21,8 +21,8 @@ const features = [
   },
   {
     icon: Zap,
-    title: 'Sponsored gas',
-    body: 'Sherpa pays gas on Base Sepolia in Stage 1. Connect, transact, no ETH balance required.',
+    title: 'Base mainnet',
+    body: 'Sherpa builds Base mainnet actions with explicit wallet confirmation and guarded amount caps.',
   },
   {
     icon: Sparkles,
@@ -45,7 +45,7 @@ const steps = [
   {
     n: '03',
     title: 'Confirm',
-    body: 'Review the confirmation card, sign once with your passkey. Sherpa sponsors gas on Base Sepolia.',
+    body: 'Review the confirmation card, then sign once with your wallet or passkey on Base mainnet.',
   },
 ];
 
@@ -56,15 +56,15 @@ const faqs = [
   },
   {
     q: 'Is this safe?',
-    a: "Stage 1 runs on Base Sepolia (testnet) only — no mainnet funds at risk. Every transaction shows a confirmation card with the exact calls before you sign, and the paymaster URL is held server-side so it can't leak from the browser. The source is open at github.com/gnanam1990/sherpa.",
+    a: "Sherpa runs public actions on Base mainnet with explicit confirmation cards and guarded amount caps. Every transaction shows the exact calls before you sign. The source is open at github.com/gnanam1990/sherpa.",
   },
   {
     q: 'What networks do you support?',
-    a: 'Stage 1 is Base Sepolia only. Once the demo flow is stable end-to-end, Stage 2 expands to Base mainnet, then to other L2s where Coinbase Smart Wallet is available.',
+    a: 'Base mainnet is the public production network. Other L2s are available as read-only surfaces until their write adapters are audited.',
   },
   {
     q: 'When does mainnet ship?',
-    a: 'After Stage 1 stabilizes. The blocker is real-money UX testing on the confirmation card flow and the intent catalog — once we trust the typed-intent-to-call mapping under adversarial inputs, mainnet is a config switch.',
+    a: 'Base mainnet is live now. New write surfaces still roll out behind explicit confirmation, amount caps, and adapter-specific safety checks.',
   },
   {
     q: 'How does Sherpa make money?',
@@ -189,7 +189,7 @@ export default function AboutPage() {
         </section>
 
         <footer className="flex flex-col items-center gap-4 border-t border-sherpa-surface2 pt-8 pb-4 text-sm text-sherpa-muted sm:flex-row sm:justify-between">
-          <span>Stage 1 · Base Sepolia</span>
+          <span>Base mainnet</span>
           <nav aria-label="Social" className="flex items-center gap-5">
             <a
               href="https://github.com/gnanam1990/sherpa"

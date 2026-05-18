@@ -104,7 +104,7 @@ describe('MessageBubble', () => {
     expect(screen.getByText('to vitalik.base.eth')).toBeTruthy();
     expect(screen.getByText('✓')).toBeTruthy();
     expect(screen.getByRole('link', { name: /view on basescan/i }).getAttribute('href')).toBe(
-      `https://sepolia.basescan.org/tx/${txHash}`,
+      `https://basescan.org/tx/${txHash}`,
     );
   });
 

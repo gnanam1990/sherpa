@@ -88,7 +88,7 @@ export function HomeContent() {
         </section>
 
         <footer className="text-center font-mono text-xs text-muted-foreground">
-          Stage 1 send: Base Sepolia / Stage 2: Base mainnet
+          Base mainnet public / Smart Wallet confirmation for every action
         </footer>
 
         <FeatureRoadmap />

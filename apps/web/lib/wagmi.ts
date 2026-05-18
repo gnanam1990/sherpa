@@ -45,7 +45,7 @@ const connectors = connectorsForWallets(
 );
 
 export const wagmiConfig = createConfig({
-  chains: [baseSepolia, base],
+  chains: [base, baseSepolia],
   connectors,
   ssr: true,
   storage: createStorage({ storage: noopStorage }),

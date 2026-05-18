@@ -137,7 +137,7 @@ describe('HomeContent', () => {
 
   it('fetches fresh chat history when an account connects', async () => {
     const fetchMock = vi.fn(async () =>
-      Response.json({ address: wagmiState.address, chain: 'base-sepolia', items: [] }),
+      Response.json({ address: wagmiState.address, chain: 'base', items: [] }),
     );
     vi.stubGlobal('fetch', fetchMock);
     wagmiState.address = '0x1234567890123456789012345678901234567890';
@@ -153,7 +153,7 @@ describe('HomeContent', () => {
 
   it('fetches fresh chat history when the connected address changes', async () => {
     const fetchMock = vi.fn(async () =>
-      Response.json({ address: wagmiState.address, chain: 'base-sepolia', items: [] }),
+      Response.json({ address: wagmiState.address, chain: 'base', items: [] }),
     );
     vi.stubGlobal('fetch', fetchMock);
     wagmiState.address = '0x1234567890123456789012345678901234567890';

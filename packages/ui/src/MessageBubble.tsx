@@ -94,7 +94,7 @@ function ActionSummaryView({
   const [expanded, setExpanded] = useState(false);
   const explorerPrefix =
     (card?.batch?.chainId && EXPLORER_TX_PREFIX[card.batch.chainId.toLowerCase()]) ??
-    EXPLORER_TX_PREFIX['0x14a34']!;
+    EXPLORER_TX_PREFIX['0x2105']!;
   const txHref = summary.txHash ? `${explorerPrefix}${summary.txHash}` : undefined;
   const compactContent = (
     <>
