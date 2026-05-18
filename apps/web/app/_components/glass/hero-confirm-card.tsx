@@ -3,17 +3,18 @@
 import { Avatar, ChainPill, TokenIcon } from './brand';
 import type { ChainTone } from './brand';
 import { ArrowIcon } from './icons';
-import { GlassChip, LensBorder, MetaLabel, Pip } from './primitives';
+import { GlassChip, LensBorder, MetaLabel } from './primitives';
 import type { ChipTone } from './primitives';
 
 /**
  * Glass Aurora hero confirmation card — the signature surface.
  *
- * `lens-border` + `glass-deep`, an Instrument-Serif ice-gradient amount, a
- * safety-ring pip cluster, and a cerulean Confirm button. Fully prop-driven
- * so it renders the *real* parsed plan and safety result (wired in Phase 3);
- * it never embeds a sample transaction. Used inside a client tree because
- * `onCancel`/`onConfirm` are interactive.
+ * `lens-border` + `glass-deep`, an Instrument-Serif ice-gradient amount,
+ * the real safety surface, and a cerulean Confirm button. Fully prop-driven
+ * so it renders the *real* parsed plan: the amount is the API's display
+ * string (not a fabricated split), and safety shows the API's actual
+ * `risk_indicators` / `warnings` — there is no invented "7/7 rings" pip
+ * cluster. Used inside a client tree because the actions are interactive.
  */
 
 /** One end (From / To) of the transfer header. */
@@ -31,14 +32,27 @@ export interface ConfirmMetaCell {
   k: string;
   v: string;
   sub?: string;
-  /** Accent colour for the value (e.g. mint for "passed"). */
+  /** Accent colour for the value (e.g. mint for sponsored gas). */
   color?: string;
   /** Render the value in mono (hashes/ids). */
   mono?: boolean;
 }
 
+/** Real risk indicator from the parsed card (`risk_indicators[]`). */
+export interface ConfirmRiskIndicator {
+  level?: 'info' | 'warning' | 'danger';
+  label: string;
+  detail?: string;
+}
+
+const RISK_TONE: Record<NonNullable<ConfirmRiskIndicator['level']>, ChipTone> = {
+  info: 'info',
+  warning: 'warning',
+  danger: 'danger',
+};
+
 export interface HeroConfirmCardProps {
-  /** Status chip, e.g. awaiting signature + countdown. */
+  /** Status chip, e.g. awaiting your confirmation. */
   status: { label: string; tone?: ChipTone; countdown?: string };
   /** Network the plan executes on. */
   chain: { label: string; tone?: ChainTone };
@@ -46,18 +60,18 @@ export interface HeroConfirmCardProps {
   to: ConfirmParty;
   /** Verb shown under the connector arrow, e.g. `send`. */
   action: string;
-  /** The headline amount, split so the fraction can dim. */
-  amount: {
-    whole: string;
-    fraction?: string;
-    token: string;
-    usd?: string;
-    rate?: string;
-  };
-  /** Exactly the cells to show in the 3-up footer (gas / rings / hash). */
+  /**
+   * The headline amount. `display` is the API's `primary_amount_display`
+   * string verbatim (e.g. `5 USDC` or `—`); `token` optionally drives the
+   * token glyph + trailing unit chip; `secondary` is e.g. `≈ $5.00`.
+   */
+  amount: { display: string; token?: string; secondary?: string };
+  /** The cells to show in the 3-up footer (gas / network / …). */
   meta: ReadonlyArray<ConfirmMetaCell>;
-  /** Safety-ring summary; renders a pip per ring (filled = passed). */
-  safety?: { total: number; passed: number };
+  /** Real safety indicators from the parsed card. */
+  riskIndicators?: ReadonlyArray<ConfirmRiskIndicator>;
+  /** Real free-text warnings from the parsed card. */
+  warnings?: ReadonlyArray<string>;
   /** Confirm button label. Default `Confirm in Smart Wallet  →`. */
   confirmLabel?: string;
   /** Disable both actions while a signature is in flight. */
@@ -89,12 +103,14 @@ export function HeroConfirmCard({
   action,
   amount,
   meta,
-  safety,
+  riskIndicators = [],
+  warnings = [],
   confirmLabel = 'Confirm in Smart Wallet  →',
   busy = false,
   onCancel,
   onConfirm,
 }: HeroConfirmCardProps) {
+  const hasSafety = riskIndicators.length > 0 || warnings.length > 0;
   return (
     <div className="relative">
       <div
@@ -182,36 +198,56 @@ export function HeroConfirmCard({
               aria-hidden="true"
             />
             <div className="relative flex items-baseline justify-center gap-3 py-7">
-              <TokenIcon symbol={amount.token} size={38} />
+              {amount.token && <TokenIcon symbol={amount.token} size={38} />}
               <span
                 className="text-gradient-ice font-serif italic leading-none tracking-tight"
                 style={{ fontSize: 64 }}
               >
-                {amount.whole}
-                {amount.fraction !== undefined && (
-                  <span style={{ opacity: 0.5 }}>.{amount.fraction}</span>
-                )}
+                {amount.display}
               </span>
-              <span className="pb-1.5 font-mono text-[14px] uppercase tracking-[0.18em] opacity-75">
-                {amount.token}
-              </span>
+              {amount.token && (
+                <span className="pb-1.5 font-mono text-[14px] uppercase tracking-[0.18em] opacity-75">
+                  {amount.token}
+                </span>
+              )}
             </div>
-            {(amount.usd || amount.rate) && (
+            {amount.secondary && (
               <div className="pb-3 text-center font-mono text-[11px] opacity-60">
-                {[amount.usd, amount.rate].filter(Boolean).join(' · ')}
-              </div>
-            )}
-            {safety && (
-              <div
-                className="flex items-center justify-center gap-1 pb-3"
-                aria-label={`Safety ${safety.passed} of ${safety.total} passed`}
-              >
-                {Array.from({ length: safety.total }, (_, i) => (
-                  <Pip key={i} filled={i < safety.passed} />
-                ))}
+                {amount.secondary}
               </div>
             )}
           </div>
+
+          {hasSafety && (
+            <div className="relative space-y-2 border-b border-white/10 px-5 py-3">
+              <MetaLabel>Safety</MetaLabel>
+              {riskIndicators.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {riskIndicators.map((r, i) => (
+                    <GlassChip
+                      key={`${r.label}-${i}`}
+                      tone={RISK_TONE[r.level ?? 'info']}
+                    >
+                      {r.label}
+                      {r.detail ? ` · ${r.detail}` : ''}
+                    </GlassChip>
+                  ))}
+                </div>
+              )}
+              {warnings.length > 0 && (
+                <ul className="space-y-1">
+                  {warnings.map((w, i) => (
+                    <li
+                      key={`${w}-${i}`}
+                      className="font-mono text-[10.5px] text-amber-200/90"
+                    >
+                      {w}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           <div className="relative grid grid-cols-3 divide-x divide-white/10 text-[11px]">
             {meta.map((cell) => (

@@ -326,31 +326,29 @@ describe('composer pill', () => {
 
 describe('HeroConfirmCard', () => {
   const base = {
-    status: { label: 'awaiting signature', countdown: '0:47' },
+    status: { label: 'awaiting your confirmation', tone: 'info' as const },
     chain: { label: 'Base Sepolia', tone: 'sepolia' as const },
     from: { label: 'gnanam.base.eth', sub: '0x036C…F7e', seed: '0x036C' },
     to: { label: 'vitalik.base.eth', sub: '0xd8dA…6045' },
     action: 'send',
-    amount: {
-      whole: '250',
-      fraction: '00',
-      token: 'USDC',
-      usd: '≈ $250.00 USD',
-      rate: '1 USDC = 1.0000',
-    },
+    amount: { display: '250 USDC', token: 'USDC', secondary: '≈ $250.00' },
     meta: [
       { k: 'Gas', v: 'Sponsored', sub: 'paymaster', color: '#7CFFCB' },
-      { k: 'Safety rings', v: '7 / 7 passed', color: '#7CFFCB' },
-      { k: 'Plan hash', v: '0xa12f…b3c4', sub: 'audit #1287', mono: true },
+      { k: 'Network', v: 'Base Sepolia' },
+      { k: 'Plan', v: 'preview', sub: 'not yet executed', mono: true },
     ],
   };
 
-  it('renders with safety + countdown, snapshot', () => {
+  it('renders real risk indicators + warnings, no fake pips', () => {
     const onConfirm = vi.fn();
     const { container } = render(
       <HeroConfirmCard
         {...base}
-        safety={{ total: 7, passed: 7 }}
+        riskIndicators={[
+          { level: 'info', label: 'Allowlisted recipient' },
+          { level: 'warning', label: 'First transfer to this address' },
+        ]}
+        warnings={['Double-check the recipient address.']}
         onConfirm={onConfirm}
         onCancel={vi.fn()}
       />,
@@ -362,18 +360,19 @@ describe('HeroConfirmCard', () => {
     expect(html).toContain('glass-deep');
     expect(html).toContain('text-gradient-ice');
     expect(html).toContain('gradient-cerulean cerulean-glow-fx');
-    // 7 safety pips rendered (filled = passed).
-    const pips = container.querySelectorAll(
-      '[aria-label="Safety 7 of 7 passed"] > span',
-    );
-    expect(pips).toHaveLength(7);
+    // Real risk surface, not a fabricated pip cluster.
+    expect(screen.getByText('Allowlisted recipient')).toBeTruthy();
+    expect(
+      screen.getByText('Double-check the recipient address.'),
+    ).toBeTruthy();
+    expect(container.querySelector('[aria-label^="Safety"]')).toBeNull();
   });
 
-  it('renders without safety, no usd/rate, busy disables actions', () => {
+  it('renders without safety section, em-dash amount, busy disables actions', () => {
     render(
       <HeroConfirmCard
         {...base}
-        amount={{ whole: '1', token: 'ETH' }}
+        amount={{ display: '—' }}
         status={{ label: 'ready', tone: 'info' }}
         busy
       />,

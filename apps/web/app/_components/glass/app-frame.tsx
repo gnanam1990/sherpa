@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { AuroraBackground } from './background/aurora-background';
 import { IconRail } from './icon-rail';
 import type { IconRailProps } from './icon-rail';
+import { MobileNav } from './mobile-nav';
 
 /**
  * Glass Aurora app shell.
@@ -31,7 +32,15 @@ export function AppFrame({
     <div className="relative h-full min-h-[100dvh] w-full overflow-hidden text-[#F8FAFF]">
       <AuroraBackground />
       <div className="relative z-10 flex h-full min-h-[100dvh] w-full">
-        {!hideRail && <IconRail {...railProps} />}
+        {!hideRail && (
+          <>
+            <IconRail
+              {...railProps}
+              className={`hidden sm:flex ${railProps?.className ?? ''}`}
+            />
+            <MobileNav railProps={railProps} />
+          </>
+        )}
         <main
           id="main-content"
           className="relative flex min-h-0 min-w-0 flex-1 flex-col"

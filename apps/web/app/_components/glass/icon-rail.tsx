@@ -38,6 +38,10 @@ export interface IconRailProps {
    * settings glyph is shown — no fake avatar identity is invented here.
    */
   footer?: ReactNode;
+  /** Extra classes on the rail container (e.g. responsive visibility). */
+  className?: string;
+  /** Invoked after a nav link is activated (e.g. close the mobile sheet). */
+  onNavigate?: () => void;
 }
 
 const GLASS_ACTIVE_CLASS = 'glass-active';
@@ -47,18 +51,21 @@ export function IconRail({
   badges,
   showStageTags = false,
   footer,
+  className = '',
+  onNavigate,
 }: IconRailProps) {
   const { activeRoute, routes } = useRoute();
   const list = items ?? routes;
 
   return (
     <aside
-      className="z-10 flex w-[80px] shrink-0 flex-col items-center gap-1.5 px-3 py-5"
+      className={`z-10 flex w-[80px] shrink-0 flex-col items-center gap-1.5 px-3 py-5 ${className}`}
       aria-label="Primary"
     >
       <Link
         href="/"
         aria-label="Sherpa home"
+        onClick={onNavigate}
         className="glass-thin mb-3 flex h-12 w-12 items-center justify-center rounded-2xl ring-1 ring-white/15"
       >
         <SherpaMark size={22} />
@@ -76,6 +83,7 @@ export function IconRail({
               href={r.href}
               title={r.label}
               aria-label={r.label}
+              onClick={onNavigate}
               aria-current={active ? 'page' : undefined}
               className={`group relative flex h-12 w-12 items-center justify-center rounded-2xl transition ${
                 active ? GLASS_ACTIVE_CLASS : ''
@@ -115,6 +123,7 @@ export function IconRail({
           href="/about"
           aria-label="Settings"
           title="Settings"
+          onClick={onNavigate}
           className="glass-thin flex h-11 w-11 items-center justify-center rounded-2xl"
         >
           <SettingsIcon />
