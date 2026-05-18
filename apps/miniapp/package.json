@@ -7,7 +7,7 @@
     "build": "pnpm --filter @sherpa/ui --filter @sherpa/core --filter @sherpa/memory --filter @sherpa/tools build && next build",
     "start": "next start -p 3200",
     "typecheck": "tsc --noEmit",
-    "lint": "next lint",
+    "lint": "eslint app lib",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
