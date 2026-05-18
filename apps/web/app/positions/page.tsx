@@ -1,24 +1,19 @@
-import Link from 'next/link';
+import { AppShell } from '../_components/app-shell';
 import { PositionsView } from '../_components/PositionsView';
 
 export default function PositionsPage() {
   return (
-    <main className="min-h-[100dvh] bg-sherpa-bg px-4 py-8 text-sherpa-fg sm:px-6">
-      <div className="mx-auto max-w-3xl">
-        <Link
-          className="text-sm text-sherpa-muted transition hover:text-sherpa-fg"
-          href="/"
-        >
-          Back to Sherpa
-        </Link>
-        <h1 className="mb-2 mt-6 text-3xl font-semibold tracking-[-0.03em]">
-          Aave Positions
-        </h1>
-        <p className="mb-6 text-sm text-sherpa-muted">
-          Read-only view of your Aave V3 position on Base mainnet.
-        </p>
+    <AppShell hideRightPanel>
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-6">
+          <p className="meta-label mb-2">Account</p>
+          <h2 className="text-3xl font-bold tracking-tight">Aave Positions</h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Read-only view of your Aave V3 position on Base mainnet.
+          </p>
+        </div>
         <PositionsView />
       </div>
-    </main>
+    </AppShell>
   );
 }
