@@ -1,4 +1,7 @@
-export default function Loading() {
+import { GLASS_AURORA_ENABLED } from '../lib/feature-flags';
+import { GlassLoadingSkeleton } from './_components/glass/loading-skeleton';
+
+function LegacyLoadingSkeleton() {
   return (
     <main
       id="main-content"
@@ -31,5 +34,13 @@ export default function Loading() {
         <span className="block h-11 w-full rounded-xl border border-sherpa-surface2 bg-sherpa-bg/40" />
       </section>
     </main>
+  );
+}
+
+export default function Loading() {
+  return GLASS_AURORA_ENABLED ? (
+    <GlassLoadingSkeleton />
+  ) : (
+    <LegacyLoadingSkeleton />
   );
 }
