@@ -197,6 +197,16 @@ export function SettingsIcon({ active, size }: IconProps) {
   );
 }
 
+export function InfoIcon({ active, size }: IconProps) {
+  return (
+    <Stroke active={active} size={size}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <path d="M12 8h.01" />
+    </Stroke>
+  );
+}
+
 /** Filled arrow used inside cerulean action buttons (dark-on-light). */
 export function ArrowIcon({
   size = 14,

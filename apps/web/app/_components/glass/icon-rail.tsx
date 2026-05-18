@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { ROUTE_ICONS, SettingsIcon } from './icons';
+import { InfoIcon, ROUTE_ICONS } from './icons';
 import type { RouteId, RouteMeta } from './route-context';
 import { useRoute } from './route-context';
 
@@ -145,16 +145,16 @@ export function IconRail({
       <div className="mt-auto flex flex-col gap-2 pt-2">
         <Link
           href="/about"
-          aria-label="Settings"
-          title="Settings"
+          aria-label="About"
+          title="About"
           onClick={onNavigate}
           className="glass-thin flex h-11 w-full items-center rounded-2xl transition hover:bg-white/[0.07]"
         >
           <span className="flex h-11 w-14 shrink-0 items-center justify-center">
-            <SettingsIcon />
+            <InfoIcon />
           </span>
           <span className="min-w-0 translate-x-1 truncate text-sm font-medium text-white/62 opacity-0 transition duration-150 group-hover/rail:translate-x-0 group-hover/rail:opacity-100 group-focus-within/rail:translate-x-0 group-focus-within/rail:opacity-100">
-            Settings
+            About
           </span>
         </Link>
         {footer}

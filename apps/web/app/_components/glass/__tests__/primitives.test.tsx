@@ -37,7 +37,7 @@ vi.mock('next/image', () => ({
 import { matchRoute, useRoute, ROUTES } from '../route-context';
 import { GlassPanel, GlassChip, MetaLabel, Pip, LensBorder } from '../primitives';
 import { SherpaMark, Avatar, TokenIcon, ChainPill, shortHex } from '../brand';
-import { ROUTE_ICONS, ArrowIcon, CheckIcon, SettingsIcon } from '../icons';
+import { ROUTE_ICONS, ArrowIcon, CheckIcon, InfoIcon, SettingsIcon } from '../icons';
 import { UserBubble, SherpaBubble, SherpaAvatar, IntentChips } from '../chat-bubbles';
 import { AuroraBackground } from '../background/aurora-background';
 import { AppFrame } from '../app-frame';
@@ -175,6 +175,7 @@ describe('icons', () => {
         <ArrowIcon size={20} color="#fff" />
         <CheckIcon />
         <CheckIcon size={20} color="#000" />
+        <InfoIcon active />
         <SettingsIcon active />
       </>,
     );
@@ -238,6 +239,7 @@ describe('shell + nav', () => {
     expect(screen.getByLabelText('Sherpa home').querySelector('img')?.getAttribute('src')).toBe(
       '/sherpa-icon-192.png',
     );
+    expect(screen.getByLabelText('About').getAttribute('href')).toBe('/about');
     rerender(
       <IconRail
         items={ROUTES.slice(0, 2)}
