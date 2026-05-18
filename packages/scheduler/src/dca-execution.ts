@@ -5,7 +5,7 @@ export const MAX_CONSECUTIVE_FAILURES = 3;
 
 export type ExecutionResult =
   | { ok: true; txHash: string; amountOut: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; manualRequired?: boolean };
 
 export interface ExecuteDCAOptions {
   store: DCAStore;
@@ -19,6 +19,22 @@ export interface SwapParams {
   amountIn: string;
   userAddress: string;
   builderCode: string;
+}
+
+export interface SwapBuildResult {
+  to: string;
+  data: `0x${string}`;
+  value: bigint;
+  minOut: bigint;
+  deadline: bigint;
+  amountInBaseUnits: bigint;
+}
+
+export type BuildSwapFn = (params: SwapParams) => Promise<SwapBuildResult>;
+
+export interface SessionKeyExecutionDeps {
+  executeWithSessionKey: (tx: { to: string; data: string; value: string }) => Promise<{ ok: boolean; txHash?: string; error?: string }>;
+  hasActiveSessionKey: (userAddress: string) => Promise<boolean>;
 }
 
 export async function executeDCA(
@@ -110,12 +126,56 @@ async function handleFailure(
   }
 }
 
-export async function buildSwapTransaction(_params: SwapParams): Promise<never> {
-  // Requires Stage 7 (session key executor) to submit on-chain.
-  // Providing executeSwap via ExecuteDCAOptions is mandatory until then.
-  throw new Error(
-    'buildSwapTransaction is a scaffold placeholder — provide a real executeSwap via ExecuteDCAOptions',
-  );
+/**
+ * Build real swap calldata using the injected buildSwap function.
+ * The caller provides the actual swap builder (e.g. SherpaRouter.buildSherpaRouterSwapPlan).
+ */
+export async function buildSwapTransaction(
+  params: SwapParams,
+  buildSwap: BuildSwapFn,
+): Promise<SwapBuildResult> {
+  return buildSwap(params);
+}
+
+/**
+ * Create an executeSwap function that attempts session-key signing when available,
+ * or returns an honest manual-required error when session keys are not configured.
+ *
+ * This is the production wiring point: the worker calls this to get a real executor.
+ */
+export function createSwapExecutor(
+  buildSwap: BuildSwapFn,
+  sessionKeyDeps?: SessionKeyExecutionDeps,
+): (params: SwapParams) => Promise<ExecutionResult> {
+  return async (params: SwapParams): Promise<ExecutionResult> => {
+    try {
+      const tx = await buildSwapTransaction(params, buildSwap);
+
+      if (sessionKeyDeps) {
+        const hasKey = await sessionKeyDeps.hasActiveSessionKey(params.userAddress);
+        if (hasKey) {
+          const result = await sessionKeyDeps.executeWithSessionKey({
+            to: tx.to,
+            data: tx.data,
+            value: tx.value.toString(),
+          });
+          if (result.ok) {
+            return { ok: true, txHash: result.txHash!, amountOut: tx.minOut.toString() };
+          }
+          return { ok: false, error: result.error ?? 'session key execution failed' };
+        }
+      }
+
+      return {
+        ok: false,
+        error: 'Session key signing is not configured for this wallet. Each DCA cycle requires your signature until session keys are enabled.',
+        manualRequired: true,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: msg };
+    }
+  };
 }
 
 export async function recordExecution(

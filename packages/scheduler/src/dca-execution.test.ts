@@ -2,10 +2,13 @@ import { describe, test, expect, vi } from 'vitest';
 import {
   executeDCA,
   buildSwapTransaction,
+  createSwapExecutor,
   recordExecution,
   BUILDER_CODE,
   MAX_CONSECUTIVE_FAILURES,
   type ExecutionResult,
+  type SwapBuildResult,
+  type SwapParams,
 } from './dca-execution.js';
 import { InMemoryDCAStore } from '@sherpa/memory';
 
@@ -23,7 +26,34 @@ describe('DCA execution', () => {
   });
 
   describe('buildSwapTransaction', () => {
-    test('throws — no fake on-chain success', async () => {
+    test('delegates to injected buildSwap function', async () => {
+      const mockBuildSwap = vi.fn(async (): Promise<SwapBuildResult> => ({
+        to: '0xRouterAddress',
+        data: '0xabcdef',
+        value: 0n,
+        minOut: 50000000000000000n,
+        deadline: BigInt(Math.floor(Date.now() / 1000) + 600),
+        amountInBaseUnits: 100000000n,
+      }));
+
+      const result = await buildSwapTransaction({
+        fromAsset: { symbol: 'USDC' },
+        toAsset: { symbol: 'ETH' },
+        amountIn: '100',
+        userAddress: '0x1234567890123456789012345678901234567890',
+        builderCode: BUILDER_CODE,
+      }, mockBuildSwap);
+
+      expect(result.to).toBe('0xRouterAddress');
+      expect(result.data).toBe('0xabcdef');
+      expect(mockBuildSwap).toHaveBeenCalledOnce();
+    });
+
+    test('propagates errors from buildSwap', async () => {
+      const mockBuildSwap = vi.fn(async () => {
+        throw new Error('Pool not found');
+      });
+
       await expect(
         buildSwapTransaction({
           fromAsset: { symbol: 'USDC' },
@@ -31,8 +61,120 @@ describe('DCA execution', () => {
           amountIn: '100',
           userAddress: '0x1234567890123456789012345678901234567890',
           builderCode: BUILDER_CODE,
-        }),
-      ).rejects.toThrow('scaffold placeholder');
+        }, mockBuildSwap),
+      ).rejects.toThrow('Pool not found');
+    });
+  });
+
+  describe('createSwapExecutor', () => {
+    const mockBuildSwap = vi.fn(async (): Promise<SwapBuildResult> => ({
+      to: '0xRouterAddress',
+      data: '0xabcdef',
+      value: 0n,
+      minOut: 50000000000000000n,
+      deadline: BigInt(Math.floor(Date.now() / 1000) + 600),
+      amountInBaseUnits: 100000000n,
+    }));
+
+    test('returns manual-required error when no session key deps provided', async () => {
+      const executor = createSwapExecutor(mockBuildSwap);
+      const result = await executor({
+        fromAsset: { symbol: 'USDC' },
+        toAsset: { symbol: 'ETH' },
+        amountIn: '100',
+        userAddress: '0x1234567890123456789012345678901234567890',
+        builderCode: BUILDER_CODE,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.manualRequired).toBe(true);
+        expect(result.error).toContain('Session key signing is not configured');
+      }
+    });
+
+    test('returns manual-required error when user has no active session key', async () => {
+      const executor = createSwapExecutor(mockBuildSwap, {
+        executeWithSessionKey: vi.fn(async () => ({ ok: true, txHash: '0xabc' })),
+        hasActiveSessionKey: vi.fn(async () => false),
+      });
+
+      const result = await executor({
+        fromAsset: { symbol: 'USDC' },
+        toAsset: { symbol: 'ETH' },
+        amountIn: '100',
+        userAddress: '0x1234567890123456789012345678901234567890',
+        builderCode: BUILDER_CODE,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.manualRequired).toBe(true);
+      }
+    });
+
+    test('uses session key executor when active key exists', async () => {
+      const mockExecute = vi.fn(async () => ({ ok: true, txHash: '0xdef456' }));
+      const executor = createSwapExecutor(mockBuildSwap, {
+        executeWithSessionKey: mockExecute,
+        hasActiveSessionKey: vi.fn(async () => true),
+      });
+
+      const result = await executor({
+        fromAsset: { symbol: 'USDC' },
+        toAsset: { symbol: 'ETH' },
+        amountIn: '100',
+        userAddress: '0x1234567890123456789012345678901234567890',
+        builderCode: BUILDER_CODE,
+      });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.txHash).toBe('0xdef456');
+      }
+      expect(mockExecute).toHaveBeenCalledWith(expect.objectContaining({
+        to: '0xRouterAddress',
+        data: '0xabcdef',
+      }));
+    });
+
+    test('returns error when session key execution fails', async () => {
+      const mockExecute = vi.fn(async () => ({ ok: false, error: 'Spend limit exceeded' }));
+      const executor = createSwapExecutor(mockBuildSwap, {
+        executeWithSessionKey: mockExecute,
+        hasActiveSessionKey: vi.fn(async () => true),
+      });
+
+      const result = await executor({
+        fromAsset: { symbol: 'USDC' },
+        toAsset: { symbol: 'ETH' },
+        amountIn: '100',
+        userAddress: '0x1234567890123456789012345678901234567890',
+        builderCode: BUILDER_CODE,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain('Spend limit exceeded');
+      }
+    });
+
+    test('returns error when buildSwap throws', async () => {
+      const failingBuild = vi.fn(async () => { throw new Error('RPC down'); });
+      const executor = createSwapExecutor(failingBuild);
+
+      const result = await executor({
+        fromAsset: { symbol: 'USDC' },
+        toAsset: { symbol: 'ETH' },
+        amountIn: '100',
+        userAddress: '0x1234567890123456789012345678901234567890',
+        builderCode: BUILDER_CODE,
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toContain('RPC down');
+      }
     });
   });
 

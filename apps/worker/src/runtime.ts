@@ -12,13 +12,21 @@ import {
 } from '@sherpa/memory';
 import {
   runDCATasks,
-  sessionKeyNotConfigured,
+  createSwapExecutor,
   validateBalance,
+  type SwapParams,
+  type SwapBuildResult,
 } from '@sherpa/scheduler';
 import { runAlertCycle } from './alert-runner.js';
 import { runAutoRepayWorkerCycle } from './auto-repay-runner.js';
 import { fetchAaveHealthFactor } from './evaluators/health-factor.js';
 import { setFarcasterTokenResolver, setNotificationStore } from './notifiers/index.js';
+import {
+  buildSherpaRouterSwapPlan,
+  SHERPA_ROUTER_BASE_MAINNET,
+  SHERPA_TREASURY_BASE_MAINNET,
+  AERODROME_FACTORY_BASE,
+} from '@sherpa/tools';
 
 export type WorkerLogger = {
   info(message: string, meta?: Record<string, unknown>): void;
@@ -125,7 +133,7 @@ export function readWorkerReadiness(
     execution: {
       dca: {
         mode: 'fail-closed',
-        reason: 'session_key_executor_not_configured: unattended DCA requires audited session-key execution',
+        reason: 'session_key_signing_not_configured: DCA builds real swap calldata via SherpaRouter but requires session-key signing for unattended execution',
       },
       autoRepay: {
         mode: 'fail-closed',
@@ -170,6 +178,38 @@ export async function runDCAWorkerCycle(
   stores: Pick<WorkerStores, 'dcaStore'>,
   log: WorkerLogger,
 ): Promise<WorkerCycleResult> {
+  const aavePool = '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5';
+  const aerodromeRouter = '0xcF77a3Ba9A5CA399B7c97c74d58e5979D59C2c2B';
+
+  const buildSwap = async (params: SwapParams): Promise<SwapBuildResult> => {
+    const fromAsset = params.fromAsset as { symbol?: string };
+    const toAsset = params.toAsset as { symbol?: string };
+    const plan = await buildSherpaRouterSwapPlan({
+      fromAsset: fromAsset.symbol ?? 'USDC',
+      toAsset: toAsset.symbol ?? 'ETH',
+      amount: params.amountIn,
+      deps: {
+        routerAddress: SHERPA_ROUTER_BASE_MAINNET,
+        aerodromeRouterAddress: aerodromeRouter,
+        aerodromeFactoryAddress: AERODROME_FACTORY_BASE,
+        aavePoolAddress: aavePool,
+        rpcUrl: config.rpcUrl,
+      },
+    });
+    const swapStep = plan.steps.find((s) => s.kind === 'swap');
+    if (!swapStep) throw new Error('No swap step in SherpaRouter plan');
+    return {
+      to: swapStep.to,
+      data: swapStep.data,
+      value: swapStep.value,
+      minOut: plan.minOut ?? 0n,
+      deadline: BigInt(Math.floor(Date.now() / 1000) + 600),
+      amountInBaseUnits: plan.amountBaseUnits,
+    };
+  };
+
+  const executor = createSwapExecutor(buildSwap);
+
   return runDCATasks(
     {
       log: {
@@ -179,7 +219,7 @@ export async function runDCAWorkerCycle(
       },
     },
     stores.dcaStore,
-    sessionKeyNotConfigured,
+    executor,
     (params) => validateBalance({ ...params, rpcUrl: config.rpcUrl }),
   );
 }

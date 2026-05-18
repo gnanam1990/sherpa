@@ -72,7 +72,7 @@ describe('worker runtime', () => {
       farcaster: 'token_store_configured',
     });
     expect(readiness.execution.dca.mode).toBe('fail-closed');
-    expect(readiness.execution.dca.reason).toContain('session_key_executor_not_configured');
+    expect(readiness.execution.dca.reason).toContain('session_key_signing_not_configured');
     expect(readiness.execution.autoRepay.mode).toBe('fail-closed');
     expect(readiness.execution.autoRepay.reason).toContain('auto_repay_signer_not_configured');
   });

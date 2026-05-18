@@ -465,7 +465,7 @@ export function DCAPanel() {
         }),
       );
       await loadSchedules();
-      setStatus('DCA schedule saved. Execution stays gated until session-key signing is configured.');
+      setStatus('DCA schedule saved. Swap calldata is built via SherpaRouter; execution requires session-key signing to be configured for your wallet.');
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
     }
