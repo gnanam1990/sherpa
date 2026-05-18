@@ -48,12 +48,35 @@ Coverage gate is 60% statements. New code should keep the project above that.
 
 See [docs/sherpa/setup/STAGE_1_LAUNCH_CHECKLIST.md](../../docs/sherpa/setup/STAGE_1_LAUNCH_CHECKLIST.md) for the full Stage 1 deploy walkthrough — Vercel setup, env var provisioning, custom domain, smoke test, and rollback plan.
 
+## Design system — Glass Aurora
+
+The active design system is **Glass Aurora** — a dark, frosted-glass UI on
+a mountain-aurora sky. It is a visual replacement only (same routes, data
+flow, parser/safety/signing). Full reference:
+[docs/design/GLASS_AURORA.md](../../docs/design/GLASS_AURORA.md). Source
+design canvas was a Babel prototype, re-implemented in strict TypeScript
+under `app/_components/glass/`.
+
+It currently ships **behind a feature flag** during a one-week dogfooding
+period (legacy UI is the flag-off default):
+
+```bash
+# apps/web/.env.local
+NEXT_PUBLIC_GLASS_AURORA=1   # Glass Aurora
+NEXT_PUBLIC_GLASS_AURORA=0   # legacy UI (production-safe default)
+```
+
+`lib/feature-flags.ts` reads this. Every route flag-branches; the legacy
+render path for each is snapshotted in `app/_archive/*.legacy.tsx` for
+one-command rollback (kept until Phase 5b). Production screenshots:
+[docs/screenshots/glass-aurora/](../../docs/screenshots/glass-aurora/).
+
 ## Routes
 
 | Path | File | Notes |
 | --- | --- | --- |
-| `/` | `app/page.tsx` → `_components/HomeContent.tsx` | Home (connect + prompt) |
-| `/about` | `app/about/page.tsx` | Marketing page |
+| `/` | `app/page.tsx` → `GlassHome` \| `_components/HomeContent.tsx` | Home (connect + prompt); flag-branched |
+| `/about` | `app/about/page.tsx` → `GlassAbout` \| `LegacyAbout` | Marketing page; flag-branched |
 | `/not-found` | `app/not-found.tsx` | 404 handler |
 | `/error` | `app/error.tsx` | Segment error boundary — reports to Sentry when configured |
 | `/global-error` | `app/global-error.tsx` | Root error boundary — reports to Sentry when configured |
