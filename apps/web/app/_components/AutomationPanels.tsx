@@ -53,14 +53,19 @@ type AutoRepayRule = {
   maxPerDay: number;
 };
 
+type ChainStatus = 'mainnet' | 'testnet' | 'read-only' | 'experimental';
+
 type ChainInfo = {
   chainId: number;
   name: string;
   shortName: string;
+  rpcUrl: string;
   explorerUrl: string;
   dex?: { name: string; routerAddress: string };
   aave?: { poolAddress: string };
   bridgeProtocols: string[];
+  status?: ChainStatus;
+  note?: string;
 };
 
 type GovernanceProposal = {
@@ -680,10 +685,21 @@ export function MultiChainPanel() {
           <div className={cardClass} key={chain.chainId}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-medium">{chain.name}</h2>
-              <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
-                {chain.chainId}
-              </span>
+              <div className="flex items-center gap-2">
+                {chain.status === 'testnet' && (
+                  <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-500">Testnet</span>
+                )}
+                {chain.status === 'experimental' && (
+                  <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-xs text-orange-500">Experimental</span>
+                )}
+                <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                  {chain.chainId}
+                </span>
+              </div>
             </div>
+            {chain.note && (
+              <p className="mt-2 text-xs text-yellow-400">{chain.note}</p>
+            )}
             <p className="mt-2 text-xs text-muted-foreground">
               DEX: {chain.dex?.name ?? 'not configured'}
             </p>
@@ -691,7 +707,7 @@ export function MultiChainPanel() {
               Aave pool: {chain.aave?.poolAddress ?? 'none'}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Bridges: {chain.bridgeProtocols.join(', ')}
+              Bridges: {chain.bridgeProtocols.length > 0 ? chain.bridgeProtocols.join(', ') : 'none'}
             </p>
             <a
               className="mt-3 inline-block text-sm text-base-blue hover:underline"
