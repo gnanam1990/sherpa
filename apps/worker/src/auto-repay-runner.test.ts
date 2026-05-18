@@ -1,5 +1,10 @@
 import { describe, test, expect, vi } from 'vitest';
-import { createAutoRepayRunner, runAutoRepayWorkerCycle } from './auto-repay-runner.js';
+import {
+  createAutoRepayRunner,
+  runAutoRepayWorkerCycle,
+  createRepayTxBuilder,
+  createRepaySigner,
+} from './auto-repay-runner.js';
 import { InMemoryAutoRepayStore } from '@sherpa/memory';
 
 describe('auto-repay-runner (worker)', () => {
@@ -97,5 +102,43 @@ describe('auto-repay-runner (worker)', () => {
     });
     await runner.runOnce();
     expect(notify).toHaveBeenCalled();
+  });
+});
+
+describe('createRepaySigner', () => {
+  test('throws manual-required error when no session key deps provided', async () => {
+    const signer = createRepaySigner();
+    await expect(
+      signer({ to: '0xRouter', data: '0xabcdef', value: '0' }),
+    ).rejects.toThrow('Session key signing is not configured');
+  });
+
+  test('throws manual-required error when user has no active session key', async () => {
+    const signer = createRepaySigner({
+      executeWithSessionKey: vi.fn(async () => ({ ok: true, txHash: '0xabc' })),
+      hasActiveSessionKey: vi.fn(async () => false),
+    });
+    await expect(
+      signer({ to: '0xRouter', data: '0xabcdef', value: '0' }),
+    ).rejects.toThrow('Session key signing is not configured');
+  });
+
+  test('returns txHash when session key execution succeeds', async () => {
+    const signer = createRepaySigner({
+      executeWithSessionKey: vi.fn(async () => ({ ok: true, txHash: '0xdef456' })),
+      hasActiveSessionKey: vi.fn(async () => true),
+    });
+    const txHash = await signer({ to: '0xRouter', data: '0xabcdef', value: '0' });
+    expect(txHash).toBe('0xdef456');
+  });
+
+  test('throws error when session key execution fails', async () => {
+    const signer = createRepaySigner({
+      executeWithSessionKey: vi.fn(async () => ({ ok: false, error: 'Spend limit exceeded' })),
+      hasActiveSessionKey: vi.fn(async () => true),
+    });
+    await expect(
+      signer({ to: '0xRouter', data: '0xabcdef', value: '0' }),
+    ).rejects.toThrow('Spend limit exceeded');
   });
 });

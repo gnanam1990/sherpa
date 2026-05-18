@@ -228,8 +228,10 @@ export async function runAutoRepayProductionCycle(
   config: SherpaConfig,
   stores: Pick<WorkerStores, 'autoRepayStore' | 'notificationStore'>,
 ): Promise<WorkerCycleResult> {
+  const { createRepayTxBuilder } = await import('./auto-repay-runner.js');
   return runAutoRepayWorkerCycle(stores.autoRepayStore, {
     fetchHealthFactor: (addr) => fetchAaveHealthFactor(addr, config.baseMainnetRpcUrl),
+    buildRepayTx: createRepayTxBuilder(config.rpcUrl),
     notify: async (userAddress, message) => {
       await stores.notificationStore.logNotification({
         userAddress,

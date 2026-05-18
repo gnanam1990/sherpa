@@ -562,7 +562,7 @@ export function AutoRepayPanel() {
         }),
       );
       await loadRules();
-      setStatus('Rule saved. Automatic repayments stay disabled until signer setup is configured.');
+      setStatus('Rule saved. Repay calldata is built via SherpaRouter; execution requires session-key signing to be configured for your wallet.');
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
     }
