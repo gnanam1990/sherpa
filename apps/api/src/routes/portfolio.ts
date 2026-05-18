@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { fetchPortfolio, fetchMultiChainPortfolio } from '@sherpa/tools';
+import { fetchPortfolio } from '@sherpa/tools';
 import type { PortfolioSnapshotStore } from '@sherpa/memory';
 
 const addressPattern = /^0x[0-9a-fA-F]{40}$/;
@@ -96,7 +96,7 @@ export async function portfolioRoutes(
             valueUsd: s.total_value_usd,
           })),
         });
-      } catch (err) {
+      } catch {
         // Fall through to empty state
       }
     }

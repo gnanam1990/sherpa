@@ -8,7 +8,6 @@ import {
   MAX_CONSECUTIVE_FAILURES,
   type ExecutionResult,
   type SwapBuildResult,
-  type SwapParams,
 } from './dca-execution.js';
 import { InMemoryDCAStore } from '@sherpa/memory';
 

@@ -26,7 +26,6 @@ import { setFarcasterTokenResolver, setNotificationStore } from './notifiers/ind
 import {
   buildSherpaRouterSwapPlan,
   SHERPA_ROUTER_BASE_MAINNET,
-  SHERPA_TREASURY_BASE_MAINNET,
   AERODROME_FACTORY_BASE,
 } from '@sherpa/tools';
 

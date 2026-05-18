@@ -4,7 +4,7 @@ export type AlertRow = {
   id: string;
   user_address: string;
   condition_type: string;
-  asset: any;
+  asset: Record<string, unknown> | null;
   comparison: string;
   threshold: string;
   notification_channels: string[];

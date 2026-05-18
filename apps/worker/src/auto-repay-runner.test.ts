@@ -2,7 +2,6 @@ import { describe, test, expect, vi } from 'vitest';
 import {
   createAutoRepayRunner,
   runAutoRepayWorkerCycle,
-  createRepayTxBuilder,
   createRepaySigner,
 } from './auto-repay-runner.js';
 import { InMemoryAutoRepayStore } from '@sherpa/memory';

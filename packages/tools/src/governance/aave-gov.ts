@@ -82,17 +82,6 @@ const PROPOSAL_CREATED_EVENT = {
   ],
 } as const;
 
-const PROPOSAL_STATE_MAP: Record<number, ProposalMetadata['status']> = {
-  0: 'pending',
-  1: 'active',
-  2: 'passed',
-  3: 'passed',
-  4: 'passed',
-  5: 'rejected',
-  6: 'rejected',
-  7: 'executed',
-};
-
 export type GovernanceDeps = {
   rpcUrl?: string;
   readContract?: (params: any) => Promise<any>;

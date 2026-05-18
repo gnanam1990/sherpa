@@ -1,8 +1,7 @@
-import { createPublicClient, http, erc20Abi, formatUnits, type Address } from 'viem';
+import { createPublicClient, http, erc20Abi, type Address } from 'viem';
 import { base } from 'viem/chains';
-import { getUserAaveAccountData, AAVE_POOL_BASE } from '../aave/positions.js';
-import { resolveToken } from '../registry.js';
-import type { PortfolioSnapshot, PortfolioDeps, PortfolioToken, PortfolioPosition } from './types.js';
+import { getUserAaveAccountData } from '../aave/positions.js';
+import type { PortfolioSnapshot, PortfolioToken, PortfolioPosition } from './types.js';
 
 const BASE_CHAIN_ID = 8453;
 
