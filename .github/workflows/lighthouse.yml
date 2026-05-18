@@ -45,9 +45,6 @@ jobs:
 
       - name: Build web
         run: pnpm --filter @sherpa/web build
-        env:
-          NEXT_PUBLIC_WC_PROJECT_ID: lighthouse-ci
-          NEXT_PUBLIC_CDP_PROJECT_ID: lighthouse-ci
 
       - name: Run Lighthouse CI
         run: pnpm dlx @lhci/cli@0.15.x autorun --config=./apps/web/lighthouserc.json

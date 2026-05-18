@@ -65,7 +65,7 @@ export function HomeContent() {
     <GlassDeviceFrame maxWidth="wide">
       <div id="main-content" className="flex min-h-[calc(100dvh-2rem)] flex-col gap-4">
         <header className="flex items-center justify-between gap-3 rounded-[22px] border border-white/12 bg-white/[0.07] px-3 py-2.5 backdrop-blur-2xl">
-          <Link className="flex min-w-0 items-center gap-3" href="/" aria-label="Sherpa home">
+          <Link className="flex min-w-0 items-center gap-3" href="/" aria-label="Sherpa Base mainnet / web home">
             <SherpaGlassMark className="h-10 w-10 shrink-0 rounded-xl" />
             <div className="min-w-0">
               <h1 className="truncate text-xl font-bold tracking-tight text-white">Sherpa</h1>

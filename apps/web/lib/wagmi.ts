@@ -14,7 +14,7 @@ import { base, baseSepolia } from 'wagmi/chains';
 import { Attribution } from 'ox/erc8021';
 
 export const walletEnv = {
-  walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID ?? 'sherpa-dev-walletconnect',
+  walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID?.trim() ?? '',
   coinbaseProjectId: process.env.NEXT_PUBLIC_CDP_PROJECT_ID ?? '',
   builderCode: process.env.NEXT_PUBLIC_BUILDER_CODE ?? '',
 } as const;
@@ -30,7 +30,7 @@ const connectors = connectorsForWallets(
         coinbaseWallet,
         rabbyWallet,
         metaMaskWallet,
-        walletConnectWallet,
+        ...(walletEnv.walletConnectProjectId ? [walletConnectWallet] : []),
         injectedWallet,
       ],
     },
@@ -40,7 +40,7 @@ const connectors = connectorsForWallets(
     appDescription: 'Natural-language agent for Base.',
     appIcon: 'https://sherpa-web.vercel.app/icon-192.png',
     appUrl: 'https://sherpa-web.vercel.app',
-    projectId: walletEnv.walletConnectProjectId,
+    projectId: walletEnv.walletConnectProjectId || 'walletconnect-disabled',
   },
 );
 
