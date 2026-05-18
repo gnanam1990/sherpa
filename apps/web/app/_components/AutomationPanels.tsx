@@ -81,8 +81,18 @@ const ghostButtonClass =
   'base-btn-ghost text-sm';
 
 async function readJson<T>(res: Response): Promise<T> {
-  const body = (await res.json()) as T & { error?: string; details?: string };
-  if (!res.ok) throw new Error(body.error ?? body.details ?? `Request failed: ${res.status}`);
+  const text = await res.text();
+  let body: (T & { error?: string; details?: string }) | null = null;
+  if (text) {
+    try {
+      body = JSON.parse(text) as T & { error?: string; details?: string };
+    } catch {
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      throw new Error('Response was not valid JSON');
+    }
+  }
+  if (!res.ok) throw new Error(body?.error ?? body?.details ?? `Request failed: ${res.status}`);
+  if (!body) throw new Error('Response was empty');
   return body;
 }
 

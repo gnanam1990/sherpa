@@ -31,6 +31,24 @@ export function formatUsdBase(value: string): string {
   return `$${decimalStringFromBaseUnits(BigInt(value), 8, 2)}`;
 }
 
+async function readPositionsResponse(res: Response): Promise<PositionsResponse> {
+  const text = await res.text();
+  let body: (PositionsResponse & { error?: string; details?: string }) | null = null;
+  if (text) {
+    try {
+      body = JSON.parse(text) as PositionsResponse & { error?: string; details?: string };
+    } catch {
+      if (!res.ok) throw new Error(`Positions API unavailable (${res.status})`);
+      throw new Error('Positions API returned an invalid response');
+    }
+  }
+  if (!res.ok) {
+    throw new Error(body?.details ?? body?.error ?? `Positions API unavailable (${res.status})`);
+  }
+  if (!body) throw new Error('Positions API returned an empty response');
+  return body;
+}
+
 function formatBps(value: string): string {
   return `${decimalStringFromBaseUnits(BigInt(value), 2, 2)}%`;
 }
@@ -54,8 +72,7 @@ export function PositionsView({ initialData, addressOverride }: PositionsViewPro
     setError(null);
     try {
       const res = await fetch(`/api/positions/${address}`);
-      const json = (await res.json()) as PositionsResponse & { error?: string; details?: string };
-      if (!res.ok) throw new Error(json.details ?? json.error ?? `API ${res.status}`);
+      const json = await readPositionsResponse(res);
       setData(json);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
