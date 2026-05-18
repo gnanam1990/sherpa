@@ -7,7 +7,7 @@
     "build": "pnpm --filter @sherpa/ui --filter @sherpa/core --filter @sherpa/memory --filter @sherpa/tools build && next build",
     "start": "next start -p 3200",
     "typecheck": "tsc --noEmit",
-    "lint": "next lint",
+    "lint": "eslint app lib",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
@@ -18,7 +18,7 @@
     "@sherpa/tools": "workspace:*",
     "@sherpa/ui": "workspace:*",
     "@tanstack/react-query": "^5.0.0",
-    "next": "^15.5.18",
+    "next": "^16.2.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "viem": "^2.0.0",
