@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -117,6 +117,161 @@ body {
 
   .skip-to-content:focus {
     transform: translate(-50%, 0);
+  }
+}
+
+/*
+ * Glass Aurora design system — additive component layer.
+ * Existing .meta-label / .base-* classes above are intentionally preserved.
+ * NOTE: the reference design names its cerulean box-shadow utility
+ * `.cerulean-glow`, but `cerulean-glow` is already a Tailwind backgroundImage
+ * key (=> `bg-cerulean-glow`). To avoid the name clash this is shipped as
+ * `.cerulean-glow-fx`. Animation keyframes (caret-blink, ping-slow) are
+ * defined once in tailwind.config.ts and referenced here.
+ */
+@layer components {
+  .glass {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.04) 100%
+    );
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+      0 18px 40px rgba(0, 0, 0, 0.35);
+  }
+
+  .glass-thin {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-deep {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(255, 255, 255, 0.06) 100%
+    );
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+      0 30px 80px rgba(0, 0, 0, 0.45);
+  }
+
+  .glass-active {
+    background: linear-gradient(
+      180deg,
+      rgba(0, 225, 255, 0.16) 0%,
+      rgba(0, 225, 255, 0.04) 100%
+    );
+    box-shadow:
+      inset 0 0 0 1px rgba(0, 225, 255, 0.35),
+      0 0 16px rgba(0, 225, 255, 0.25);
+  }
+
+  .lens-border {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.05) 35%,
+      rgba(255, 255, 255, 0.05) 65%,
+      rgba(255, 255, 255, 0.4) 100%
+    );
+    padding: 1px;
+    border-radius: 24px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  }
+
+  .lens-border > * {
+    border-radius: 23px;
+  }
+
+  .cerulean-glow-fx {
+    box-shadow: 0 14px 40px rgba(0, 225, 255, 0.45);
+  }
+
+  .magenta-glow {
+    box-shadow: 0 14px 40px rgba(255, 77, 184, 0.35);
+  }
+
+  .gradient-cerulean {
+    background: linear-gradient(135deg, #cff6ff 0%, #00e1ff 55%, #4d80ff 100%);
+  }
+
+  .text-gradient-ice {
+    background: linear-gradient(180deg, #ffffff 0%, #cff6ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 6px 24px rgba(0, 225, 255, 0.35));
+  }
+
+  .aurora-root {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      #04061a 0%,
+      #0b0f38 45%,
+      #1b0c44 75%,
+      #2b0640 100%
+    );
+  }
+
+  .pulse-dot {
+    position: relative;
+  }
+
+  .pulse-dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: currentColor;
+    animation: ping-slow 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  .caret {
+    animation: caret-blink 1s steps(1) infinite;
+  }
+
+  .noise {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .chip-success {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs;
+    background: rgba(60, 203, 127, 0.14);
+    color: #3ccb7f;
+    box-shadow: inset 0 0 0 1px rgba(60, 203, 127, 0.3);
+  }
+
+  .chip-warning {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs;
+    background: rgba(245, 166, 35, 0.14);
+    color: #f5a623;
+    box-shadow: inset 0 0 0 1px rgba(245, 166, 35, 0.3);
+  }
+
+  .chip-danger {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs;
+    background: rgba(255, 90, 95, 0.14);
+    color: #ff5a5f;
+    box-shadow: inset 0 0 0 1px rgba(255, 90, 95, 0.3);
+  }
+
+  .chip-info {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs;
+    background: rgba(0, 225, 255, 0.14);
+    color: #00e1ff;
+    box-shadow: inset 0 0 0 1px rgba(0, 225, 255, 0.3);
   }
 }
 
