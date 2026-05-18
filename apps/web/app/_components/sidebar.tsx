@@ -51,7 +51,7 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '/';
 
   return (
     <aside className="hidden min-h-screen flex-col border-r border-border bg-card px-4 py-5 md:flex">

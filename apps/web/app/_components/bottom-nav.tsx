@@ -11,7 +11,7 @@ const MOBILE_ITEMS = [
 ];
 
 export function BottomNav() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '/';
 
   return (
     <nav

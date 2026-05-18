@@ -119,6 +119,13 @@ const stage2FeatureByIntent: Record<string, Stage2Feature | undefined> = {
   WITHDRAW: 'withdraw',
 };
 
+const EXAMPLE_PROMPTS = [
+  'show my positions',
+  'swap 1 usdc for eth',
+  'lend 10 usdc to aave',
+  'send 5 usdc to vitalik.eth',
+];
+
 type ConfirmingAction = PendingConfirmation & { auditLogId: number; messageId: string };
 
 type CallsStatusReceipt = {
@@ -846,7 +853,7 @@ export function Prompt({
   };
 
   return (
-    <section className="flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3">
+    <section className="flex min-h-0 w-full flex-1 flex-col gap-3">
       <MessageThread
         isLoading={chat.isLoading}
         messages={chat.messages}
@@ -855,6 +862,23 @@ export function Prompt({
         onLoadOlder={() => void chat.loadOlder()}
         showLoadOlder={chat.showLoadOlder}
       />
+
+      <div className="flex flex-wrap gap-2">
+        {EXAMPLE_PROMPTS.map((example) => (
+          <button
+            className="rounded-full border border-border bg-muted px-3 py-1.5 font-mono text-xs text-muted-foreground transition hover:border-base-blue/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!isConnected || busy}
+            key={example}
+            onClick={() => {
+              setInput(example);
+              inputRef.current?.focus();
+            }}
+            type="button"
+          >
+            / {example}
+          </button>
+        ))}
+      </div>
 
       <div className="flex items-stretch gap-2">
         <input
@@ -865,14 +889,14 @@ export function Prompt({
             if (e.key === 'Enter') void submitParse();
           }}
           placeholder={isConnected ? 'send 5 usdc to vitalik.eth' : disconnectedCopy}
-          className="min-h-11 w-full rounded-lg border border-sherpa-surface2 bg-sherpa-surface px-4 py-3 text-base text-sherpa-fg outline-none focus:border-sherpa-blue focus:ring-2 focus:ring-sherpa-blue/40 disabled:cursor-not-allowed disabled:opacity-60"
+          className="base-input min-h-11 w-full text-base disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Sherpa prompt"
           disabled={!isConnected || busy}
           title={!isConnected ? disconnectedCopy : undefined}
         />
         <button
           type="button"
-          className="min-h-11 rounded-lg bg-sherpa-blue px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+          className="base-btn min-h-11 text-sm disabled:cursor-not-allowed disabled:opacity-60"
           disabled={!isConnected || busy}
           onClick={submitParse}
         >

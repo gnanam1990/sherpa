@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useAccount, useAccountEffect } from 'wagmi';
 import { toast } from 'sonner';
 import { ConnectButton } from '@sherpa/ui';
+import { AppShell } from './app-shell';
 import { Prompt } from './Prompt';
 import { FeatureRoadmap } from './FeatureRoadmap';
+import { KpiTile } from './kpi-tile';
+import { NetWorthCard } from './net-worth-card';
 
 function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -47,62 +49,50 @@ export function HomeContent() {
   });
 
   return (
-    <main
-      id="main-content"
-      className="flex min-h-[100dvh] flex-col items-center gap-4 overflow-y-auto bg-sherpa-bg px-4 py-4 text-sherpa-fg sm:px-6"
-    >
-      <header className="flex w-full max-w-5xl items-center justify-between gap-4">
-        <span className="inline-flex items-center gap-2 text-sm font-semibold tracking-[-0.02em] text-sherpa-blue">
-          <img src="/sherpa-icon-192.svg" alt="" className="h-6 w-6 rounded-md" />
-          Sherpa
-        </span>
-        <nav className="flex items-center gap-3" aria-label="Primary">
-          <Link
-            href="/about"
-            className="rounded-full px-3 py-1 text-sm text-sherpa-muted transition hover:text-sherpa-fg"
-          >
-            About
-          </Link>
-          <ConnectButton variant="compact" />
-        </nav>
-      </header>
+    <AppShell>
+      <div className="mx-auto flex max-w-3xl flex-col gap-5">
+        <NetWorthCard value={null} network="Base mainnet" />
 
-      <section className="flex w-full max-w-2xl flex-col items-center gap-3 text-center">
-        <img
-          src="/sherpa-icon-512.svg"
-          alt=""
-          className="h-16 w-16 rounded-2xl shadow-lg shadow-blue-950/30"
-        />
-        <h1 className="m-0 text-5xl font-semibold tracking-[-0.04em] text-sherpa-blue sm:text-6xl">
-          Sherpa
-        </h1>
-        <p className="max-w-md text-base text-sherpa-muted">
-          Type anything. Sherpa does it on Base.
-        </p>
-        {!isConnected ? <ConnectButton variant="hero" /> : null}
-        {isConnected && address ? (
-          <div className="rounded-full border border-sherpa-surface2 bg-sherpa-surface px-4 py-2 text-sm text-sherpa-muted">
-            Connected as{' '}
-            <span className="font-medium text-sherpa-fg">{truncateAddress(address)}</span>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <KpiTile label="Supplied" value={null} meta="Aave V3" tone="success" />
+          <KpiTile label="Borrowed" value={null} meta="Health guarded" tone="warning" />
+          <KpiTile label="Net APY" value={null} meta="Connect wallet" />
+        </div>
+
+        <section className="base-card-soft p-4 sm:p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="meta-label mb-1">Compose intent</div>
+              <h2 className="text-2xl font-bold tracking-tight">What do you want to do?</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Send, swap, lend, borrow, repay, or check account state in plain English.
+              </p>
+            </div>
+            {!isConnected ? <ConnectButton variant="hero" /> : null}
+            {isConnected && address ? (
+              <div className="rounded-full border border-border bg-muted px-3 py-1.5 font-mono text-xs text-muted-foreground">
+                {truncateAddress(address)}
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </section>
 
-      <Prompt
-        connectionEpoch={connectionEpoch}
-        key={sessionKey}
-        isConnected={isConnected}
-        userAddress={address}
-        disconnectedCopy={
-          hasConnectedBefore ? 'Connect wallet to continue' : 'Connect wallet to start'
-        }
-      />
+          <Prompt
+            connectionEpoch={connectionEpoch}
+            key={sessionKey}
+            isConnected={isConnected}
+            userAddress={address}
+            disconnectedCopy={
+              hasConnectedBefore ? 'Connect wallet to continue' : 'Connect wallet to start'
+            }
+          />
+        </section>
 
-      <footer className="text-xs text-sherpa-muted">
-        Stage 1 send · Base Sepolia · Stage 2 · <span className="text-sherpa-success">Base mainnet</span>
-      </footer>
+        <footer className="text-center font-mono text-xs text-muted-foreground">
+          Stage 1 send: Base Sepolia / Stage 2: Base mainnet
+        </footer>
 
-      <FeatureRoadmap />
-    </main>
+        <FeatureRoadmap />
+      </div>
+    </AppShell>
   );
 }

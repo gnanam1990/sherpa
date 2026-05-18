@@ -90,28 +90,28 @@ const FEATURES: Array<{
 const STATUS_CONFIG: Record<FeatureStatus, { label: string; classes: string }> = {
   live: {
     label: 'Live',
-    classes: 'border-sherpa-success/30 bg-sherpa-success/10 text-sherpa-success',
+    classes: 'border-base-green/30 bg-base-green/10 text-base-green',
   },
   'read-only': {
     label: 'Read-only live',
-    classes: 'border-sherpa-blue/30 bg-sherpa-blue/10 text-sherpa-blue',
+    classes: 'border-base-blue/30 bg-base-blue/10 text-base-blue',
   },
   mainnet: {
     label: 'Mainnet live',
-    classes: 'border-blue-400/30 bg-blue-400/10 text-blue-300',
+    classes: 'border-base-blue-light/30 bg-base-blue-light/10 text-base-blue-light',
   },
   beta: {
     label: 'Beta live',
-    classes: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+    classes: 'border-base-cerulean/30 bg-base-cerulean/10 text-base-cerulean',
   },
 };
 
 export function FeatureRoadmap() {
   return (
-    <section className="w-full max-w-3xl border-t border-sherpa-surface2 py-8">
+    <section className="w-full border-t border-border py-8">
       <div className="mb-5">
         <h2 className="text-xl font-semibold tracking-[-0.02em]">What Sherpa can do</h2>
-        <p className="mt-1 text-sm text-sherpa-muted">
+        <p className="mt-1 text-sm text-muted-foreground">
           Stage 1 send is live on Base Sepolia. Stage 2 swap and Aave actions are live on Base mainnet with guarded amount caps.
         </p>
       </div>
@@ -120,14 +120,14 @@ export function FeatureRoadmap() {
         {FEATURES.map((feature) => {
           const status = STATUS_CONFIG[feature.status];
           const content = (
-            <div className="h-full rounded-lg border border-sherpa-surface2 bg-sherpa-surface p-3 transition hover:border-sherpa-muted">
+            <div className="h-full rounded-lg border border-border bg-card p-3 transition hover:border-base-blue/40">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium">{feature.name}</span>
                 <span className={`rounded-full border px-2 py-0.5 text-xs ${status.classes}`}>
                   {status.label}
                 </span>
               </div>
-              <p className="text-xs leading-5 text-sherpa-muted">{feature.description}</p>
+              <p className="text-xs leading-5 text-muted-foreground">{feature.description}</p>
             </div>
           );
 
@@ -141,9 +141,9 @@ export function FeatureRoadmap() {
         })}
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-xs text-sherpa-muted">
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground">
         <a
-          className="underline-offset-4 transition hover:text-sherpa-fg hover:underline"
+          className="underline-offset-4 transition hover:text-foreground hover:underline"
           href="https://github.com/gnanam1990/sherpa"
           rel="noopener noreferrer"
           target="_blank"
@@ -152,7 +152,7 @@ export function FeatureRoadmap() {
         </a>
         <span aria-hidden="true">/</span>
         <a
-          className="underline-offset-4 transition hover:text-sherpa-fg hover:underline"
+          className="underline-offset-4 transition hover:text-foreground hover:underline"
           href="https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b"
           rel="noopener noreferrer"
           target="_blank"

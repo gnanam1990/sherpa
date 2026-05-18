@@ -1,6 +1,7 @@
 'use client';
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from './theme-toggle';
 
@@ -38,6 +39,12 @@ export function TopBar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <Link
+          className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground sm:inline-flex"
+          href="/about"
+        >
+          About
+        </Link>
         <ConnectButton.Custom>
           {({ account, chain, mounted, openAccountModal, openChainModal, openConnectModal }) => {
             if (!mounted) return <div className="h-9 w-32 rounded-lg bg-muted" />;

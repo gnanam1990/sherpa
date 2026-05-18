@@ -27,6 +27,31 @@ vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { custom: vi.fn() }),
 }));
 
+vi.mock('@rainbow-me/rainbowkit', () => ({
+  ConnectButton: {
+    Custom: ({
+      children,
+    }: {
+      children: (props: {
+        account?: { displayName: string };
+        chain?: { unsupported?: boolean };
+        mounted: boolean;
+        openAccountModal: () => void;
+        openChainModal: () => void;
+        openConnectModal: () => void;
+      }) => React.ReactNode;
+    }) =>
+      children({
+        account: wagmiState.isConnected ? { displayName: '0x1234...7890' } : undefined,
+        chain: wagmiState.isConnected ? { unsupported: false } : undefined,
+        mounted: true,
+        openAccountModal: vi.fn(),
+        openChainModal: vi.fn(),
+        openConnectModal: vi.fn(),
+      }),
+  },
+}));
+
 // Sentinel for the Next Link assertion below. The component-under-test
 // must import the About link from 'next/link' (client-side route) and
 // NOT use a plain <a> (full page reload).
@@ -96,7 +121,7 @@ describe('HomeContent', () => {
 
     render(<HomeContent />);
 
-    expect(document.body.contains(screen.getByText('0x1234...7890'))).toBe(true);
+    expect(screen.getAllByText('0x1234...7890').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Connect wallet' })).toBeNull();
   });
 
