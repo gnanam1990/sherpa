@@ -7,7 +7,10 @@ const sendSponsoredCallsAsync = vi.hoisted(() => vi.fn(async () => ({ id: 'calls
 const callsStatusState = vi.hoisted(() => ({
   current: {
     data: undefined as
-      | { receipts?: Array<{ transactionHash?: string }>; status?: 'pending' | 'success' | 'failure' }
+      | {
+          receipts?: Array<{ transactionHash?: string }>;
+          status?: 'pending' | 'success' | 'failure';
+        }
       | undefined,
     error: null as Error | null,
     isError: false,
@@ -24,6 +27,8 @@ const DEFAULT_INPUT = `send 5 usdc to ${USER_ADDRESS}`;
 const TX_HASH = `0x${'b'.repeat(64)}`;
 const WALLET_REJECTED_ERROR =
   'User rejected the request. Request Arguments: chain: undefined (id: 84532) Details: User cancelled transaction Version: viem@2.48.4';
+const UNSUPPORTED_SEND_CALLS_ERROR =
+  'The method "wallet_sendCalls" does not exist / is not available. Request Arguments: chain: undefined (id: 8453) from: 0xFF525D6940Ad0e308ed6eda443c792694353F9Da Details: method [wallet_sendCalls] doesn\'t has corresponding handler Version: viem@2.48.4';
 
 function jsonResponse(body: unknown, status = 200) {
   return Promise.resolve(
@@ -325,7 +330,11 @@ describe('Prompt', () => {
       }
       if (url === '/api/parse') {
         return jsonResponse({
-          parsed: { intent: 'IDENTITY_LOOKUP', confidence: 0.9, slots: { query: 'jesse.base.eth' } },
+          parsed: {
+            intent: 'IDENTITY_LOOKUP',
+            confidence: 0.9,
+            slots: { query: 'jesse.base.eth' },
+          },
           card: {
             intent: 'IDENTITY_LOOKUP',
             primary_action_label: 'Lookup identity',
@@ -422,6 +431,34 @@ describe('Prompt', () => {
     expect(await screen.findByText('Transaction failed')).toBeTruthy();
     expect(
       screen.getByText('Transaction would fail. Try a smaller amount or different recipient.'),
+    ).toBeTruthy();
+  });
+
+  it('explains when the connected wallet does not support wallet_sendCalls', async () => {
+    sendSponsoredCallsAsync.mockRejectedValueOnce(new Error(UNSUPPORTED_SEND_CALLS_ERROR));
+    const fetchMock = vi.fn((url: string) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({ parsed: { intent: 'SEND', confidence: 1 }, card: sendCard() });
+      }
+      if (url === '/api/execute') return jsonResponse(executeBody());
+      if (url === '/api/execute/7/confirm') return jsonResponse({ ok: true });
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<Prompt isConnected userAddress={USER_ADDRESS} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    await screen.findByRole('heading', { name: 'Send 5 USDC' });
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed' }));
+
+    expect(await screen.findByText('Transaction failed')).toBeTruthy();
+    expect(
+      screen.getByText(
+        "This wallet doesn't support Sherpa's batched Base transaction flow. Connect Coinbase Smart Wallet or another EIP-5792 wallet to continue.",
+      ),
     ).toBeTruthy();
   });
 

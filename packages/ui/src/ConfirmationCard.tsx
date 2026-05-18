@@ -375,8 +375,22 @@ export function isUserRejectedExecutionError(errorDetail: string): boolean {
   );
 }
 
+export function isUnsupportedBatchCallsError(errorDetail: string): boolean {
+  const normalized = errorDetail.toLowerCase();
+  return (
+    normalized.includes('wallet_sendcalls') &&
+    (normalized.includes('does not exist') ||
+      normalized.includes('not available') ||
+      normalized.includes('no corresponding handler') ||
+      normalized.includes("doesn't has corresponding handler"))
+  );
+}
+
 export function formatExecutionError(errorDetail: string): string {
   if (isUserRejectedExecutionError(errorDetail)) return 'Wallet request was cancelled.';
+  if (isUnsupportedBatchCallsError(errorDetail)) {
+    return "This wallet doesn't support Sherpa's batched Base transaction flow. Connect Coinbase Smart Wallet or another EIP-5792 wallet to continue.";
+  }
   if (errorDetail === 'INSUFFICIENT_FUNDS_FOR_GAS') return 'Not enough ETH for gas';
   if (errorDetail === 'RECIPIENT_INVALID') return "Recipient address couldn't be resolved";
   if (errorDetail === 'SIMULATION_FAILED') {

@@ -225,6 +225,8 @@ describe('execution result cards', () => {
   it('maps known execution errors to plain English', () => {
     const rejectedError =
       'User rejected the request. Request Arguments: chain: undefined (id: 84532) Details: User cancelled transaction Version: viem@2.48.4';
+    const unsupportedBatchCallsError =
+      'The method "wallet_sendCalls" does not exist / is not available. Request Arguments: chain: undefined (id: 8453) Details: method [wallet_sendCalls] doesn\'t has corresponding handler Version: viem@2.48.4';
 
     expect(formatExecutionError('INSUFFICIENT_FUNDS_FOR_GAS')).toBe('Not enough ETH for gas');
     expect(formatExecutionError('RECIPIENT_INVALID')).toBe(
@@ -235,6 +237,9 @@ describe('execution result cards', () => {
     );
     expect(isUserRejectedExecutionError(rejectedError)).toBe(true);
     expect(formatExecutionError(rejectedError)).toBe('Wallet request was cancelled.');
+    expect(formatExecutionError(unsupportedBatchCallsError)).toBe(
+      "This wallet doesn't support Sherpa's batched Base transaction flow. Connect Coinbase Smart Wallet or another EIP-5792 wallet to continue.",
+    );
     expect(formatExecutionError('RAW_PROVIDER_ERROR')).toBe('RAW_PROVIDER_ERROR');
   });
 });

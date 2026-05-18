@@ -5,8 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // vi.hoisted factories run before module-level consts initialize, so all
 // shared fixtures live in one hoisted bag (no outer-const references).
 const H = vi.hoisted(() => {
-  const USER_ADDRESS =
-    '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as `0x${string}`;
+  const USER_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as `0x${string}`;
   const TX_HASH = `0x${'b'.repeat(64)}`;
   return {
     USER_ADDRESS,
@@ -21,9 +20,7 @@ const H = vi.hoisted(() => {
         data: {
           receipts: [{ transactionHash: TX_HASH }],
           status: 'success',
-        } as
-          | { receipts?: Array<{ transactionHash?: string }>; status?: string }
-          | undefined,
+        } as { receipts?: Array<{ transactionHash?: string }>; status?: string } | undefined,
         error: null as Error | null,
         isError: false,
       },
@@ -34,6 +31,8 @@ const { USER_ADDRESS, TX_HASH } = H;
 const walletState = H.walletState;
 const sendSponsoredCallsAsync = H.sendSponsoredCallsAsync;
 const callsStatusState = H.callsStatusState;
+const UNSUPPORTED_SEND_CALLS_ERROR =
+  'The method "wallet_sendCalls" does not exist / is not available. Request Arguments: chain: undefined (id: 8453) from: 0xFF525D6940Ad0e308ed6eda443c792694353F9Da Details: method [wallet_sendCalls] doesn\'t has corresponding handler Version: viem@2.48.4';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/' }));
 vi.mock('next/link', () => ({
@@ -141,9 +140,7 @@ describe('GlassHome integration', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.stubGlobal(
       'fetch',
-      vi.fn(() =>
-        jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] }),
-      ),
+      vi.fn(() => jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] })),
     );
 
     render(<GlassHome />);
@@ -158,16 +155,17 @@ describe('GlassHome integration', () => {
   it('surfaces the disconnected limitation honestly', async () => {
     walletState.address = undefined;
     walletState.isConnected = false;
-    vi.stubGlobal('fetch', vi.fn(() => jsonResponse({ items: [] })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => jsonResponse({ items: [] })),
+    );
 
     render(<GlassHome />);
     await flush();
 
     expect(screen.getByText('Connect Wallet')).toBeTruthy();
     expect(screen.getByText('Connect your wallet to start.')).toBeTruthy();
-    expect((screen.getByLabelText('Intent') as HTMLInputElement).disabled).toBe(
-      true,
-    );
+    expect((screen.getByLabelText('Intent') as HTMLInputElement).disabled).toBe(true);
   });
 
   it('ComposerPill submit triggers the parser; Confirm triggers signing', async () => {
@@ -207,9 +205,7 @@ describe('GlassHome integration', () => {
 
     // Parser was hit and the real confirmation surface rendered.
     expect(fetchMock).toHaveBeenCalledWith('/api/parse', expect.anything());
-    expect(
-      await screen.findByText(/Confirm in Smart Wallet/),
-    ).toBeTruthy();
+    expect(await screen.findByText(/Confirm in Smart Wallet/)).toBeTruthy();
     expect(screen.getByText('Allowlisted token')).toBeTruthy();
     expect(screen.getByText('Confirm the recipient address.')).toBeTruthy();
 
@@ -219,5 +215,51 @@ describe('GlassHome integration', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/execute', expect.anything());
     expect(sendSponsoredCallsAsync).toHaveBeenCalledTimes(1);
     expect(await screen.findByText('Sent 5 USDC')).toBeTruthy();
+  });
+
+  it('shows a clear wallet capability message when wallet_sendCalls is unavailable', async () => {
+    sendSponsoredCallsAsync.mockRejectedValueOnce(new Error(UNSUPPORTED_SEND_CALLS_ERROR));
+    const fetchMock = vi.fn((url: string) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({
+          parsed: { intent: 'SEND', confidence: 1 },
+          card: sendCard(),
+        });
+      }
+      if (url === '/api/execute') {
+        return jsonResponse({
+          ok: true,
+          auditLogId: 7,
+          planHash: `0x${'a'.repeat(64)}`,
+          card: sendCard(true),
+        });
+      }
+      if (url === '/api/execute/7/confirm') {
+        return jsonResponse({ ok: true });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<GlassHome />);
+    await flush();
+
+    fireEvent.change(screen.getByLabelText('Intent'), {
+      target: { value: `send 5 usdc to ${USER_ADDRESS}` },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Preview/ }));
+    await screen.findByText(/Confirm in Smart Wallet/);
+
+    fireEvent.click(screen.getByText(/Confirm in Smart Wallet/));
+
+    expect(await screen.findByText('Transaction failed')).toBeTruthy();
+    expect(
+      screen.getByText(
+        "This wallet doesn't support Sherpa's batched Base transaction flow. Connect Coinbase Smart Wallet or another EIP-5792 wallet to continue.",
+      ),
+    ).toBeTruthy();
   });
 });
