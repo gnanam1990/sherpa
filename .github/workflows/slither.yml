@@ -17,7 +17,7 @@ jobs:
   slither:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -27,7 +27,7 @@ jobs:
         run: forge install --no-git
 
       - name: Run Slither
-        uses: crytic/slither-action@v0.4.0
+        uses: crytic/slither-action@v0.4.2
         with:
           target: packages/contracts
           slither-args: >
@@ -39,6 +39,6 @@ jobs:
 
       - name: Upload SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
