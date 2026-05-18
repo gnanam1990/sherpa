@@ -1,5 +1,5 @@
 FROM node:26-alpine AS base
-RUN corepack enable && corepack prepare pnpm@9.15.1 --activate
+RUN npm install -g pnpm@9.15.1
 WORKDIR /app
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.json tsconfig.base.json ./
