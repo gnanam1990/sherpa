@@ -101,6 +101,8 @@ const config: Config = {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['IBM Plex Mono', 'monospace'],
+        // Glass Aurora: signature display face (additive; no prior serif key)
+        serif: ['"Instrument Serif"', 'ui-serif', 'Georgia', 'serif'],
       },
       borderRadius: {
         sm: '6px',
