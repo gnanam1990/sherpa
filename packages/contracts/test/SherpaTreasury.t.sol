@@ -74,13 +74,7 @@ contract SherpaTreasuryTest is Test {
 
     function test_withdraw_revertsInsufficientBalance() public {
         vm.prank(owner);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                SherpaTreasury.InsufficientBalance.selector,
-                2000e18,
-                1000e18
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(SherpaTreasury.InsufficientBalance.selector, 2000e18, 1000e18));
         treasury.withdraw(address(tokenA), recipient, 2000e18);
     }
 
@@ -186,6 +180,24 @@ contract SherpaTreasuryTest is Test {
 
         vm.prank(nonOwner);
         vm.expectRevert();
+        treasury.batchWithdraw(tokens, recipient, amounts);
+    }
+
+    function testBatchWithdraw_revertsWhenBatchTooLarge() public {
+        uint256 tooMany = treasury.MAX_BATCH_WITHDRAW_TOKENS() + 1;
+        address[] memory tokens = new address[](tooMany);
+        uint256[] memory amounts = new uint256[](tooMany);
+
+        for (uint256 i = 0; i < tooMany;) {
+            tokens[i] = address(tokenA);
+            amounts[i] = 1;
+            unchecked {
+                ++i;
+            }
+        }
+
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(SherpaTreasury.BatchTooLarge.selector, tooMany, 20));
         treasury.batchWithdraw(tokens, recipient, amounts);
     }
 

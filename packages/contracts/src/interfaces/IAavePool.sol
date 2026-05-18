@@ -4,6 +4,30 @@ pragma solidity ^0.8.24;
 /// @title IAavePool
 /// @notice Interface for Aave V3 Pool
 interface IAavePool {
+    /// @notice Aave V3 reserve configuration wrapper.
+    struct ReserveConfigurationMap {
+        uint256 data;
+    }
+
+    /// @notice Aave V3 reserve data layout.
+    struct ReserveData {
+        ReserveConfigurationMap configuration;
+        uint128 liquidityIndex;
+        uint128 currentLiquidityRate;
+        uint128 variableBorrowIndex;
+        uint128 currentVariableBorrowRate;
+        uint128 currentStableBorrowRate;
+        uint40 lastUpdateTimestamp;
+        uint16 id;
+        address aTokenAddress;
+        address stableDebtTokenAddress;
+        address variableDebtTokenAddress;
+        address interestRateStrategyAddress;
+        uint128 accruedToTreasury;
+        uint128 unbacked;
+        uint128 isolationModeTotalDebt;
+    }
+
     /// @notice Supplies an `amount` of underlying asset into the reserve,
     /// @param asset The address of the underlying asset to supply
     /// @param amount The amount to be supplied
@@ -57,26 +81,6 @@ interface IAavePool {
             uint256 healthFactor
         );
 
-    /// @notice Returns Aave reserve data for a given underlying asset
-    /// @dev Aave V3 encodes aTokenAddress as the ninth static return word.
-    function getReserveData(address asset)
-        external
-        view
-        returns (
-            uint256 configuration,
-            uint128 liquidityIndex,
-            uint128 currentLiquidityRate,
-            uint128 variableBorrowIndex,
-            uint128 currentVariableBorrowRate,
-            uint128 currentStableBorrowRate,
-            uint40 lastUpdateTimestamp,
-            uint16 id,
-            address aTokenAddress,
-            address stableDebtTokenAddress,
-            address variableDebtTokenAddress,
-            address interestRateStrategyAddress,
-            uint128 accruedToTreasury,
-            uint128 unbacked,
-            uint128 isolationModeTotalDebt
-        );
+    /// @notice Returns Aave reserve data for a given underlying asset.
+    function getReserveData(address asset) external view returns (ReserveData memory);
 }

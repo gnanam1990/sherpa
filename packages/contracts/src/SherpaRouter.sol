@@ -40,6 +40,15 @@ contract SherpaRouter is Ownable, Pausable, ReentrancyGuard, ISherpaRouter {
     /// @notice Builder attribution code for Sherpa protocol
     bytes32 public constant BUILDER_CODE = "bc_97ju6eu2";
 
+    struct AaveAccountData {
+        uint256 totalCollateralBase;
+        uint256 totalDebtBase;
+        uint256 availableBorrowsBase;
+        uint256 currentLiquidationThreshold;
+        uint256 ltv;
+        uint256 healthFactor;
+    }
+
     // ─── Immutables ─────────────────────────────────────────────────────
 
     /// @notice The Aerodrome V2 router address
@@ -163,7 +172,15 @@ contract SherpaRouter is Ownable, Pausable, ReentrancyGuard, ISherpaRouter {
             uint256 healthFactor
         )
     {
-        return AAVE_POOL.getUserAccountData(user);
+        AaveAccountData memory data = _getUserAccountData(user);
+        return (
+            data.totalCollateralBase,
+            data.totalDebtBase,
+            data.availableBorrowsBase,
+            data.currentLiquidationThreshold,
+            data.ltv,
+            data.healthFactor
+        );
     }
 
     // ─── Core DeFi Functions ────────────────────────────────────────────
@@ -224,9 +241,9 @@ contract SherpaRouter is Ownable, Pausable, ReentrancyGuard, ISherpaRouter {
             IERC20(aToken).safeTransfer(msg.sender, amount - actualAmount);
         }
 
-        (, uint256 totalDebt,,,, uint256 postHf) = AAVE_POOL.getUserAccountData(msg.sender);
-        if (totalDebt > 0 && postHf < MIN_WITHDRAW_HEALTH_FACTOR) {
-            revert UnhealthyPosition(postHf);
+        AaveAccountData memory postWithdraw = _getUserAccountData(msg.sender);
+        if (postWithdraw.totalDebtBase > 0 && postWithdraw.healthFactor < MIN_WITHDRAW_HEALTH_FACTOR) {
+            revert UnhealthyPosition(postWithdraw.healthFactor);
         }
 
         emit WithdrawExecuted(msg.sender, asset, actualAmount, BUILDER_CODE);
@@ -242,8 +259,8 @@ contract SherpaRouter is Ownable, Pausable, ReentrancyGuard, ISherpaRouter {
         AAVE_POOL.borrow(asset, amount, interestRateMode, 0, msg.sender);
         IERC20(asset).safeTransfer(msg.sender, amount);
 
-        (,,,,, uint256 postHf) = AAVE_POOL.getUserAccountData(msg.sender);
-        if (postHf < MIN_HEALTH_FACTOR) revert UnhealthyPosition(postHf);
+        AaveAccountData memory postBorrow = _getUserAccountData(msg.sender);
+        if (postBorrow.healthFactor < MIN_HEALTH_FACTOR) revert UnhealthyPosition(postBorrow.healthFactor);
 
         emit BorrowExecuted(msg.sender, asset, amount, interestRateMode, BUILDER_CODE);
     }
@@ -291,14 +308,19 @@ contract SherpaRouter is Ownable, Pausable, ReentrancyGuard, ISherpaRouter {
     }
 
     function _getReserveAToken(address asset) internal view returns (address aToken) {
-        (bool ok, bytes memory data) =
-            address(AAVE_POOL).staticcall(abi.encodeWithSignature("getReserveData(address)", asset));
-        if (!ok || data.length < 9 * 32) revert ReserveDataUnavailable(asset);
-
-        assembly {
-            aToken := mload(add(data, 0x120))
-        }
-
+        IAavePool.ReserveData memory reserve = AAVE_POOL.getReserveData(asset);
+        aToken = reserve.aTokenAddress;
         if (aToken == address(0)) revert ReserveDataUnavailable(asset);
+    }
+
+    function _getUserAccountData(address user) internal view returns (AaveAccountData memory data) {
+        (
+            data.totalCollateralBase,
+            data.totalDebtBase,
+            data.availableBorrowsBase,
+            data.currentLiquidationThreshold,
+            data.ltv,
+            data.healthFactor
+        ) = AAVE_POOL.getUserAccountData(user);
     }
 }

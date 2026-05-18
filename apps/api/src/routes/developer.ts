@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { createHash } from 'node:crypto';
+import { randomBytes, scryptSync } from 'node:crypto';
 import { createApiKey, createWebhook } from '@sherpa/tools';
 import { z } from 'zod';
 
@@ -47,8 +47,10 @@ const CreateWebhookBody = z.object({
 
 const IdParams = z.object({ id: z.string().min(1).max(120) });
 
-function sha256(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
+function hashSecretForStorage(value: string): string {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(value, salt, 32).toString('hex');
+  return `scrypt:${salt}:${hash}`;
 }
 
 function previewSecret(value: string): string {
@@ -97,7 +99,7 @@ export async function developerRoutes(app: FastifyInstance): Promise<void> {
       usageCount: created.usageCount,
       createdAt: created.createdAt,
       expiresAt: created.expiresAt,
-      keyHash: sha256(created.key),
+      keyHash: hashSecretForStorage(created.key),
       keyPreview: previewSecret(created.key),
       revoked: false,
     };
@@ -137,7 +139,7 @@ export async function developerRoutes(app: FastifyInstance): Promise<void> {
       url: created.url,
       events: created.events,
       secretPreview: previewSecret(created.secret),
-      secretHash: sha256(created.secret),
+      secretHash: hashSecretForStorage(created.secret),
       status: 'active',
       failureCount: created.failureCount,
       createdAt: Date.now(),
@@ -178,12 +180,13 @@ export async function developerRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get('/api/developer/usage', async (req: FastifyRequest, reply: FastifyReply) => {
-    const activeKeys = Array.from(apiKeys.values()).filter(key => !key.revoked);
+    const activeKeys = Array.from(apiKeys.values()).filter((key) => !key.revoked);
     return reply.send({
       totalRequests: Array.from(apiKeys.values()).reduce((sum, key) => sum + key.usageCount, 0),
       requestsToday: 0,
       activeKeys: activeKeys.length,
-      activeWebhooks: Array.from(webhooks.values()).filter(webhook => webhook.status === 'active').length,
+      activeWebhooks: Array.from(webhooks.values()).filter((webhook) => webhook.status === 'active')
+        .length,
       rateLimitRemaining: activeKeys.reduce((sum, key) => sum + key.rateLimit, 0),
       plan: 'free',
     });

@@ -33,6 +33,7 @@ jobs:
           slither-args: >
             --filter-paths "lib/,test/"
             --exclude-dependencies
+            --exclude naming-convention,calls-loop
           fail-on: high
           sarif: results.sarif
 

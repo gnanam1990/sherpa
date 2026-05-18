@@ -78,12 +78,9 @@ type GovernanceProposal = {
 };
 
 const cardClass = 'base-card-soft p-4';
-const fieldClass =
-  'base-input w-full text-sm';
-const buttonClass =
-  'base-btn text-sm disabled:cursor-not-allowed disabled:opacity-50';
-const ghostButtonClass =
-  'base-btn-ghost text-sm';
+const fieldClass = 'base-input w-full text-sm';
+const buttonClass = 'base-btn text-sm disabled:cursor-not-allowed disabled:opacity-50';
+const ghostButtonClass = 'base-btn-ghost text-sm';
 
 async function readJson<T>(res: Response): Promise<T> {
   const text = await res.text();
@@ -149,6 +146,20 @@ function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
   return output;
 }
 
+function isEmailRecipient(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length < 3 || trimmed.length > 254) return false;
+  if (trimmed.includes(' ') || trimmed.includes('\t') || trimmed.includes('\n')) return false;
+
+  const atIndex = trimmed.indexOf('@');
+  if (atIndex <= 0) return false;
+  if (atIndex !== trimmed.lastIndexOf('@')) return false;
+
+  const domain = trimmed.slice(atIndex + 1);
+  if (domain.length < 3 || domain.startsWith('.') || domain.endsWith('.')) return false;
+  return domain.includes('.');
+}
+
 export function AlertsPanel() {
   const { address, isConnected } = useWalletAddress();
   const [asset, setAsset] = useState('ETH');
@@ -172,7 +183,7 @@ export function AlertsPanel() {
   const canCreate =
     canUse &&
     (notificationChannel !== 'telegram' || telegramChatId.trim().length > 0) &&
-    (notificationChannel !== 'email' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress.trim())) &&
+    (notificationChannel !== 'email' || isEmailRecipient(emailAddress)) &&
     (notificationChannel !== 'web-push' || Boolean(pushSubscription)) &&
     (notificationChannel !== 'farcaster' || farcasterStatus === 'active');
 
@@ -283,9 +294,7 @@ export function AlertsPanel() {
               ...(notificationChannel === 'telegram'
                 ? { telegramChatId: telegramChatId.trim() }
                 : {}),
-              ...(notificationChannel === 'email'
-                ? { email: emailAddress.trim() }
-                : {}),
+              ...(notificationChannel === 'email' ? { email: emailAddress.trim() } : {}),
               ...(notificationChannel === 'web-push' && pushSubscription
                 ? { pushSubscription }
                 : {}),
@@ -342,9 +351,7 @@ export function AlertsPanel() {
           <select
             className={fieldClass}
             value={notificationChannel}
-            onChange={(e) =>
-              setNotificationChannel(e.target.value as AlertNotificationChannel)
-            }
+            onChange={(e) => setNotificationChannel(e.target.value as AlertNotificationChannel)}
           >
             <option value="push">In-app</option>
             <option value="web-push">Browser push</option>
@@ -470,7 +477,9 @@ export function DCAPanel() {
         }),
       );
       await loadSchedules();
-      setStatus('DCA schedule saved. Swap calldata is built via SherpaRouter; execution requires session-key signing to be configured for your wallet.');
+      setStatus(
+        'DCA schedule saved. Swap calldata is built via SherpaRouter; execution requires session-key signing to be configured for your wallet.',
+      );
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
     }
@@ -567,7 +576,9 @@ export function AutoRepayPanel() {
         }),
       );
       await loadRules();
-      setStatus('Rule saved. Repay calldata is built via SherpaRouter; execution requires session-key signing to be configured for your wallet.');
+      setStatus(
+        'Rule saved. Repay calldata is built via SherpaRouter; execution requires session-key signing to be configured for your wallet.',
+      );
     } catch (err) {
       setStatus(err instanceof Error ? err.message : String(err));
     }
@@ -640,10 +651,7 @@ function RuleList({
       ) : (
         <div className="space-y-2">
           {items.map((item) => (
-            <div
-              className="rounded-md border border-border bg-background p-3"
-              key={item.id}
-            >
+            <div className="rounded-md border border-border bg-background p-3" key={item.id}>
               <div className="font-medium">{item.title}</div>
               <div className="mt-1 text-xs text-muted-foreground">{item.meta}</div>
               <div className="mt-2 font-mono text-xs text-muted-foreground">{item.id}</div>
@@ -687,19 +695,21 @@ export function MultiChainPanel() {
               <h2 className="font-medium">{chain.name}</h2>
               <div className="flex items-center gap-2">
                 {chain.status === 'testnet' && (
-                  <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-500">Testnet</span>
+                  <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-xs text-yellow-500">
+                    Testnet
+                  </span>
                 )}
                 {chain.status === 'experimental' && (
-                  <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-xs text-orange-500">Experimental</span>
+                  <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-xs text-orange-500">
+                    Experimental
+                  </span>
                 )}
                 <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
                   {chain.chainId}
                 </span>
               </div>
             </div>
-            {chain.note && (
-              <p className="mt-2 text-xs text-yellow-400">{chain.note}</p>
-            )}
+            {chain.note && <p className="mt-2 text-xs text-yellow-400">{chain.note}</p>}
             <p className="mt-2 text-xs text-muted-foreground">
               DEX: {chain.dex?.name ?? 'not configured'}
             </p>
@@ -707,7 +717,8 @@ export function MultiChainPanel() {
               Aave pool: {chain.aave?.poolAddress ?? 'none'}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Bridges: {chain.bridgeProtocols.length > 0 ? chain.bridgeProtocols.join(', ') : 'none'}
+              Bridges:{' '}
+              {chain.bridgeProtocols.length > 0 ? chain.bridgeProtocols.join(', ') : 'none'}
             </p>
             <a
               className="mt-3 inline-block text-sm text-base-blue hover:underline"
@@ -805,8 +816,8 @@ export function TelegramPanel() {
       <div className={cardClass}>
         <h2 className="font-medium">Bot is online</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Open <span className="font-mono text-foreground">@sherpaonbasebot</span> in Telegram to use
-          Sherpa from chat. Transaction signing still happens through the web app, so wallet
+          Open <span className="font-mono text-foreground">@sherpaonbasebot</span> in Telegram to
+          use Sherpa from chat. Transaction signing still happens through the web app, so wallet
           approval stays explicit.
         </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
