@@ -1,12 +1,20 @@
 import { AppShell } from '../_components/app-shell';
-import { Stage2ComingSoon } from '../_components/Stage2ComingSoon';
+import { IntentPageFrame } from '../_components/intent-page-frame';
 
 export default function SwapPage() {
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl">
-        <Stage2ComingSoon feature="swap" mainnetEnabled />
-      </div>
+      <IntentPageFrame
+        feature="swap"
+        title="Swap"
+        subtitle="Build a token swap through the verified SherpaRouter on Base mainnet."
+        prompt="swap 1 usdc for eth"
+        guardrails={[
+          'Allowlisted tokens only: USDC, WETH, and DAI.',
+          'Slippage and route endpoints are validated before execution.',
+          'Use small amounts first and review every wallet prompt.',
+        ]}
+      />
     </AppShell>
   );
 }

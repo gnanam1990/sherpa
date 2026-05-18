@@ -1,12 +1,20 @@
 import { AppShell } from '../_components/app-shell';
-import { Stage2ComingSoon } from '../_components/Stage2ComingSoon';
+import { IntentPageFrame } from '../_components/intent-page-frame';
 
 export default function BorrowPage() {
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl">
-        <Stage2ComingSoon feature="borrow" mainnetEnabled />
-      </div>
+      <IntentPageFrame
+        feature="borrow"
+        title="Borrow"
+        subtitle="Borrow against Aave collateral with health-factor checks."
+        prompt="borrow 5 usdc"
+        guardrails={[
+          'Borrow is blocked if projected health factor is below the router threshold.',
+          'The mainnet router enforces a 1.5 minimum health factor.',
+          'Only verified Aave V3 assets are accepted.',
+        ]}
+      />
     </AppShell>
   );
 }

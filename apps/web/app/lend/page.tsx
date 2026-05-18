@@ -1,12 +1,20 @@
 import { AppShell } from '../_components/app-shell';
-import { Stage2ComingSoon } from '../_components/Stage2ComingSoon';
+import { IntentPageFrame } from '../_components/intent-page-frame';
 
 export default function LendPage() {
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl">
-        <Stage2ComingSoon feature="lend" mainnetEnabled />
-      </div>
+      <IntentPageFrame
+        feature="lend"
+        title="Lend"
+        subtitle="Supply assets to Aave V3 from the Sherpa chat flow."
+        prompt="lend 10 usdc to aave"
+        guardrails={[
+          'Aave assets are allowlisted before any router call.',
+          'Approvals are explicit and visible in the wallet prompt.',
+          'Treasury fees stay capped at 10 bps.',
+        ]}
+      />
     </AppShell>
   );
 }

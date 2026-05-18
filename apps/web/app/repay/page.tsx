@@ -1,12 +1,20 @@
 import { AppShell } from '../_components/app-shell';
-import { Stage2ComingSoon } from '../_components/Stage2ComingSoon';
+import { IntentPageFrame } from '../_components/intent-page-frame';
 
 export default function RepayPage() {
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl">
-        <Stage2ComingSoon feature="repay" mainnetEnabled />
-      </div>
+      <IntentPageFrame
+        feature="repay"
+        title="Repay"
+        subtitle="Pay down Aave V3 debt through the same explicit review flow."
+        prompt="repay 5 usdc"
+        guardrails={[
+          'Repay amounts are bounded by current debt.',
+          'Excess repayment is refunded by the router.',
+          'Every transaction goes through the confirmation card first.',
+        ]}
+      />
     </AppShell>
   );
 }
