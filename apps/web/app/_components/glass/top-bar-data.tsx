@@ -1,6 +1,12 @@
 'use client';
 
-import { useAccount, useBalance, useChainId, useEnsName } from 'wagmi';
+import {
+  useAccount,
+  useBalance,
+  useChainId,
+  useDisconnect,
+  useEnsName,
+} from 'wagmi';
 import { ConnectButton } from '@sherpa/ui';
 import type { ChainTone } from './brand';
 import type { TopBarProps } from './top-bar';
@@ -25,11 +31,12 @@ export function chainMetaFromId(chainId: number): {
 
 export type GlassTopBarData = Pick<
   TopBarProps,
-  'account' | 'chain' | 'live' | 'right'
+  'account' | 'chain' | 'live' | 'onDisconnect' | 'right'
 > & { isConnected: boolean; address?: `0x${string}` };
 
 export function useGlassTopBar(): GlassTopBarData {
   const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const { data: ensName } = useEnsName({ address, chainId: 1 });
   const { data: balance } = useBalance({ address });
@@ -48,5 +55,6 @@ export function useGlassTopBar(): GlassTopBarData {
     chain: chainMetaFromId(chainId),
     live: isConnected,
     right: !isConnected ? <ConnectButton variant="compact" /> : undefined,
+    onDisconnect: disconnect,
   };
 }

@@ -25,6 +25,7 @@ export function GlassAutomationShell({ children }: { children: ReactNode }) {
         account={top.account}
         chain={top.chain}
         live={top.live}
+        onDisconnect={top.onDisconnect}
         right={top.right}
       />
       <div className="relative flex-1 overflow-y-auto px-4 py-6 sm:px-7">

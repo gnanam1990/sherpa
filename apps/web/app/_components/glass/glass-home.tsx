@@ -6,6 +6,7 @@ import {
   useAccountEffect,
   useBalance,
   useChainId,
+  useDisconnect,
   useEnsName,
 } from 'wagmi';
 import { ConnectButton, type SerializedConfirmationCardProps } from '@sherpa/ui';
@@ -234,6 +235,7 @@ function GlassThread({
   ens,
   balanceLabel,
   chainIdHex,
+  onDisconnect,
 }: {
   connectionEpoch: number;
   isConnected: boolean;
@@ -241,6 +243,7 @@ function GlassThread({
   ens: string | null;
   balanceLabel?: string;
   chainIdHex: string | undefined;
+  onDisconnect: () => void;
 }) {
   const { input, setInput, busy, submitParse, confirm, cancel, chat } =
     usePromptFlow({
@@ -260,6 +263,7 @@ function GlassThread({
         }
         chain={chainMeta(chainIdHex)}
         live={isConnected}
+        onDisconnect={onDisconnect}
         right={!isConnected ? <ConnectButton variant="compact" /> : undefined}
       />
 
@@ -300,6 +304,7 @@ function GlassThread({
 
 export function GlassHome() {
   const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const { data: ensName } = useEnsName({ address, chainId: 1 });
   const { data: balance } = useBalance({ address });
@@ -337,10 +342,11 @@ export function GlassHome() {
         connectionEpoch={connectionEpoch}
         isConnected={isConnected}
         address={address}
-        ens={ensName ?? null}
-        balanceLabel={balanceLabel}
-        chainIdHex={chainIdHex}
-      />
+          ens={ensName ?? null}
+          balanceLabel={balanceLabel}
+          chainIdHex={chainIdHex}
+          onDisconnect={disconnect}
+        />
     </AppFrame>
   );
 }

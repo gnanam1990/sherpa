@@ -59,6 +59,7 @@ vi.mock('wagmi', () => ({
   useAccountEffect: () => undefined,
   useBalance: () => ({ data: { formatted: '0.2500', symbol: 'ETH' } }),
   useChainId: () => 8453,
+  useDisconnect: () => ({ disconnect: vi.fn() }),
   useEnsName: () => ({ data: null }),
 }));
 vi.mock('../../../../lib/wagmi', () => ({

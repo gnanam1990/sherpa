@@ -27,6 +27,7 @@ vi.mock('wagmi', () => ({
   }),
   useBalance: () => ({ data: undefined }),
   useChainId: () => 8453,
+  useDisconnect: () => ({ disconnect: vi.fn() }),
   useEnsName: () => ({ data: null }),
 }));
 vi.mock('@sherpa/ui', async (importOriginal) => {

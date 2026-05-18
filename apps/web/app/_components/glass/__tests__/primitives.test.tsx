@@ -249,8 +249,14 @@ describe('shell + nav', () => {
     expect(screen.getByText('footer-slot')).toBeTruthy();
   });
 
-  it('TopBar: connected vs disconnected, chain, live, no breadcrumb', () => {
+  it('TopBar: connected vs disconnected, account menu, chain, live, no breadcrumb', async () => {
     nav.pathname = '/swap';
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    const onDisconnect = vi.fn();
     const { rerender } = render(
       <TopBar
         account={{
@@ -260,10 +266,21 @@ describe('shell + nav', () => {
         }}
         chain={{ label: 'Base', tone: 'mainnet' }}
         live
+        onDisconnect={onDisconnect}
       />,
     );
     expect(screen.getByText('gnanam.base.eth')).toBeTruthy();
     expect(screen.getByText('Swap')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /gnanam.base.eth/i }));
+    expect(screen.getByRole('menu', { name: /wallet account menu/i })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: /view on basescan/i }).getAttribute('href')).toBe(
+      'https://basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: /copy address/i }));
+    expect(writeText).toHaveBeenCalledWith('0x036CbD53842c5426634e7929541eC2318f3dCF7e');
+    expect(await screen.findByText('copied')).toBeTruthy();
+    fireEvent.click(screen.getByRole('menuitem', { name: /disconnect/i }));
+    expect(onDisconnect).toHaveBeenCalledTimes(1);
     rerender(
       <TopBar
         account={null}

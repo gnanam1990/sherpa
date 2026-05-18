@@ -32,6 +32,7 @@ vi.mock('wagmi', () => ({
   }),
   useBalance: () => ({ data: { formatted: '0.25', symbol: 'ETH' } }),
   useChainId: () => 8453,
+  useDisconnect: () => ({ disconnect: vi.fn() }),
   useEnsName: () => ({ data: null }),
 }));
 vi.mock('@sherpa/ui', async (importOriginal) => {
