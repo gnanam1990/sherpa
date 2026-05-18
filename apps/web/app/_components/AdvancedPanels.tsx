@@ -251,7 +251,7 @@ export function SessionKeyPanel() {
 
   return (
     <PanelShell
-      description="Configure scoped session-key policies for future unattended execution. Sherpa records permissions and limits only; key generation and signing remain outside this UI."
+      description="Configure scoped session-key policies for future unattended execution. Sherpa records permissions and limits only; key generation and signing remain outside this UI. Full on-chain session-key support depends on Coinbase Smart Wallet's session key feature — track availability at https://docs.base.org."
       eyebrow="Stage 5 guarded"
       title="Session keys"
     >
