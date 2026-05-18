@@ -24,6 +24,7 @@ describe('worker runtime', () => {
       alertsMs: 60_000,
       dcaMs: 60_000,
       autoRepayMs: 60_000,
+      snapshotMs: 3_600_000,
     });
     expect(
       readWorkerIntervals({
@@ -35,6 +36,7 @@ describe('worker runtime', () => {
       alertsMs: 15_000,
       dcaMs: 60_000,
       autoRepayMs: 60_000,
+      snapshotMs: 3_600_000,
     });
   });
 
@@ -43,6 +45,7 @@ describe('worker runtime', () => {
       alerts: true,
       dca: true,
       autoRepay: true,
+      snapshot: true,
     });
     expect(
       readWorkerToggles({
@@ -54,6 +57,7 @@ describe('worker runtime', () => {
       alerts: false,
       dca: false,
       autoRepay: false,
+      snapshot: true,
     });
   });
 
