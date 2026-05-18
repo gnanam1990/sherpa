@@ -16,7 +16,7 @@
     "@sherpa/identity": "workspace:*",
     "@sherpa/tools": "workspace:*",
     "grammy": "^1.21.0",
-    "zod": "^3.22.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "tsx": "^4.0.0",
