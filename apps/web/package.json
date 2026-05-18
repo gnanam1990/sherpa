@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.2.11",
-    "@sentry/nextjs": "^9",
+    "@sentry/nextjs": "^10",
     "@sherpa/core": "workspace:*",
     "@sherpa/ui": "workspace:*",
     "@tanstack/react-query": "^5.100.10",
