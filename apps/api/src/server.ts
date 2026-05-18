@@ -906,7 +906,7 @@ export function buildServer(options: BuildServerOptions = {}): FastifyInstance {
       ? async (fid) => getActiveNotificationToken(getPool(config), BigInt(fid))
       : undefined,
   });
-  portfolioRoutes(app);
+  portfolioRoutes(app, { rpcUrl: config.rpcUrl });
   governanceRoutes(app);
   analyticsRoutes(app);
   securityRoutes(app);

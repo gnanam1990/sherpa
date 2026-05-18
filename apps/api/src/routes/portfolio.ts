@@ -1,55 +1,95 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { fetchPortfolio, fetchMultiChainPortfolio } from '@sherpa/tools';
 
-export async function portfolioRoutes(app: FastifyInstance): Promise<void> {
+const addressPattern = /^0x[0-9a-fA-F]{40}$/;
+
+const portfolioCache = new Map<string, { data: unknown; expires: number }>();
+const CACHE_TTL_MS = 60_000;
+
+export async function portfolioRoutes(
+  app: FastifyInstance,
+  opts?: { rpcUrl?: string },
+): Promise<void> {
+  const rpcUrl = opts?.rpcUrl;
+
   app.get('/api/portfolio/:address', async (req: FastifyRequest, reply: FastifyReply) => {
     const { address } = req.params as { address: string };
+    if (!addressPattern.test(address)) {
+      return reply.code(400).send({ error: 'invalid_address' });
+    }
 
-    return reply.send({
-      address,
-      chains: [
-        {
-          chainId: 8453,
-          chainName: 'Base',
-          tokens: [
-            { symbol: 'ETH', balance: '1000000000000000000', valueUsd: '3000000000', priceUsd: 3000 },
-            { symbol: 'USDC', balance: '2000000000', valueUsd: '2000000000', priceUsd: 1 },
-          ],
-          totalValueUsd: '5000000000',
-        },
-      ],
-      totalValueUsd: '5000000000',
-      totalPnlUsd: '500000000',
-      totalPnlPercent: 11.11,
-      lastUpdated: new Date().toISOString(),
-    });
+    const cacheKey = `portfolio:${address.toLowerCase()}`;
+    const cached = portfolioCache.get(cacheKey);
+    if (cached && cached.expires > Date.now()) {
+      return reply.send(cached.data);
+    }
+
+    try {
+      const snapshot = await fetchPortfolio(address as `0x${string}`, { rpcUrl });
+      const data = {
+        address,
+        chains: [
+          {
+            chainId: 8453,
+            chainName: 'Base',
+            tokens: snapshot.tokens.map((t) => ({
+              symbol: t.symbol,
+              balance: t.balance.toString(),
+              valueUsd: t.valueUsd.toString(),
+              priceUsd: t.priceUsd,
+            })),
+            totalValueUsd: snapshot.totalValueUsd.toString(),
+          },
+        ],
+        totalValueUsd: snapshot.totalValueUsd.toString(),
+        totalPnlUsd: '0',
+        totalPnlPercent: 0,
+        lastUpdated: new Date(snapshot.timestamp).toISOString(),
+      };
+      portfolioCache.set(cacheKey, { data, expires: Date.now() + CACHE_TTL_MS });
+      return reply.send(data);
+    } catch (err) {
+      return reply.code(500).send({
+        error: 'portfolio_fetch_failed',
+        details: (err as Error).message || 'unknown error',
+      });
+    }
   });
 
   app.get('/api/portfolio/:address/pnl', async (req: FastifyRequest, reply: FastifyReply) => {
     const { address } = req.params as { address: string };
+    if (!addressPattern.test(address)) {
+      return reply.code(400).send({ error: 'invalid_address' });
+    }
 
+    // PnL requires historical cost basis data which needs daily snapshots.
+    // Return honest empty state until snapshot worker is built.
     return reply.send({
       address,
-      realizedPnlUsd: '100000000',
-      unrealizedPnlUsd: '400000000',
-      totalPnlUsd: '500000000',
-      totalPnlPercent: 11.11,
-      bestPerformer: { symbol: 'ETH', pnlPercent: 25.5 },
-      worstPerformer: { symbol: 'USDC', pnlPercent: 0 },
+      realizedPnlUsd: '0',
+      unrealizedPnlUsd: '0',
+      totalPnlUsd: '0',
+      totalPnlPercent: 0,
+      bestPerformer: null,
+      worstPerformer: null,
+      note: 'PnL tracking requires daily portfolio snapshots. Data will populate once the snapshot worker starts recording.',
     });
   });
 
   app.get('/api/portfolio/:address/history', async (req: FastifyRequest, reply: FastifyReply) => {
     const { address } = req.params as { address: string };
     const { days } = req.query as { days?: string };
+    if (!addressPattern.test(address)) {
+      return reply.code(400).send({ error: 'invalid_address' });
+    }
 
+    // History requires daily snapshots stored in DB.
+    // Return honest empty state until snapshot worker is built.
     return reply.send({
       address,
       period: `${days || 30} days`,
-      snapshots: [
-        { timestamp: new Date(Date.now() - 7 * 86400000).toISOString(), valueUsd: '4500000000' },
-        { timestamp: new Date(Date.now() - 1 * 86400000).toISOString(), valueUsd: '4800000000' },
-        { timestamp: new Date().toISOString(), valueUsd: '5000000000' },
-      ],
+      snapshots: [],
+      note: 'Portfolio history will populate once daily snapshots start recording. No fabricated data.',
     });
   });
 }
