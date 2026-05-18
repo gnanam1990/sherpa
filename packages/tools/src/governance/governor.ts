@@ -1,3 +1,4 @@
+import { encodeFunctionData } from 'viem';
 import type { ProposalMetadata, VoteParams, GovernanceDeps } from './types.js';
 
 export const GOVERNOR_ABI = [
@@ -36,36 +37,10 @@ export const GOVERNOR_ABI = [
 export async function listProposals(
   deps: GovernanceDeps,
 ): Promise<ProposalMetadata[]> {
+  // On-chain proposal listing requires a live RPC call.
+  // Snapshot integration provides real proposal data.
   void deps;
-  return [
-    {
-      id: '1',
-      title: 'Increase protocol fee to 0.2%',
-      description:
-        'Proposal to increase the protocol fee from 0.1% to 0.2% to fund development.',
-      proposer: '0x0000000000000000000000000000000000000001',
-      status: 'active',
-      votesFor: '1000000',
-      votesAgainst: '500000',
-      votesAbstain: '100000',
-      quorum: '2000000',
-      startTime: Date.now() - 86400000,
-      endTime: Date.now() + 86400000 * 6,
-    },
-    {
-      id: '2',
-      title: 'Add Polygon support',
-      description: 'Proposal to add Polygon chain support for Sherpa.',
-      proposer: '0x0000000000000000000000000000000000000002',
-      status: 'passed',
-      votesFor: '3000000',
-      votesAgainst: '200000',
-      votesAbstain: '50000',
-      quorum: '2000000',
-      startTime: Date.now() - 86400000 * 7,
-      endTime: Date.now() - 86400000,
-    },
-  ];
+  return [];
 }
 
 export function buildVoteCall(params: VoteParams): {
@@ -73,23 +48,35 @@ export function buildVoteCall(params: VoteParams): {
   data: `0x${string}`;
   value: bigint;
 } {
-  void params;
+  const supportNum = params.support === 'yes' ? 1 : params.support === 'no' ? 0 : 2;
+  const data = encodeFunctionData({
+    abi: GOVERNOR_ABI,
+    functionName: 'castVote',
+    args: [BigInt(params.proposalId), supportNum],
+  });
   return {
-    to: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-    data: '0x' as `0x${string}`,
+    to: params.governorAddress as `0x${string}`,
+    data,
     value: 0n,
   };
 }
 
-export function buildDelegateCall(delegatee: `0x${string}`): {
+export function buildDelegateCall(
+  delegatee: `0x${string}`,
+  tokenAddress: `0x${string}`,
+): {
   to: `0x${string}`;
   data: `0x${string}`;
   value: bigint;
 } {
-  void delegatee;
+  const data = encodeFunctionData({
+    abi: GOVERNOR_ABI,
+    functionName: 'delegate',
+    args: [delegatee],
+  });
   return {
-    to: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-    data: '0x' as `0x${string}`,
+    to: tokenAddress,
+    data,
     value: 0n,
   };
 }

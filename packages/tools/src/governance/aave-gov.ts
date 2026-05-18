@@ -1,3 +1,4 @@
+import { encodeFunctionData } from 'viem';
 import type { ProposalMetadata } from './types.js';
 
 const AAVE_GOVERNOR_V3 = '0xc4025b326139768a5e8C3b42F1e5E1e4e63F4D2B';
@@ -65,21 +66,10 @@ export const AAVE_GOV_ABI = [
 ] as const;
 
 export async function getProposals(): Promise<ProposalMetadata[]> {
-  return [
-    {
-      id: '42',
-      title: 'Aave v3.1 Risk Parameters Update',
-      description: 'Update risk parameters for Aave v3.1 markets including LTV and liquidation thresholds.',
-      proposer: '0xADEB7920c7FF9b9E0e05A6dD55EB4cE0B3b2d9C5' as `0x${string}`,
-      status: 'active',
-      votesFor: '15000000',
-      votesAgainst: '3000000',
-      votesAbstain: '500000',
-      quorum: '10000000',
-      startTime: Date.now() - 86400000 * 2,
-      endTime: Date.now() + 86400000 * 5,
-    },
-  ];
+  // On-chain proposal reading requires a live RPC call to the Aave Governor contract.
+  // Snapshot integration provides real proposal data. Return empty here until
+  // a readContract dependency is injected.
+  return [];
 }
 
 export function buildVoteTx(
@@ -88,23 +78,36 @@ export function buildVoteTx(
   reason?: string,
 ): { to: `0x${string}`; data: `0x${string}`; value: bigint } {
   const supportNum = support === 'yes' ? 1 : support === 'no' ? 0 : 2;
-  void proposalId;
-  void supportNum;
-  void reason;
-  return {
-    to: AAVE_GOVERNOR_V3 as `0x${string}`,
-    data: '0x' as `0x${string}`,
-    value: 0n,
-  };
+  const to = AAVE_GOVERNOR_V3 as `0x${string}`;
+
+  if (reason) {
+    const data = encodeFunctionData({
+      abi: AAVE_GOV_ABI,
+      functionName: 'submitVoteWithReason',
+      args: [BigInt(proposalId), supportNum, reason],
+    });
+    return { to, data, value: 0n };
+  }
+
+  const data = encodeFunctionData({
+    abi: AAVE_GOV_ABI,
+    functionName: 'submitVote',
+    args: [BigInt(proposalId), supportNum],
+  });
+  return { to, data, value: 0n };
 }
 
 export function buildDelegateTx(
   delegatee: `0x${string}`,
 ): { to: `0x${string}`; data: `0x${string}`; value: bigint } {
-  void delegatee;
+  const data = encodeFunctionData({
+    abi: AAVE_GOV_ABI,
+    functionName: 'delegate',
+    args: [delegatee],
+  });
   return {
     to: AAVE_TOKEN as `0x${string}`,
-    data: '0x' as `0x${string}`,
+    data,
     value: 0n,
   };
 }

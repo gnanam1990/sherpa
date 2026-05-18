@@ -5,45 +5,39 @@ import { getProposals as getOptimismProposals, buildVoteTx as optimismVoteTx, bu
 
 describe('On-chain Governance', () => {
   describe('Aave Governance', () => {
-    test('getProposals returns proposals', async () => {
+    test('getProposals returns empty (honest — no mock data)', async () => {
       const proposals = await getProposals();
-      expect(proposals.length).toBeGreaterThan(0);
+      expect(proposals.length).toBe(0);
     });
 
-    test('proposal has required fields', async () => {
-      const proposals = await getProposals();
-      const p = proposals[0];
-      expect(p.id).toBeDefined();
-      expect(p.title).toBeDefined();
-      expect(p.status).toBeDefined();
-      expect(p.proposer).toBeDefined();
-    });
-
-    test('buildVoteTx returns valid tx structure', () => {
+    test('buildVoteTx returns real ABI-encoded calldata', () => {
       const tx = buildVoteTx('42', 'yes');
-      expect(tx.to).toBeDefined();
-      expect(tx.data).toBeDefined();
+      expect(tx.to).toBe(AAVE_GOV_ADDRESSES.governor);
+      expect(tx.data).not.toBe('0x');
+      expect(tx.data.length).toBeGreaterThan(10);
       expect(tx.value).toBe(0n);
     });
 
-    test('buildVoteTx supports yes/no/abstain', () => {
+    test('buildVoteTx encodes different support values', () => {
       const yesTx = buildVoteTx('1', 'yes');
       const noTx = buildVoteTx('1', 'no');
       const abstainTx = buildVoteTx('1', 'abstain');
-      expect(yesTx).toBeDefined();
-      expect(noTx).toBeDefined();
-      expect(abstainTx).toBeDefined();
+      expect(yesTx.data).not.toBe(noTx.data);
+      expect(noTx.data).not.toBe(abstainTx.data);
     });
 
-    test('buildVoteTx accepts reason', () => {
-      const tx = buildVoteTx('1', 'yes', 'I support this proposal');
-      expect(tx).toBeDefined();
+    test('buildVoteTx with reason uses submitVoteWithReason', () => {
+      const withReason = buildVoteTx('1', 'yes', 'I support this proposal');
+      const withoutReason = buildVoteTx('1', 'yes');
+      expect(withReason.data).not.toBe(withoutReason.data);
+      expect(withReason.data.length).toBeGreaterThan(withoutReason.data.length);
     });
 
-    test('buildDelegateTx returns valid tx structure', () => {
+    test('buildDelegateTx returns real ABI-encoded calldata', () => {
       const tx = buildDelegateTx('0x1234567890abcdef1234567890abcdef12345678');
-      expect(tx.to).toBeDefined();
-      expect(tx.data).toBeDefined();
+      expect(tx.to).toBe(AAVE_GOV_ADDRESSES.token);
+      expect(tx.data).not.toBe('0x');
+      expect(tx.data.length).toBeGreaterThan(10);
       expect(tx.value).toBe(0n);
     });
 
@@ -54,30 +48,24 @@ describe('On-chain Governance', () => {
   });
 
   describe('Compound Governance', () => {
-    test('getProposals returns proposals', async () => {
+    test('getProposals returns empty (honest — no mock data)', async () => {
       const proposals = await getCompoundProposals();
-      expect(proposals.length).toBeGreaterThan(0);
+      expect(proposals.length).toBe(0);
     });
 
-    test('proposal has required fields', async () => {
-      const proposals = await getCompoundProposals();
-      const p = proposals[0];
-      expect(p.id).toBeDefined();
-      expect(p.title).toBeDefined();
-      expect(p.status).toBeDefined();
-    });
-
-    test('buildVoteTx returns valid tx structure', () => {
+    test('buildVoteTx returns real ABI-encoded calldata', () => {
       const tx = compoundVoteTx('118', 'yes');
-      expect(tx.to).toBeDefined();
-      expect(tx.data).toBeDefined();
+      expect(tx.to).toBe(COMPOUND_GOV_ADDRESSES.governor);
+      expect(tx.data).not.toBe('0x');
+      expect(tx.data.length).toBeGreaterThan(10);
       expect(tx.value).toBe(0n);
     });
 
-    test('buildDelegateTx returns valid tx structure', () => {
+    test('buildDelegateTx returns real ABI-encoded calldata', () => {
       const tx = compoundDelegateTx('0x1234567890abcdef1234567890abcdef12345678');
-      expect(tx.to).toBeDefined();
-      expect(tx.data).toBeDefined();
+      expect(tx.to).toBe(COMPOUND_GOV_ADDRESSES.token);
+      expect(tx.data).not.toBe('0x');
+      expect(tx.data.length).toBeGreaterThan(10);
       expect(tx.value).toBe(0n);
     });
 
@@ -88,30 +76,24 @@ describe('On-chain Governance', () => {
   });
 
   describe('Optimism Governance', () => {
-    test('getProposals returns proposals', async () => {
+    test('getProposals returns empty (honest — no mock data)', async () => {
       const proposals = await getOptimismProposals();
-      expect(proposals.length).toBeGreaterThan(0);
+      expect(proposals.length).toBe(0);
     });
 
-    test('proposal has required fields', async () => {
-      const proposals = await getOptimismProposals();
-      const p = proposals[0];
-      expect(p.id).toBeDefined();
-      expect(p.title).toBeDefined();
-      expect(p.status).toBeDefined();
-    });
-
-    test('buildVoteTx returns valid tx structure', () => {
+    test('buildVoteTx returns real ABI-encoded calldata', () => {
       const tx = optimismVoteTx('7', 'no');
-      expect(tx.to).toBeDefined();
-      expect(tx.data).toBeDefined();
+      expect(tx.to).toBe(OPTIMISM_GOV_ADDRESSES.governor);
+      expect(tx.data).not.toBe('0x');
+      expect(tx.data.length).toBeGreaterThan(10);
       expect(tx.value).toBe(0n);
     });
 
-    test('buildDelegateTx returns valid tx structure', () => {
+    test('buildDelegateTx returns real ABI-encoded calldata', () => {
       const tx = optimismDelegateTx('0x1234567890abcdef1234567890abcdef12345678');
-      expect(tx.to).toBeDefined();
-      expect(tx.data).toBeDefined();
+      expect(tx.to).toBe(OPTIMISM_GOV_ADDRESSES.token);
+      expect(tx.data).not.toBe('0x');
+      expect(tx.data.length).toBeGreaterThan(10);
       expect(tx.value).toBe(0n);
     });
 

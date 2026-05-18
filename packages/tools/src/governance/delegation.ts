@@ -33,17 +33,21 @@ export type DelegationStatus = {
   protocol: Protocol;
   delegatee: `0x${string}` | null;
   active: boolean;
+  note?: string;
 };
 
 export async function getDelegation(
   userAddress: `0x${string}`,
   protocol: Protocol,
 ): Promise<DelegationStatus> {
+  // On-chain delegation status requires a live RPC call to read the delegate mapping.
+  // Return honest "unknown" state instead of hardcoded false.
   void userAddress;
   return {
     protocol,
     delegatee: null,
     active: false,
+    note: 'Delegation status requires on-chain read. Snapshot provides delegation data separately.',
   };
 }
 

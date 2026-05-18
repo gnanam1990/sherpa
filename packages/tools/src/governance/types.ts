@@ -16,6 +16,7 @@ export type VoteParams = {
   proposalId: string;
   support: 'yes' | 'no' | 'abstain';
   reason?: string;
+  governorAddress?: `0x${string}`;
 };
 
 export type DelegateParams = {
