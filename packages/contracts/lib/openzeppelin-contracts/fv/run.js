@@ -8,7 +8,7 @@
 //    node fv/run.js fv/specs/ERC721.conf
 
 const glob = require('glob');
-const fs = require('fs');
+const path = require('path');
 const pLimit = require('p-limit').default;
 const { hideBin } = require('yargs/helpers');
 const yargs = require('yargs/yargs');
@@ -33,14 +33,29 @@ const { argv } = yargs(hideBin(process.argv))
   });
 
 const pattern = 'fv/specs/*.conf';
+const specsDir = path.normalize('fv/specs');
 const limit = pLimit(argv.parallel);
 
 function resolveConfig(name) {
-  const config = fs.existsSync(name) ? name : pattern.replace('*', name);
-  if (config.includes('\0') || !config.endsWith('.conf')) {
+  if (typeof name !== 'string' || name.includes('\0')) {
     throw new Error(`Invalid spec path: ${name}`);
   }
-  return config;
+
+  const hasPathSegment = name.includes('/') || name.includes('\\');
+  const config = hasPathSegment ? name : path.join(specsDir, name.endsWith('.conf') ? name : `${name}.conf`);
+  const normalized = path.normalize(config);
+  const relative = path.relative(specsDir, normalized);
+
+  if (
+    path.isAbsolute(normalized) ||
+    relative.startsWith('..') ||
+    path.isAbsolute(relative) ||
+    !normalized.endsWith('.conf')
+  ) {
+    throw new Error(`Invalid spec path: ${name}`);
+  }
+
+  return normalized;
 }
 
 function proverUrl(stdout) {
