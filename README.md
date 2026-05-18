@@ -13,6 +13,14 @@ Type plain English. Sherpa does it onchain.
 
 Sherpa is a natural-language agent for the Base L2 blockchain. Users type intent in English; Sherpa parses and validates the request, then either executes supported Base actions through Coinbase Smart Wallet, returns safe read-only data, or clearly marks gated flows before any wallet prompt.
 
+Live on **Base mainnet** through verified, Safe-owned contracts ([SherpaRouter / SherpaTreasury on Basescan](#deployment)), with 2 external review rounds remediated. Mini App: [sherpa-miniapp.vercel.app](https://sherpa-miniapp.vercel.app).
+
+## Design
+
+The web app's active design system is **Glass Aurora** — a dark, frosted-glass interface on a mountain-aurora sky. It is a visual replacement only: every route, data flow, parser, safety pipeline, and signing flow is unchanged. Reference: [docs/design/GLASS_AURORA.md](docs/design/GLASS_AURORA.md).
+
+Glass Aurora currently ships **behind the `NEXT_PUBLIC_GLASS_AURORA` flag** during a one-week dogfooding period (legacy UI is the production-safe default); the legacy render path for every route is preserved in `apps/web/app/_archive/` for rollback. Production screenshots: [docs/screenshots/glass-aurora/](docs/screenshots/glass-aurora/) — capture is manual (see the manifest there); the hero shot is `02-positions-aave.png`.
+
 ## Status
 
 Sherpa is live with two production boundaries: Stage 1 send remains on Base Sepolia with sponsored gas, and Stage 2 DeFi writes run on Base mainnet through verified contracts with guarded amount caps and wallet confirmation cards.
