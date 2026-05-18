@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@fastify/rate-limit": "10.3.0",
-    "@sentry/node": "^8.40.0",
+    "@sentry/node": "^10.53.1",
     "@sherpa/config": "workspace:*",
     "@sherpa/core": "workspace:*",
     "@sherpa/identity": "workspace:*",
