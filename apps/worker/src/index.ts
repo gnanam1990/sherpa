@@ -9,6 +9,7 @@ import {
   runAlertWorkerCycle,
   runAutoRepayProductionCycle,
   runDCAWorkerCycle,
+  runSnapshotProductionCycle,
   startRecurringCycle,
   workerHealthExtra,
 } from './runtime.js';
@@ -61,7 +62,16 @@ async function main(): Promise<void> {
     );
   }
 
-  if (!toggles.alerts && !toggles.dca && !toggles.autoRepay) {
+  if (toggles.snapshot) {
+    startRecurringCycle(
+      'snapshot',
+      intervals.snapshotMs,
+      () => runSnapshotProductionCycle(config, stores, log),
+      log,
+    );
+  }
+
+  if (!toggles.alerts && !toggles.dca && !toggles.autoRepay && !toggles.snapshot) {
     log.error('[worker] no automation loops enabled');
   }
 }

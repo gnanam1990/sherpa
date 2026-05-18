@@ -5,10 +5,12 @@ import {
   createDCAStore,
   createNotificationStore,
   getActiveNotificationToken,
+  InMemoryPortfolioSnapshotStore,
   type AlertStore,
   type AutoRepayStore,
   type DCAStore,
   type NotificationStore,
+  type PortfolioSnapshotStore,
 } from '@sherpa/memory';
 import {
   runDCATasks,
@@ -38,6 +40,7 @@ export type WorkerStores = {
   dcaStore: DCAStore;
   autoRepayStore: AutoRepayStore;
   notificationStore: NotificationStore;
+  snapshotStore: PortfolioSnapshotStore;
   persistence: 'postgres' | 'process-memory';
 };
 
@@ -45,12 +48,14 @@ export type WorkerIntervals = {
   alertsMs: number;
   dcaMs: number;
   autoRepayMs: number;
+  snapshotMs: number;
 };
 
 export type WorkerToggles = {
   alerts: boolean;
   dca: boolean;
   autoRepay: boolean;
+  snapshot: boolean;
 };
 
 export type WorkerReadiness = {
@@ -85,6 +90,7 @@ export type WorkerCycleResult = {
 const DEFAULT_ALERT_INTERVAL_MS = 60_000;
 const DEFAULT_DCA_INTERVAL_MS = 60_000;
 const DEFAULT_AUTO_REPAY_INTERVAL_MS = 60_000;
+const DEFAULT_SNAPSHOT_INTERVAL_MS = 3_600_000; // 1 hour default
 
 function intFromEnv(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
@@ -102,6 +108,7 @@ export function readWorkerIntervals(env: NodeJS.ProcessEnv = process.env): Worke
     alertsMs: intFromEnv(env.ALERT_INTERVAL_MS, DEFAULT_ALERT_INTERVAL_MS),
     dcaMs: intFromEnv(env.DCA_INTERVAL_MS, DEFAULT_DCA_INTERVAL_MS),
     autoRepayMs: intFromEnv(env.AUTO_REPAY_INTERVAL_MS, DEFAULT_AUTO_REPAY_INTERVAL_MS),
+    snapshotMs: intFromEnv(env.SNAPSHOT_INTERVAL_MS, DEFAULT_SNAPSHOT_INTERVAL_MS),
   };
 }
 
@@ -110,6 +117,7 @@ export function readWorkerToggles(env: NodeJS.ProcessEnv = process.env): WorkerT
     alerts: boolFromEnv(env.WORKER_ALERTS_ENABLED, true),
     dca: boolFromEnv(env.WORKER_DCA_ENABLED, true),
     autoRepay: boolFromEnv(env.WORKER_AUTO_REPAY_ENABLED, true),
+    snapshot: boolFromEnv(env.WORKER_SNAPSHOT_ENABLED, true),
   };
 }
 
@@ -150,6 +158,7 @@ export function createWorkerStores(config: SherpaConfig): WorkerStores {
     dcaStore: createDCAStore(storeConfig),
     autoRepayStore: createAutoRepayStore(storeConfig),
     notificationStore: createNotificationStore(storeConfig),
+    snapshotStore: new InMemoryPortfolioSnapshotStore(), // TODO: use Postgres when useRealDb
     persistence: storeConfig.useRealDb ? 'postgres' : 'process-memory',
   };
 }
@@ -246,6 +255,23 @@ export async function runAutoRepayProductionCycle(
       });
     },
   });
+}
+
+export async function runSnapshotProductionCycle(
+  config: SherpaConfig,
+  stores: Pick<WorkerStores, 'snapshotStore'>,
+  log: WorkerLogger,
+): Promise<WorkerCycleResult> {
+  const { runSnapshotCycle } = await import('./portfolio-snapshot.js');
+  const result = await runSnapshotCycle({
+    store: stores.snapshotStore,
+    fetchDeps: { rpcUrl: config.rpcUrl },
+    log,
+  });
+  return {
+    ok: result.errors.length === 0,
+    detail: `snapshots: ${result.snapshotCount} captured, ${result.errors.length} errors`,
+  };
 }
 
 export function logCycleResult(

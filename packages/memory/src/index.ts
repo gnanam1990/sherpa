@@ -58,6 +58,7 @@ export * from './aave-health-log.js';
 export * from './dca.js';
 export * from './auto-repay.js';
 export * from './governance.js';
+export * from './portfolio-snapshots.js';
 
 /**
  * Pick the right AuditStore implementation based on config flags.

@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { fetchPortfolio, fetchMultiChainPortfolio } from '@sherpa/tools';
+import type { PortfolioSnapshotStore } from '@sherpa/memory';
 
 const addressPattern = /^0x[0-9a-fA-F]{40}$/;
 
@@ -8,9 +9,10 @@ const CACHE_TTL_MS = 60_000;
 
 export async function portfolioRoutes(
   app: FastifyInstance,
-  opts?: { rpcUrl?: string },
+  opts?: { rpcUrl?: string; snapshotStore?: PortfolioSnapshotStore },
 ): Promise<void> {
   const rpcUrl = opts?.rpcUrl;
+  const snapshotStore = opts?.snapshotStore;
 
   app.get('/api/portfolio/:address', async (req: FastifyRequest, reply: FastifyReply) => {
     const { address } = req.params as { address: string };
@@ -83,8 +85,22 @@ export async function portfolioRoutes(
       return reply.code(400).send({ error: 'invalid_address' });
     }
 
-    // History requires daily snapshots stored in DB.
-    // Return honest empty state until snapshot worker is built.
+    if (snapshotStore) {
+      try {
+        const history = await snapshotStore.getSnapshotHistory(address, Number(days) || 30);
+        return reply.send({
+          address,
+          period: `${days || 30} days`,
+          snapshots: history.map((s) => ({
+            timestamp: s.snapshot_at,
+            valueUsd: s.total_value_usd,
+          })),
+        });
+      } catch (err) {
+        // Fall through to empty state
+      }
+    }
+
     return reply.send({
       address,
       period: `${days || 30} days`,

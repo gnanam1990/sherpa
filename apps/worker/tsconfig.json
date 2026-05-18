@@ -9,7 +9,8 @@
   "references": [
     { "path": "../../packages/config" },
     { "path": "../../packages/scheduler" },
-    { "path": "../../packages/memory" }
+    { "path": "../../packages/memory" },
+    { "path": "../../packages/tools" }
   ],
   "include": ["src/**/*"],
   "exclude": ["src/**/*.test.ts", "dist", "node_modules"]
