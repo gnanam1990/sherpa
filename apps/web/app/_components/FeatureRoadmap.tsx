@@ -94,11 +94,11 @@ const STATUS_CONFIG: Record<FeatureStatus, { label: string; classes: string }> =
   },
   'read-only': {
     label: 'Read-only live',
-    classes: 'border-base-blue/30 bg-base-blue/10 text-base-blue',
+    classes: 'border-base-blue/30 bg-base-blue/10 text-base-blue-dark dark:text-base-blue-50',
   },
   mainnet: {
     label: 'Mainnet live',
-    classes: 'border-base-blue-light/30 bg-base-blue-light/10 text-base-blue-light',
+    classes: 'border-base-blue-light/30 bg-base-blue-light/10 text-base-blue-dark dark:text-base-blue-50',
   },
   beta: {
     label: 'Beta live',

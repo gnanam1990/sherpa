@@ -92,7 +92,7 @@ function LegacyAbout() {
         <header className="flex items-center justify-between gap-4">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold tracking-[-0.02em] text-sherpa-blue"
+            className="inline-flex items-center gap-2 text-sm font-semibold tracking-[-0.02em] text-base-blue-light"
             aria-label="Sherpa home"
           >
             <img src="/sherpa-icon-192.svg" alt="" className="h-6 w-6 rounded-md" />
