@@ -2,6 +2,23 @@ import { NextResponse } from 'next/server';
 
 const CHAINS = [
   {
+    chainId: 84532,
+    name: 'Base Sepolia',
+    shortName: 'base-sepolia',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    rpcUrl: 'https://sepolia.base.org',
+    explorerUrl: 'https://sepolia.basescan.org',
+    dex: { name: 'Aerodrome (Mock)', routerAddress: '0x135Ea0F5422fB1D4aDeaC8A205735498ffA5B933' },
+    aave: { poolAddress: '0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27' },
+    bridgeProtocols: [],
+    contracts: {
+      router: '0x7CfdE6a4D1A85236419d4343a3A466d0677A0056',
+      treasury: '0x70A58169BF96587E55F500c4b5cb9d956Ef826ee',
+    },
+    status: 'testnet',
+    note: 'Testnet only. Contracts deployed for audit testing. Do not use with real funds.',
+  },
+  {
     chainId: 8453,
     name: 'Base',
     shortName: 'base',
@@ -11,6 +28,11 @@ const CHAINS = [
     dex: { name: 'Aerodrome', routerAddress: '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43' },
     aave: { poolAddress: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5' },
     bridgeProtocols: ['across'],
+    contracts: {
+      router: '0x00bfef87DD352D48F8572BcfA52E57870B35DE8b',
+      treasury: '0xF4e72beAA559E1815f4671e39EDb1295aD975918',
+    },
+    status: 'mainnet',
   },
   {
     chainId: 137,
@@ -22,6 +44,8 @@ const CHAINS = [
     dex: { name: 'QuickSwap', routerAddress: '0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff' },
     aave: { poolAddress: '0x794a61358D6845594F94dc1DB02A252b5b4814aD' },
     bridgeProtocols: ['across', 'layerzero'],
+    status: 'read-only',
+    note: 'Read-only chain explorer. Write execution pending audit.',
   },
   {
     chainId: 10,
@@ -33,6 +57,8 @@ const CHAINS = [
     dex: { name: 'Velodrome', routerAddress: '0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858' },
     aave: { poolAddress: '0x794a61358D6845594F94dc1DB02A252b5b4814aD' },
     bridgeProtocols: ['across', 'layerzero'],
+    status: 'read-only',
+    note: 'Read-only chain explorer. Write execution pending audit.',
   },
   {
     chainId: 42161,
@@ -44,6 +70,8 @@ const CHAINS = [
     dex: { name: 'Camelot', routerAddress: '0xc873fEcbd354f5A56E00E710B90EF4201db2448d' },
     aave: { poolAddress: '0x794a61358D6845594F94dc1DB02A252b5b4814aD' },
     bridgeProtocols: ['across', 'layerzero'],
+    status: 'read-only',
+    note: 'Read-only chain explorer. Write execution pending audit.',
   },
 ];
 
