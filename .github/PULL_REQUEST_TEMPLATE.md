@@ -1,7 +1,9 @@
 ## Description
+
 What does this PR do?
 
 ## Type of change
+
 - [ ] Bug fix (non-breaking)
 - [ ] New feature (non-breaking)
 - [ ] Refactor (no functional change)
@@ -11,6 +13,7 @@ What does this PR do?
 - [ ] Breaking change (specify migration)
 
 ## Verification checklist
+
 - [ ] `pnpm -r typecheck` passes
 - [ ] `pnpm -r build` passes
 - [ ] `pnpm -r test` passes
@@ -19,6 +22,7 @@ What does this PR do?
 - [ ] Honest empty states / error messages maintained
 
 ## Architecture boundaries (preserve these)
+
 - [ ] `packages/contracts` unchanged
       (changes here require re-audit before merge)
 - [ ] `apps/miniapp` unchanged
@@ -29,15 +33,18 @@ What does this PR do?
       (deterministic by design - no LLM intrusion)
 
 ## Test coverage
+
 - [ ] Tests added/updated for new logic
 - [ ] Test count delta: +X (or 0)
 - [ ] No existing tests removed
 
 ## Documentation
+
 - [ ] README updated (if user-visible change)
 - [ ] CHANGELOG noted (if release-worthy)
 
 ## Related issues
+
 Closes #
 Related #
 

@@ -6,9 +6,11 @@ labels: bug
 ---
 
 ## Description
+
 Brief description of the bug.
 
 ## Steps to reproduce
+
 1.
 2.
 3.
@@ -18,6 +20,7 @@ Brief description of the bug.
 ## Actual behavior
 
 ## Environment
+
 - Browser:
 - Wallet:
 - Network (Base mainnet / Base Sepolia / other):
@@ -25,12 +28,15 @@ Brief description of the bug.
 - Mini App or Web?
 
 ## Screenshots / video
+
 If applicable, add screenshots or screen recordings.
 
 ## Console errors
+
 Any errors in browser DevTools console?
 
 ## Wallet transaction
+
 If the bug involves a transaction, paste the Basescan link.
 Never share private keys.
 
