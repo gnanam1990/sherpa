@@ -1,12 +1,12 @@
 import type { Webhook, WebhookConfig } from './types.js';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+
+const WEBHOOK_SECRET_PREFIX = 'whsec_';
+const WEBHOOK_SECRET_BYTES = 32;
+const HEX_SHA256_RE = /^[a-f0-9]{64}$/i;
 
 export function generateWebhookSecret(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = 'whsec_';
-  for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  return `${WEBHOOK_SECRET_PREFIX}${randomBytes(WEBHOOK_SECRET_BYTES).toString('base64url')}`;
 }
 
 export function createWebhook(config: WebhookConfig): Webhook {
@@ -25,5 +25,24 @@ export function verifyWebhookSignature(
   signature: string,
   secret: string,
 ): boolean {
-  return signature.length > 0 && secret.length > 0;
+  if (!secret || !signature) {
+    return false;
+  }
+
+  const normalizedSignature = signature.startsWith('sha256=')
+    ? signature.slice('sha256='.length)
+    : signature;
+
+  if (!HEX_SHA256_RE.test(normalizedSignature)) {
+    return false;
+  }
+
+  const expected = createHmac('sha256', secret).update(payload, 'utf8').digest('hex');
+  const providedBuffer = Buffer.from(normalizedSignature, 'hex');
+  const expectedBuffer = Buffer.from(expected, 'hex');
+
+  return (
+    providedBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(providedBuffer, expectedBuffer)
+  );
 }
