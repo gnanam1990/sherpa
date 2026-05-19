@@ -109,6 +109,18 @@ function sendCard(withBatch = false) {
   };
 }
 
+function historyItems(count: number) {
+  return Array.from({ length: count }, (_, i) => ({
+    txHash: `0x${String(i).padStart(64, '0')}`,
+    timestamp: 1_700_000_000_000 + i,
+    direction: i % 2 === 0 ? 'out' : 'in',
+    asset: 'USDC',
+    amountDisplay: `${i + 1} USDC`,
+    counterparty: USER_ADDRESS,
+    sherpaIntent: i % 2 === 0 ? 'send' : 'receive',
+  }));
+}
+
 async function flush() {
   await act(async () => {
     await Promise.resolve();
@@ -150,6 +162,48 @@ describe('GlassHome integration', () => {
     expect(screen.getByLabelText('Intent')).toBeTruthy();
     expect(screen.getByText('Type an intent below to begin.')).toBeTruthy();
     expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps the chat input pinned outside the message scroller with 0 messages', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] })),
+    );
+
+    render(<GlassHome />);
+    await flush();
+
+    const scroller = screen.getByTestId('glass-chat-scroll');
+    const input = screen.getByTestId('chat-input');
+    const main = document.getElementById('main-content');
+
+    expect(main?.className).toContain('overflow-hidden');
+    expect(scroller.className).toContain('flex-1');
+    expect(scroller.className).toContain('overflow-y-auto');
+    expect(scroller.contains(input)).toBe(false);
+    expect(input.closest('.shrink-0')).toBeTruthy();
+    expect(input.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
+  });
+
+  it('keeps the chat input pinned outside the message scroller with 50 messages', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        jsonResponse({ address: USER_ADDRESS, chain: 'base', items: historyItems(50) }),
+      ),
+    );
+
+    render(<GlassHome />);
+    await flush();
+
+    const scroller = screen.getByTestId('glass-chat-scroll');
+    const input = screen.getByTestId('chat-input');
+
+    expect(screen.getByText('Sent 1 USDC')).toBeTruthy();
+    expect(screen.getByText('Received 50 USDC')).toBeTruthy();
+    expect(scroller.contains(input)).toBe(false);
+    expect(input.closest('.shrink-0')).toBeTruthy();
+    expect(input.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
   });
 
   it('surfaces the disconnected limitation honestly', async () => {

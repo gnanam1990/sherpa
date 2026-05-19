@@ -75,6 +75,7 @@ export function ComposerPill({
             </label>
             <input
               ref={inputRef}
+              data-testid="chat-input"
               id="composer-intent"
               type="text"
               value={value}
