@@ -209,7 +209,7 @@ describe('GlassPositions', () => {
     expect(screen.getByText('Read-only multi-chain')).toBeTruthy();
     expect(screen.getByText('Ethereum')).toBeTruthy();
     expect(screen.getByText('42 USDC')).toBeTruthy();
-    expect(screen.getByText('Read-only on non-Base chains. Sherpa transactions live on Base only.')).toBeTruthy();
+    expect(screen.getByText('Read-only on non-Base chains. Sherpa transactions execute on Base mainnet only.')).toBeTruthy();
     await waitFor(() => {
       expect(fetcher).toHaveBeenCalledWith(`/api/portfolio/${ADDRESS}?chains=8453,1,137,10,42161`);
     });

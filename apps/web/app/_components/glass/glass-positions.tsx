@@ -216,7 +216,7 @@ export function GlassPositions() {
               <p className="mt-1 max-w-2xl text-sm opacity-65">
                 {mode === 'base'
                   ? 'Read-only view of your Aave V3 position on Base mainnet.'
-                  : 'Read-only token balances across supported chains. Sherpa transactions live on Base only.'}
+                  : 'Read-only token balances across supported chains. Sherpa transactions execute on Base mainnet only.'}
               </p>
             </div>
             <ModeToggle mode={mode} onModeChange={setMode} />

@@ -268,7 +268,7 @@ export function GlassPortfolio() {
 
       <GlassPanel className="p-4">
         <p className="text-sm opacity-75">
-          Read-only on non-Base chains. Sherpa transactions live on Base only.
+          Read-only on non-Base chains. Sherpa transactions execute on Base mainnet only.
         </p>
         <p className="mt-2 text-xs opacity-55">
           Bridge, non-Base lending, and non-Base protocol actions remain disabled

@@ -4,10 +4,9 @@ import { MultiChainPanel } from '../_components/AutomationPanels';
 import { GlassAutomationShell } from '../_components/glass/automation-shell';
 
 /**
- * /multi-chain — read-only chain registry. The proven MultiChainPanel
- * (real /api/chains, honest "bridge/cross-chain disabled until audited"
- * status + real testnet/experimental badges) is preserved verbatim;
- * GLASS_AURORA_ENABLED only changes the shell around it.
+ * /multi-chain — read-only chain registry and entry point to portfolio
+ * balances. Writes stay Base-mainnet-only; bridge/cross-chain execution is
+ * deliberately disabled until adapters are fully audited.
  */
 export const dynamic = 'force-dynamic';
 
