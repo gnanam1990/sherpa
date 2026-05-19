@@ -20,16 +20,16 @@ Open http://localhost:3200
 
 Copy `.env.example` to `.env.local` and fill in:
 
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_URL` | Deployed URL of this app (e.g. `https://sherpa-miniapp.vercel.app`) |
-| `NEXT_PUBLIC_SHERPA_API_BASE` | Sherpa API base URL (browser-side) |
-| `SHERPA_API_BASE` | Sherpa API base URL (server-side, for rewrites) |
-| `NEXT_PUBLIC_ONCHAINKIT_API_KEY` | Coinbase OnchainKit API key (CDP console) |
-| `NEXT_PUBLIC_BUILDER_CODE` | Coinbase builder attribution code (e.g. `bc_97ju6eu2`) |
-| `FARCASTER_HEADER` | Account association header from Farcaster manifest tool |
-| `FARCASTER_PAYLOAD` | Account association payload from Farcaster manifest tool |
-| `FARCASTER_SIGNATURE` | Account association signature from Farcaster manifest tool |
+| Variable                         | Description                                                         |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `NEXT_PUBLIC_URL`                | Deployed URL of this app (e.g. `https://sherpa-miniapp.vercel.app`) |
+| `NEXT_PUBLIC_SHERPA_API_BASE`    | Sherpa API base URL (browser-side)                                  |
+| `SHERPA_API_BASE`                | Sherpa API base URL (server-side, for rewrites)                     |
+| `NEXT_PUBLIC_ONCHAINKIT_API_KEY` | Coinbase OnchainKit API key (CDP console)                           |
+| `NEXT_PUBLIC_BUILDER_CODE`       | Coinbase builder attribution code (e.g. `bc_97ju6eu2`)              |
+| `FARCASTER_HEADER`               | Account association header from Farcaster manifest tool             |
+| `FARCASTER_PAYLOAD`              | Account association payload from Farcaster manifest tool            |
+| `FARCASTER_SIGNATURE`            | Account association signature from Farcaster manifest tool          |
 
 ### Farcaster Mini App Registration
 

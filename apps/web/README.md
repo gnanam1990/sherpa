@@ -12,11 +12,11 @@ Owner: M2 (frontend). Routes call the paymaster proxy at `/api/paymaster`, which
 
 Copy `.env.example` to `.env.local` and fill in the values:
 
-| Key | Where to get it | Secret? |
-| --- | --- | --- |
-| `NEXT_PUBLIC_WC_PROJECT_ID` | [cloud.reown.com](https://cloud.reown.com) — free WalletConnect project ID | Public |
-| `NEXT_PUBLIC_CDP_PROJECT_ID` | [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com) — Coinbase Developer Platform | Public |
-| `SHERPA_PAYMASTER_RPC` (apps/api) | Coinbase CDP paymaster URL | **Secret — never inline in apps/web** |
+| Key                               | Where to get it                                                                          | Secret?                               |
+| --------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------- |
+| `NEXT_PUBLIC_WC_PROJECT_ID`       | [cloud.reown.com](https://cloud.reown.com) — free WalletConnect project ID               | Public                                |
+| `NEXT_PUBLIC_CDP_PROJECT_ID`      | [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com) — Coinbase Developer Platform | Public                                |
+| `SHERPA_PAYMASTER_RPC` (apps/api) | Coinbase CDP paymaster URL                                                               | **Secret — never inline in apps/web** |
 
 Browser-side Sentry is wired through `@sentry/nextjs` in `instrumentation-client.ts`, `app/error.tsx`, and `app/global-error.tsx`. It is active when `NEXT_PUBLIC_SENTRY_DSN` is set; server-side errors on `apps/api` report when `SENTRY_DSN` is set.
 
@@ -77,14 +77,14 @@ one-command rollback (kept until Phase 5b). Production screenshots:
 
 ## Routes
 
-| Path | File | Notes |
-| --- | --- | --- |
-| `/` | `app/page.tsx` → `GlassHome` \| `_components/HomeContent.tsx` | Home (connect + prompt); flag-branched |
-| `/about` | `app/about/page.tsx` → `GlassAbout` \| `LegacyAbout` | Marketing page; flag-branched |
-| `/not-found` | `app/not-found.tsx` | 404 handler |
-| `/error` | `app/error.tsx` | Segment error boundary — reports to Sentry when configured |
-| `/global-error` | `app/global-error.tsx` | Root error boundary — reports to Sentry when configured |
-| `/loading` | `app/loading.tsx` | Skeleton shown during route transitions |
+| Path            | File                                                          | Notes                                                      |
+| --------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
+| `/`             | `app/page.tsx` → `GlassHome` \| `_components/HomeContent.tsx` | Home (connect + prompt); flag-branched                     |
+| `/about`        | `app/about/page.tsx` → `GlassAbout` \| `LegacyAbout`          | Marketing page; flag-branched                              |
+| `/not-found`    | `app/not-found.tsx`                                           | 404 handler                                                |
+| `/error`        | `app/error.tsx`                                               | Segment error boundary — reports to Sentry when configured |
+| `/global-error` | `app/global-error.tsx`                                        | Root error boundary — reports to Sentry when configured    |
+| `/loading`      | `app/loading.tsx`                                             | Skeleton shown during route transitions                    |
 
 ## Accessibility
 

@@ -54,9 +54,9 @@ unsupported, the product says so before any wallet prompt appears.
 
 ## Live On Base Mainnet
 
-| Contract | Address | Explorer |
-|---|---|---|
-| SherpaRouter | `0x00bfef87DD352D48F8572BcfA52E57870B35DE8b` | [Basescan](https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b) |
+| Contract       | Address                                      | Explorer                                                                            |
+| -------------- | -------------------------------------------- | ----------------------------------------------------------------------------------- |
+| SherpaRouter   | `0x00bfef87DD352D48F8572BcfA52E57870B35DE8b` | [Basescan](https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b) |
 | SherpaTreasury | `0xF4e72beAA559E1815f4671e39EDb1295aD975918` | [Basescan](https://basescan.org/address/0xF4e72beAA559E1815f4671e39EDb1295aD975918) |
 
 Mainnet ownership is Safe-controlled. Deployment records live in
@@ -65,17 +65,17 @@ materials live in [`docs/sherpa/audit/stage-2/`](docs/sherpa/audit/stage-2/).
 
 ## What You Can Do Today
 
-| Capability | Status | Scope |
-|---|---|---|
-| Supply to Aave V3 | Live | Base mainnet guarded transaction |
-| Borrow from Aave V3 | Live | Base mainnet guarded transaction |
-| Repay Aave debt | Live | Base mainnet guarded transaction |
-| Withdraw Aave collateral | Live | Base mainnet guarded transaction |
-| Swap via Aerodrome | Live | Base mainnet guarded transaction |
-| Alerts | Live | Price, balance, and health-factor notifications |
-| DCA scheduler | Live | Schedule creation and worker checks; unattended signing remains session-key gated |
-| Auto-repay | Live | Rule creation and worker checks; unattended signing remains session-key gated |
-| Multi-chain portfolio | Live | Read-only balances across Base, Ethereum, Polygon, Optimism, and Arbitrum |
+| Capability               | Status | Scope                                                                             |
+| ------------------------ | ------ | --------------------------------------------------------------------------------- |
+| Supply to Aave V3        | Live   | Base mainnet guarded transaction                                                  |
+| Borrow from Aave V3      | Live   | Base mainnet guarded transaction                                                  |
+| Repay Aave debt          | Live   | Base mainnet guarded transaction                                                  |
+| Withdraw Aave collateral | Live   | Base mainnet guarded transaction                                                  |
+| Swap via Aerodrome       | Live   | Base mainnet guarded transaction                                                  |
+| Alerts                   | Live   | Price, balance, and health-factor notifications                                   |
+| DCA scheduler            | Live   | Schedule creation and worker checks; unattended signing remains session-key gated |
+| Auto-repay               | Live   | Rule creation and worker checks; unattended signing remains session-key gated     |
+| Multi-chain portfolio    | Live   | Read-only balances across Base, Ethereum, Polygon, Optimism, and Arbitrum         |
 
 Sherpa transactions execute on Base mainnet only. Non-Base chains are display
 surfaces, not transaction surfaces.
@@ -148,12 +148,12 @@ forge test -vv
 
 ## Try It
 
-| Surface | Link |
-|---|---|
-| Web app | [sherpa-web.vercel.app](https://sherpa-web.vercel.app) |
-| Mini App | [sherpa-miniapp.vercel.app](https://sherpa-miniapp.vercel.app) |
-| Farcaster | [gnanam.eth](https://farcaster.xyz/gnanam.eth) |
-| Base App | `app_id 6a06efd3067444793fb8ddba` |
+| Surface   | Link                                                           |
+| --------- | -------------------------------------------------------------- |
+| Web app   | [sherpa-web.vercel.app](https://sherpa-web.vercel.app)         |
+| Mini App  | [sherpa-miniapp.vercel.app](https://sherpa-miniapp.vercel.app) |
+| Farcaster | [gnanam.eth](https://farcaster.xyz/gnanam.eth)                 |
+| Base App  | `app_id 6a06efd3067444793fb8ddba`                              |
 
 Mini App verification:
 
