@@ -1,5 +1,9 @@
 # @sherpa/web
 
+Sherpa web app — part of the Sherpa open source project. See the
+[root README](../../README.md) for the full project overview, contracts, audit
+status, and release posture.
+
 Sherpa's web app — Next.js 15, App Router, port **3100** in dev.
 
 Owner: M2 (frontend). Routes call the paymaster proxy at `/api/paymaster`, which is owned by M3 in `apps/api`.

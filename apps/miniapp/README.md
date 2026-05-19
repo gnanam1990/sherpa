@@ -1,5 +1,9 @@
 # Sherpa Mini App
 
+Part of the Sherpa open source project. See the
+[root README](../../README.md) for the full project overview, contracts, audit
+status, and release posture.
+
 Farcaster + Base App mini app for Sherpa.
 
 ## Setup

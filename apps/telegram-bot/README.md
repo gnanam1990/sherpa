@@ -1,5 +1,9 @@
 # Sherpa Telegram Bot
 
+Part of the Sherpa open source project. See the
+[root README](../../README.md) for the full project overview, contracts, audit
+status, and release posture.
+
 Telegram bot for Sherpa onchain agent.
 
 The bot is a separate long-polling service. It needs a real BotFather token and a private-beta admin allowlist before it can run.
