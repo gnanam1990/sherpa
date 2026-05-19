@@ -1286,21 +1286,9 @@ async function planTip(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanR
     return { ok: false, error: 'Missing tip amount or recipient.' };
   }
 
-  const recipientAddress = null; // TODO: resolve Farcaster user to address
-
   return {
-    ok: true,
-    card: {
-      intent: 'TIP',
-      primary_action_label: 'Send Tip',
-      primary_amount_display: `$${amount}`,
-      secondary_amount_display: `to @${recipient}`,
-      steps: [], // Will be filled when address is resolved
-      batch: undefined,
-      gas_display: 'sponsored',
-      warnings: recipientAddress ? [] : ['Recipient address not resolved. They may need to link their wallet.'],
-      estimated_completion_ms: 6000,
-    },
+    ok: false,
+    error: 'Tipping is not available yet: Farcaster recipient address resolution is not implemented.',
   };
 }
 
@@ -1313,18 +1301,8 @@ async function planPoll(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<Plan
   }
 
   return {
-    ok: true,
-    card: {
-      intent: 'POLL',
-      primary_action_label: 'Create Poll',
-      primary_amount_display: question,
-      secondary_amount_display: slots.pollOptions ? `${(slots.pollOptions as string[]).length} options` : 'Open poll',
-      steps: [], // No on-chain calls
-      batch: undefined,
-      gas_display: 'free',
-      warnings: [],
-      estimated_completion_ms: 0,
-    },
+    ok: false,
+    error: 'Poll creation is not available yet: social publishing is not implemented.',
   };
 }
 
@@ -1332,28 +1310,17 @@ async function planCollect(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<P
   const slots = parsed.slots;
   const target = typeof slots.collectUrl === 'string'
     ? slots.collectUrl
-    : typeof slots.collectTarget === 'string'
+      : typeof slots.collectTarget === 'string'
       ? slots.collectTarget
       : '';
-  const quantity = slots.collectAmount ? Number(slots.collectAmount) : 1;
 
   if (!target) {
     return { ok: false, error: 'Missing collect target (URL or collection name).' };
   }
 
   return {
-    ok: true,
-    card: {
-      intent: 'COLLECT',
-      primary_action_label: 'Collect',
-      primary_amount_display: `${quantity} NFT`,
-      secondary_amount_display: target,
-      steps: [],
-      batch: undefined,
-      gas_display: 'sponsored',
-      warnings: ['Zora collection not resolved. Verify the URL before confirming.'],
-      estimated_completion_ms: 6000,
-    },
+    ok: false,
+    error: 'Collect is not available yet: Zora collection resolution and mint execution are not implemented.',
   };
 }
 
