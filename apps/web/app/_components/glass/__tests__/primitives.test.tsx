@@ -296,7 +296,7 @@ describe('shell + nav', () => {
 });
 
 describe('composer pill', () => {
-  it('changes value, fills from suggestion, submits trimmed', () => {
+  it('changes value, shows action rail, submits trimmed', () => {
     const onChange = vi.fn();
     const onSubmit = vi.fn();
     const { rerender } = render(
@@ -304,12 +304,11 @@ describe('composer pill', () => {
         value=""
         onChange={onChange}
         onSubmit={onSubmit}
-        suggestions={['show my positions']}
         statusLine="parser · safety v3"
       />,
     );
-    fireEvent.click(screen.getByText('/ show my positions'));
-    expect(onChange).toHaveBeenCalledWith('show my positions');
+    expect(screen.getByRole('button', { name: 'Swap' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'More' })).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('Intent'), {
       target: { value: 'swap 1 usdc' },
