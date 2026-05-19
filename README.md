@@ -37,14 +37,15 @@ supply 100 USDC to Aave
 
 Behind the scenes, Sherpa parses the intent, resolves tokens and addresses,
 runs deterministic safety checks, shows a confirmation card, then routes the
-approved transaction through audited Base mainnet contracts.
+approved transaction through independently reviewed Base mainnet contracts.
 
 Sherpa is not an autonomous black box. If a flow is read-only, gated, or
 unsupported, the product says so before any wallet prompt appears.
 
 ## Why Sherpa?
 
-- **Audited:** 2 external review rounds, 0 critical findings after remediation.
+- **Independently reviewed:** 2 security reviews by anandh8x and
+  vasanthdev2004, 0 critical findings after remediation.
 - **Honest:** Real data, explicit empty states, no fake TVL or scripted success.
 - **Base-native execution:** Write transactions execute on Base mainnet only.
 - **Multi-chain visibility:** Ethereum, Polygon, Optimism, Arbitrum, and Base
@@ -60,8 +61,9 @@ unsupported, the product says so before any wallet prompt appears.
 | SherpaTreasury | `0xF4e72beAA559E1815f4671e39EDb1295aD975918` | [Basescan](https://basescan.org/address/0xF4e72beAA559E1815f4671e39EDb1295aD975918) |
 
 Mainnet ownership is Safe-controlled. Deployment records live in
-[`deployments/base-mainnet.json`](deployments/base-mainnet.json), and audit
-materials live in [`docs/sherpa/audit/stage-2/`](docs/sherpa/audit/stage-2/).
+[`deployments/base-mainnet.json`](deployments/base-mainnet.json), and security
+review materials live in
+[`docs/sherpa/audit/stage-2/`](docs/sherpa/audit/stage-2/).
 
 ## What You Can Do Today
 
@@ -86,8 +88,9 @@ surfaces, not transaction surfaces.
   before unattended signing is exposed as a default user flow.
 - **Morpho Blue:** scaffolded for Stage 2 preparation, not wired into production
   execution.
-- **More chain transactions:** audit-gated; current non-Base support is read-only.
-- **Bridge:** disabled until adapters and routes are audited.
+- **More chain transactions:** review-gated; current non-Base support is
+  read-only.
+- **Bridge:** disabled until adapters and routes are reviewed or audited.
 
 ## How It Works
 
@@ -97,7 +100,7 @@ User intent
   -> Safety pipeline (7 rings)
   -> Human-readable confirmation
   -> Wallet signature
-  -> Audited SherpaRouter
+  -> Reviewed SherpaRouter
   -> Onchain execution
 ```
 
@@ -128,7 +131,8 @@ Current verification snapshot:
 - SherpaRouter: 96.94% line coverage.
 - SherpaTreasury: 100% line coverage.
 - Slither: 0 high / 0 critical findings.
-- 2 external audit rounds completed with 0 critical findings after remediation.
+- 2 independent security reviews completed with 0 critical findings after
+  remediation.
 
 Run the same checks locally:
 

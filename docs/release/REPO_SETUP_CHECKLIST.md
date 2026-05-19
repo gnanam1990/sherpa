@@ -6,7 +6,7 @@ Use this checklist when configuring the public GitHub repo at the launch moment.
 
 - [x] LICENSE present (Apache 2.0)
 - [x] NOTICE with maintainer + contracts
-- [x] SECURITY.md with audit history
+- [x] SECURITY.md with security review history
 - [x] CONTRIBUTING.md guidelines
 - [x] Apache 2.0 headers on source files (298 files)
 - [x] README.md presentation-ready
@@ -74,17 +74,17 @@ Expected:
 Expected:
 
 - Release page links to the exact `v0.5.0` tag.
-- Verified contracts, audit status, and known limitations are visible.
+- Verified contracts, security review status, and known limitations are visible.
 
 ## Repository settings
 
 - [ ] Description:
-      `Natural-language DeFi agent for Base. Audited. Multi-chain portfolio. Open source. Solo built.`
+      `Natural-language DeFi agent for Base. Independently reviewed. Multi-chain portfolio. Open source. Solo built.`
 - [ ] Website: `https://sherpa-miniapp.vercel.app`
 - [ ] Topics:
       `defi`, `base`, `base-chain`, `aave`, `ethereum`, `natural-language`,
-      `ai-agent`, `audited`, `open-source`, `typescript`, `nextjs`, `viem`,
-      `wagmi`, `smart-contracts`
+      `ai-agent`, `security-review`, `open-source`, `typescript`, `nextjs`,
+      `viem`, `wagmi`, `smart-contracts`
 
 ## Branch protection (main branch)
 

@@ -16,9 +16,9 @@ permissions and limitations under the License.
 -------------------------------------------------------------------
 
 The "Sherpa" name and project identity are maintained by gnanam.
-This software was independently developed and externally audited.
+This software was independently developed and independently security reviewed.
 
-Audit reports: see /docs/sherpa/audit/stage-2/
+Security review materials: see /docs/sherpa/audit/stage-2/
 
 Verified contracts on Base mainnet:
   SherpaRouter:   0x00bfef87DD352D48F8572BcfA52E57870B35DE8b

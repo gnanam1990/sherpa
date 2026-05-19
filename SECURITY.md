@@ -2,17 +2,22 @@
 
 ## Supported Versions
 
-| Version | Supported |
-|---------|-----------|
-| Mainnet (current) | Yes |
-| Testnet | Best-effort |
+| Version           | Supported   |
+| ----------------- | ----------- |
+| Mainnet (current) | Yes         |
+| Testnet           | Best-effort |
 
-## Audit History
+## Security Review History
 
-- Audit Round 1: 2026-05-17, external review round covering GitHub issues #34-#40.
-- Audit Round 2: 2026-05-17, external Stage 2 issue report review.
+Sherpa has undergone independent security review by two individual reviewers:
 
-Combined findings: 0 critical, 0 high after remediation.
+- Independent security review 1: anandh8x, 2026-05-17, GitHub issues #34-#40.
+- Independent security review 2: vasanthdev2004, 2026-05-17, Stage 2 issue
+  report.
+
+These were independent security reviews, not formal audit-firm reports.
+
+Combined findings after remediation: 0 critical, 0 high.
 
 Static analysis: Slither clean for high and critical findings.
 
@@ -21,7 +26,10 @@ Coverage:
 - SherpaRouter: 96.94%
 - SherpaTreasury: 100%
 
-Audit materials live in `docs/sherpa/audit/stage-2/`.
+Security review materials live in `docs/sherpa/audit/stage-2/`.
+
+A formal external audit by a recognized audit firm is planned before the v1.0
+release.
 
 ## Reporting Vulnerabilities
 
@@ -29,11 +37,9 @@ If you discover a security vulnerability in Sherpa, please report it responsibly
 
 DO NOT open a public GitHub issue.
 
-Use GitHub private vulnerability reporting when it is enabled for this repository.
-If private reporting is unavailable, contact the maintainer privately before
-publishing details.
-
-Contact: maintainer to provide email before public launch.
+Use GitHub private vulnerability reporting once it is enabled for this
+repository. If private reporting is unavailable, contact the maintainer
+privately before publishing details.
 
 We aim to acknowledge reports within 48 hours and provide a timeline for fixes
 within 5 business days.
