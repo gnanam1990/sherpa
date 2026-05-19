@@ -1,3 +1,13 @@
+/**
+ * Copyright 2024-2026 gnanam
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 import { createPublicClient, erc20Abi, http, type Address, type Chain } from 'viem';
 import { arbitrum, base, mainnet, optimism, polygon } from 'viem/chains';
 import { getUserAaveAccountData, type AavePosition } from '../aave/positions.js';

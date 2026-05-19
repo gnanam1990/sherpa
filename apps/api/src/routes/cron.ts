@@ -1,4 +1,14 @@
 /**
+ * Copyright 2024-2026 gnanam
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
+
+/**
  * POST /api/cron/hourly — runs the hourly task registry.
  *
  * Triggered externally by cron-job.org (free tier; chosen over Vercel
