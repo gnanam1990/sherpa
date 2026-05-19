@@ -14,6 +14,10 @@ import { createPublicClient, createWalletClient, http, parseEther, type Address 
 import { arbitrumSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
+throw new Error(
+  'deploy-arbitrum-sepolia.ts is a non-functional deployment stub. Implement real deploy calls before running it.',
+);
+
 const ARBITRUM_SEPOLIA_RPC = process.env.ARBITRUM_SEPOLIA_RPC_URL ?? 'https://sepolia-rollup.arbitrum.io/rpc';
 const DEPLOYER_KEY = process.env.DEPLOYER_PRIVATE_KEY;
 

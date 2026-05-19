@@ -1286,21 +1286,9 @@ async function planTip(parsed: ParsedIntent, _deps: ExecutorDeps): Promise<PlanR
     return { ok: false, error: 'Missing tip amount or recipient.' };
   }
 
-  const recipientAddress = null; // TODO: resolve Farcaster user to address
-
   return {
-    ok: true,
-    card: {
-      intent: 'TIP',
-      primary_action_label: 'Send Tip',
-      primary_amount_display: `$${amount}`,
-      secondary_amount_display: `to @${recipient}`,
-      steps: [], // Will be filled when address is resolved
-      batch: undefined,
-      gas_display: 'sponsored',
-      warnings: recipientAddress ? [] : ['Recipient address not resolved. They may need to link their wallet.'],
-      estimated_completion_ms: 6000,
-    },
+    ok: false,
+    error: 'Tipping is not available yet: Farcaster recipient address resolution is not implemented.',
   };
 }
 

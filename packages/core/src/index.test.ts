@@ -1879,13 +1879,12 @@ describe('core/executor', () => {
 
   // ── TIP executor ───────────────────────────────────────────────────
 
-  it('TIP returns a confirmation card', async () => {
+  it('TIP returns unavailable until Farcaster address resolution exists', async () => {
     const p = parseDeterministic('tip $5 to @vitalik');
     const out = await plan(p);
-    expect(out.ok).toBe(true);
-    if (out.ok) {
-      expect(out.card.intent).toBe('TIP');
-      expect(out.card.primary_amount_display).toBe('$5');
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toContain('Farcaster recipient address resolution');
     }
   });
 

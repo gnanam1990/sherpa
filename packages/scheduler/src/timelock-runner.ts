@@ -42,7 +42,7 @@ export function parseScheduledTime(timeStr: string): Date | null {
 
   const relativeMatch = timeStr.match(/in\s+(\d+)\s+(minute|hour|day|week|month)s?/i);
   if (relativeMatch) {
-    const amount = parseInt(relativeMatch[1]!);
+    const amount = parseInt(relativeMatch[1]!, 10);
     const unit = relativeMatch[2]!.toLowerCase();
     const result = new Date(now);
     switch (unit) {
