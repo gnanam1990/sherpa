@@ -242,12 +242,13 @@ function GlassThread({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    // Scroll to bottom whenever messages change or busy state flips.
-    // Use rAF so we wait for DOM paint before measuring.
-    requestAnimationFrame(() => {
+
+    const frame = requestAnimationFrame(() => {
       el.scrollTop = el.scrollHeight;
     });
-  }, [chat.messages.length, busy]);
+
+    return () => cancelAnimationFrame(frame);
+  }, [chat.messages, busy]);
 
   return (
     <>
@@ -263,6 +264,7 @@ function GlassThread({
         <div
           ref={scrollRef}
           className="flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-7"
+          data-testid="glass-chat-scroll"
         >
           <div className="mx-auto flex w-full max-w-[680px] flex-col gap-5">
             {chat.messages.length === 0 && isConnected && (
