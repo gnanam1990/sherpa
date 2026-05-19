@@ -29,9 +29,9 @@ export function AppFrame({
   railProps,
 }: AppFrameProps) {
   return (
-    <div className="relative h-full min-h-[100dvh] w-full overflow-hidden text-[#F8FAFF]">
+    <div className="relative h-[100dvh] w-full overflow-hidden text-[#F8FAFF]">
       <AuroraBackground />
-      <div className="relative z-10 flex h-full min-h-[100dvh] w-full">
+      <div className="relative z-10 flex h-full w-full overflow-hidden">
         {!hideRail && (
           <>
             <IconRail
@@ -43,7 +43,7 @@ export function AppFrame({
         )}
         <main
           id="main-content"
-          className="relative flex min-h-0 min-w-0 flex-1 flex-col"
+          className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
         >
           {children}
         </main>
