@@ -16,10 +16,19 @@ coverage/
 # Env / secrets
 .env
 .env.*
+.env.local
+.env.*.local
+.env.production
+.env.mainnet
+.env.smoke
+.env.mainnet-smoke
 !.env.example
 !.env.mainnet.example
 apps/*/.env.local
 packages/*/.env.local
+packages/contracts/.env*
+!packages/contracts/.env.example
+!packages/contracts/.env.mainnet.example
 *.pem
 *.key
 secrets/
@@ -29,6 +38,7 @@ secrets/
 Thumbs.db
 .vscode/
 .idea/
+._*
 
 # Logs
 *.log
@@ -42,6 +52,8 @@ yarn-error.log*
 *.zip
 worktrees/
 .vercel
+.vercel/
+.cache/
 
 # Foundry / Contracts
 packages/contracts/out/
