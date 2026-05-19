@@ -35,10 +35,10 @@ function chainMeta(chainIdHex: string | undefined): {
   label: string;
   tone: ChainTone;
 } {
-  if (!chainIdHex) return { label: 'Base', tone: 'mainnet' };
+  if (!chainIdHex) return { label: 'Base mainnet', tone: 'mainnet' };
   const id = chainIdHex.startsWith('0x') ? Number.parseInt(chainIdHex, 16) : Number(chainIdHex);
   if (id === 84532) return { label: 'Base Sepolia', tone: 'sepolia' };
-  return { label: 'Base', tone: 'mainnet' };
+  return { label: 'Base mainnet', tone: 'mainnet' };
 }
 
 function explorerTxUrl(txHash: string, chainIdHex: string | undefined): string {

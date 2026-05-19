@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { usePositionsData } from '../../../hooks/usePositionsData';
 import { healthFactorLabel } from '../HealthFactorBadge';
 import { formatUsdBase } from '../PositionsView';
 import { AppFrame } from './app-frame';
+import { GlassPortfolio } from './glass-portfolio';
 import { TopBar } from './top-bar';
 import { useGlassTopBar } from './top-bar-data';
 import { GlassChip, GlassPanel, MetaLabel } from './primitives';
@@ -154,8 +156,46 @@ function PositionsBody() {
   );
 }
 
+type PositionsMode = 'base' | 'all';
+
+function ModeToggle({
+  mode,
+  onModeChange,
+}: {
+  mode: PositionsMode;
+  onModeChange: (mode: PositionsMode) => void;
+}) {
+  return (
+    <div className="glass-thin flex w-full rounded-full p-1 sm:w-auto">
+      {[
+        { key: 'base' as const, label: 'Base only' },
+        { key: 'all' as const, label: 'All chains' },
+      ].map((item) => {
+        const active = mode === item.key;
+        return (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => onModeChange(item.key)}
+            className={`flex-1 rounded-full px-3 py-1.5 font-mono text-[11px] transition sm:flex-none ${
+              active
+                ? 'bg-[#A6F2FF] text-[#06111E] shadow-[0_0_18px_rgba(0,225,255,0.25)]'
+                : 'text-white/70 hover:bg-white/[0.06] hover:text-white'
+            }`}
+            aria-pressed={active}
+          >
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function GlassPositions() {
   const top = useGlassTopBar();
+  const [mode, setMode] = useState<PositionsMode>('base');
+
   return (
     <AppFrame>
       <TopBar
@@ -167,14 +207,21 @@ export function GlassPositions() {
       />
       <div className="relative flex-1 overflow-y-auto px-4 py-6 sm:px-7">
         <div className="mx-auto w-full max-w-3xl">
-          <div className="mb-5">
-            <MetaLabel>Account</MetaLabel>
-            <h2 className="mt-1 font-serif text-3xl italic">Aave Positions</h2>
-            <p className="mt-1 text-sm opacity-65">
-              Read-only view of your Aave V3 position on Base mainnet.
-            </p>
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <MetaLabel>Account</MetaLabel>
+              <h2 className="mt-1 font-serif text-3xl italic">
+                {mode === 'base' ? 'Aave Positions' : 'Portfolio'}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm opacity-65">
+                {mode === 'base'
+                  ? 'Read-only view of your Aave V3 position on Base mainnet.'
+                  : 'Read-only token balances across supported chains. Sherpa transactions execute on Base mainnet only.'}
+              </p>
+            </div>
+            <ModeToggle mode={mode} onModeChange={setMode} />
           </div>
-          <PositionsBody />
+          {mode === 'base' ? <PositionsBody /> : <GlassPortfolio />}
         </div>
       </div>
     </AppFrame>

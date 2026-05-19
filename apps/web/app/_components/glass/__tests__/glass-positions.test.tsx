@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const H = vi.hoisted(() => {
@@ -65,6 +65,78 @@ const POSITION = {
   fetchedAt: '2026-05-16T00:00:00.000Z',
 };
 
+const PORTFOLIO = {
+  address: ADDRESS,
+  requestedChains: [8453, 1, 137, 10, 42161],
+  chains: [
+    {
+      chainId: 8453,
+      chainName: 'Base',
+      tokens: [
+        {
+          symbol: 'ETH',
+          address: 'native',
+          decimals: 18,
+          chainId: 8453,
+          balance: '1000000000000000000',
+          valueUsd: '3000',
+          priceUsd: 3000,
+        },
+      ],
+      positions: [],
+      totalValueUsd: '3000',
+      lastUpdated: '2026-05-19T12:00:00.000Z',
+    },
+    {
+      chainId: 1,
+      chainName: 'Ethereum',
+      tokens: [
+        {
+          symbol: 'USDC',
+          address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+          decimals: 6,
+          chainId: 1,
+          balance: '42000000',
+          valueUsd: '42',
+          priceUsd: 1,
+        },
+      ],
+      positions: [],
+      totalValueUsd: '42',
+      lastUpdated: '2026-05-19T12:00:00.000Z',
+    },
+    {
+      chainId: 137,
+      chainName: 'Polygon',
+      tokens: [],
+      positions: [],
+      totalValueUsd: '0',
+      lastUpdated: '2026-05-19T12:00:00.000Z',
+    },
+    {
+      chainId: 10,
+      chainName: 'Optimism',
+      tokens: [],
+      positions: [],
+      totalValueUsd: '0',
+      lastUpdated: '2026-05-19T12:00:00.000Z',
+    },
+    {
+      chainId: 42161,
+      chainName: 'Arbitrum',
+      tokens: [],
+      positions: [],
+      totalValueUsd: '0',
+      lastUpdated: '2026-05-19T12:00:00.000Z',
+    },
+  ],
+  errors: [],
+  totalValueUsd: '3042',
+  totalPnlUsd: '0',
+  totalPnlPercent: 0,
+  lastUpdated: '2026-05-19T12:00:00.000Z',
+};
+
 async function flush() {
   await act(async () => {
     await Promise.resolve();
@@ -91,6 +163,8 @@ describe('GlassPositions', () => {
     expect(screen.getByText('$12.34')).toBeTruthy(); // collateral hero
     expect(screen.getByText('$2.50')).toBeTruthy(); // debt
     expect(screen.getByText(/HF 3.30 · Safe/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Base only' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'All chains' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('asks to connect when disconnected', async () => {
@@ -115,5 +189,29 @@ describe('GlassPositions', () => {
 
     expect(await screen.findByText('Error: rpc down')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
+  });
+
+  it('switches to read-only multi-chain balances on request', async () => {
+    const fetcher = vi.fn((url: string) => (
+      url.includes('/api/portfolio/')
+        ? jsonResponse(PORTFOLIO)
+        : jsonResponse(POSITION)
+    ));
+    vi.stubGlobal('fetch', fetcher);
+
+    render(<GlassPositions />);
+    await flush();
+
+    fireEvent.click(screen.getByRole('button', { name: 'All chains' }));
+
+    expect(await screen.findByRole('heading', { name: 'Portfolio' })).toBeTruthy();
+    expect(await screen.findByText('$3,042.00')).toBeTruthy();
+    expect(screen.getByText('Read-only multi-chain')).toBeTruthy();
+    expect(screen.getByText('Ethereum')).toBeTruthy();
+    expect(screen.getByText('42 USDC')).toBeTruthy();
+    expect(screen.getByText('Read-only on non-Base chains. Sherpa transactions execute on Base mainnet only.')).toBeTruthy();
+    await waitFor(() => {
+      expect(fetcher).toHaveBeenCalledWith(`/api/portfolio/${ADDRESS}?chains=8453,1,137,10,42161`);
+    });
   });
 });

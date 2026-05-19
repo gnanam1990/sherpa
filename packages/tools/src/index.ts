@@ -161,12 +161,22 @@ export type {
   StrategyStepResult,
   StrategyDeps,
 } from './strategies/index.js';
-export { fetchPortfolio, fetchMultiChainPortfolio, aggregatePortfolio, calculatePnl } from './portfolio/index.js';
+export {
+  BASE_CHAIN_ID,
+  SUPPORTED_PORTFOLIO_CHAIN_IDS,
+  fetchPortfolio,
+  fetchMultiChainPortfolio,
+  aggregatePortfolio,
+  calculatePnl,
+} from './portfolio/index.js';
 export type {
   PortfolioToken,
   PortfolioPosition,
   PortfolioSnapshot,
   PortfolioDeps,
+  PortfolioChainError,
+  PortfolioFetcherDeps,
+  SupportedPortfolioChainId,
 } from './portfolio/index.js';
 export {
   dispatchNotification,

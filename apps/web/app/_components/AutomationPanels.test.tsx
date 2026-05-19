@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AlertsPanel } from './AutomationPanels';
+import { AlertsPanel, MultiChainPanel } from './AutomationPanels';
 
 const wagmiState = vi.hoisted(() => ({
   address: '0x1234567890123456789012345678901234567890' as `0x${string}` | undefined,
@@ -51,6 +51,21 @@ function mockFetch() {
         },
         { status: 201 },
       );
+    }
+    if (url === '/api/chains') {
+      return Response.json({
+        chains: [
+          {
+            chainId: 8453,
+            name: 'Base',
+            shortName: 'base',
+            rpcUrl: 'https://mainnet.base.org',
+            explorerUrl: 'https://basescan.org',
+            bridgeProtocols: [],
+            status: 'mainnet',
+          },
+        ],
+      });
     }
     return Response.json({}, { status: 404 });
   });
@@ -188,5 +203,26 @@ describe('AlertsPanel', () => {
 
     await screen.findByText(/No active token yet/);
     expect(screen.getByRole('button', { name: 'Create alert' })).toBeDisabled();
+  });
+});
+
+describe('MultiChainPanel', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it('links read-only chain registry users to the portfolio balance view', async () => {
+    mockFetch();
+    render(<MultiChainPanel />);
+
+    expect(
+      screen.getByText('Read-only on non-Base chains. Sherpa transactions execute on Base mainnet only.'),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Open portfolio view' })).toHaveAttribute(
+      'href',
+      '/positions',
+    );
+    expect(await screen.findByText('Base')).toBeTruthy();
   });
 });

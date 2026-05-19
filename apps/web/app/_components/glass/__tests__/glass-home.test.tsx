@@ -307,6 +307,7 @@ describe('GlassHome integration', () => {
     expect(await screen.findByText(/Confirm in Smart Wallet/)).toBeTruthy();
     expect(screen.getByText('Allowlisted token')).toBeTruthy();
     expect(screen.getByText('Confirm the recipient address.')).toBeTruthy();
+    expect(screen.getAllByText('Base mainnet').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByText(/Confirm in Smart Wallet/));
     await flush();

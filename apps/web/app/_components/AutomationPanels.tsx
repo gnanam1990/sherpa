@@ -686,6 +686,15 @@ export function MultiChainPanel() {
       title="Multi-chain"
     >
       <div className={cardClass}>
+        <h2 className="font-medium">Portfolio balances</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Read-only on non-Base chains. Sherpa transactions execute on Base mainnet only.
+        </p>
+        <a className="mt-3 inline-block text-sm text-base-blue hover:underline" href="/positions">
+          Open portfolio view
+        </a>
+      </div>
+      <div className={cardClass}>
         <p className="text-sm text-muted-foreground">{status}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
