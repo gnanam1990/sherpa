@@ -194,7 +194,6 @@ export function GlassPortfolio() {
     connected,
     data,
     chains,
-    loading,
     error,
     refresh,
     aggregateTotalValueUsd,
