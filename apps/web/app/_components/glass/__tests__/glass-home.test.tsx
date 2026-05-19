@@ -168,6 +168,51 @@ describe('GlassHome integration', () => {
     expect((screen.getByLabelText('Intent') as HTMLInputElement).disabled).toBe(true);
   });
 
+  it('keeps chat messages in a centered internal scroller and auto-scrolls on new messages', async () => {
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn((cb: FrameRequestCallback) => {
+        cb(0);
+        return 1;
+      }),
+    );
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    const fetchMock = vi.fn((url: string) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({
+          parsed: { intent: 'SEND', confidence: 1 },
+          card: sendCard(),
+        });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<GlassHome />);
+    await flush();
+
+    const scroller = screen.getByTestId('glass-chat-scroll') as HTMLDivElement;
+    Object.defineProperty(scroller, 'scrollHeight', {
+      configurable: true,
+      value: 1234,
+    });
+
+    expect(scroller.className).toContain('overflow-y-auto');
+    expect(scroller.className).toContain('overscroll-contain');
+    expect(scroller.firstElementChild?.className).toContain('max-w-[680px]');
+
+    fireEvent.change(screen.getByLabelText('Intent'), {
+      target: { value: `send 5 usdc to ${USER_ADDRESS}` },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Preview/ }));
+
+    expect(await screen.findByText(/Confirm in Smart Wallet/)).toBeTruthy();
+    expect(scroller.scrollTop).toBe(1234);
+  });
+
   it('ComposerPill submit triggers the parser; Confirm triggers signing', async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
