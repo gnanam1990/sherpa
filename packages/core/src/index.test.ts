@@ -1890,13 +1890,23 @@ describe('core/executor', () => {
 
   // ── POLL executor ──────────────────────────────────────────────────
 
-  it('POLL returns a confirmation card', async () => {
+  it('POLL returns unavailable until social publishing exists', async () => {
     const p = parseDeterministic('create poll: What is your favorite L2?');
     const out = await plan(p);
-    expect(out.ok).toBe(true);
-    if (out.ok) {
-      expect(out.card.intent).toBe('POLL');
-      expect(out.card.primary_amount_display).toContain('favorite L2');
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toContain('social publishing');
+    }
+  });
+
+  // ── COLLECT executor ───────────────────────────────────────────────
+
+  it('COLLECT returns unavailable until collection execution exists', async () => {
+    const p = parseDeterministic('collect https://zora.co/collect/abc123');
+    const out = await plan(p);
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toContain('Zora collection resolution');
     }
   });
 
