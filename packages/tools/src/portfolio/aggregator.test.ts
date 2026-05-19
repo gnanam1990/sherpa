@@ -16,4 +16,14 @@ describe('Portfolio aggregator', () => {
     const result = aggregatePortfolio([]);
     expect(result.totalValueUsd).toBe(0n);
   });
+
+  test('keeps chain id for empty per-chain snapshots', () => {
+    const result = aggregatePortfolio([
+      { chainId: 137, timestamp: Date.now(), totalValueUsd: 0n, tokens: [], positions: [] },
+    ]);
+
+    expect(result.chainBreakdown).toEqual([
+      { chainId: 137, valueUsd: 0n, percent: 0 },
+    ]);
+  });
 });

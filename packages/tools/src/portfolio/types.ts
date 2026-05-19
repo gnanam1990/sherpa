@@ -17,13 +17,23 @@ export type PortfolioPosition = {
 };
 
 export type PortfolioSnapshot = {
+  chainId?: number;
+  chainName?: string;
   timestamp: number;
   totalValueUsd: bigint;
   tokens: PortfolioToken[];
   positions: PortfolioPosition[];
+  chains?: PortfolioSnapshot[];
+  errors?: PortfolioChainError[];
 };
 
 export type PortfolioDeps = {
   chainId: number;
   rpcUrl?: string;
+};
+
+export type PortfolioChainError = {
+  chainId: number;
+  chainName: string;
+  message: string;
 };
