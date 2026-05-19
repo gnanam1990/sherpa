@@ -237,6 +237,17 @@ function GlassThread({
     userAddress: address,
     initialInput: '',
   });
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Scroll to bottom whenever messages change or busy state flips.
+    // Use rAF so we wait for DOM paint before measuring.
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+  }, [chat.messages.length, busy]);
 
   return (
     <>
@@ -248,24 +259,29 @@ function GlassThread({
         right={!isConnected ? <ConnectButton variant="compact" /> : undefined}
       />
 
-      <div className="relative flex min-h-0 flex-1 items-stretch px-4 py-6 sm:px-7">
-        <div className="mx-auto flex w-full max-w-[680px] flex-col gap-5 overflow-y-auto pr-1">
-          {chat.messages.length === 0 && isConnected && (
-            <div className="mt-10 text-center font-mono text-[12px] opacity-55">
-              Type an intent below to begin.
-            </div>
-          )}
-          {chat.messages.map((message) => (
-            <MessageRow
-              key={message.id}
-              message={message}
-              account={{ ens, address }}
-              chainIdHex={chainIdHex}
-              onConfirm={(id) => void confirm(id)}
-              onCancel={cancel}
-              busy={busy}
-            />
-          ))}
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-7"
+        >
+          <div className="mx-auto flex w-full max-w-[680px] flex-col gap-5">
+            {chat.messages.length === 0 && isConnected && (
+              <div className="mt-10 text-center font-mono text-[12px] opacity-55">
+                Type an intent below to begin.
+              </div>
+            )}
+            {chat.messages.map((message) => (
+              <MessageRow
+                key={message.id}
+                message={message}
+                account={{ ens, address }}
+                chainIdHex={chainIdHex}
+                onConfirm={(id) => void confirm(id)}
+                onCancel={cancel}
+                busy={busy}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
