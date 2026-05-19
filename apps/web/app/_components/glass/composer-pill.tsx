@@ -1,7 +1,7 @@
 'use client';
 
-import type { FormEvent } from 'react';
-import { GlassChip } from './primitives';
+import { useRef, type FormEvent } from 'react';
+import { ActionRail } from './action-rail';
 
 /**
  * Glass Aurora composer pill.
@@ -22,8 +22,6 @@ export interface ComposerPillProps {
   onSubmit: (value: string) => void;
   /** Placeholder shown when empty. */
   placeholder?: string;
-  /** Quick-fill suggestion chips above the pill. */
-  suggestions?: ReadonlyArray<string>;
   /** Footer status line (parser/safety provenance). Optional. */
   statusLine?: string;
   /** Disable input + submit while a request is in flight. */
@@ -35,10 +33,11 @@ export function ComposerPill({
   onChange,
   onSubmit,
   placeholder = 'Type an intent in plain English…',
-  suggestions = [],
   statusLine,
   busy = false,
 }: ComposerPillProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = value.trim();
@@ -49,21 +48,7 @@ export function ComposerPill({
   return (
     <div className="relative z-10 shrink-0 px-7 pb-6">
       <div className="mx-auto max-w-[680px]">
-        {suggestions.length > 0 && (
-          <div className="mb-2.5 flex flex-wrap gap-1.5">
-            {suggestions.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => onChange(s)}
-                disabled={busy}
-                className="rounded-full disabled:opacity-50"
-              >
-                <GlassChip>/ {s}</GlassChip>
-              </button>
-            ))}
-          </div>
-        )}
+        <ActionRail busy={busy} draft={value} inputRef={inputRef} onPrefill={onChange} />
 
         <form
           onSubmit={submit}
@@ -82,17 +67,14 @@ export function ComposerPill({
               WebkitBackdropFilter: 'blur(28px) saturate(160%)',
             }}
           >
-            <span
-              className="font-mono text-[13px]"
-              style={{ color: '#A6F2FF' }}
-              aria-hidden="true"
-            >
+            <span className="font-mono text-[13px]" style={{ color: '#A6F2FF' }} aria-hidden="true">
               ›
             </span>
             <label htmlFor="composer-intent" className="sr-only">
               Intent
             </label>
             <input
+              ref={inputRef}
               id="composer-intent"
               type="text"
               value={value}
@@ -117,9 +99,7 @@ export function ComposerPill({
         </form>
 
         {statusLine && (
-          <div className="mt-2 text-center font-mono text-[10px] opacity-55">
-            {statusLine}
-          </div>
+          <div className="mt-2 text-center font-mono text-[10px] opacity-55">{statusLine}</div>
         )}
       </div>
     </div>

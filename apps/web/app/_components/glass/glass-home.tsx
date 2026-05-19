@@ -11,18 +11,13 @@ import {
 } from 'wagmi';
 import { ConnectButton, type SerializedConfirmationCardProps } from '@sherpa/ui';
 import type { ChatMessage } from '@sherpa/ui';
-import { EXAMPLE_PROMPTS, usePromptFlow } from '../../../hooks/usePromptFlow';
+import { usePromptFlow } from '../../../hooks/usePromptFlow';
 import { AppFrame } from './app-frame';
 import { TopBar } from './top-bar';
 import { ComposerPill } from './composer-pill';
 import { HeroConfirmCard } from './hero-confirm-card';
 import type { ConfirmRiskIndicator } from './hero-confirm-card';
-import {
-  IntentChips,
-  SherpaAvatar,
-  SherpaBubble,
-  UserBubble,
-} from './chat-bubbles';
+import { IntentChips, SherpaAvatar, SherpaBubble, UserBubble } from './chat-bubbles';
 import { shortHex } from './brand';
 import type { ChainTone } from './brand';
 
@@ -41,9 +36,7 @@ function chainMeta(chainIdHex: string | undefined): {
   tone: ChainTone;
 } {
   if (!chainIdHex) return { label: 'Base', tone: 'mainnet' };
-  const id = chainIdHex.startsWith('0x')
-    ? Number.parseInt(chainIdHex, 16)
-    : Number(chainIdHex);
+  const id = chainIdHex.startsWith('0x') ? Number.parseInt(chainIdHex, 16) : Number(chainIdHex);
   if (id === 84532) return { label: 'Base Sepolia', tone: 'sepolia' };
   return { label: 'Base', tone: 'mainnet' };
 }
@@ -54,14 +47,11 @@ function explorerTxUrl(txHash: string, chainIdHex: string | undefined): string {
       ? Number.parseInt(chainIdHex, 16)
       : Number(chainIdHex)
     : 8453;
-  const base =
-    id === 84532 ? 'https://sepolia.basescan.org' : 'https://basescan.org';
+  const base = id === 84532 ? 'https://sepolia.basescan.org' : 'https://basescan.org';
   return `${base}/tx/${txHash}`;
 }
 
-function normalizeRisk(
-  card: SerializedConfirmationCardProps,
-): ConfirmRiskIndicator[] {
+function normalizeRisk(card: SerializedConfirmationCardProps): ConfirmRiskIndicator[] {
   const raw = card.risk_indicators ?? [];
   return raw.map((r) =>
     typeof r === 'string'
@@ -149,14 +139,10 @@ function MessageRow({
             <div className="flex items-center gap-2">
               <span className={toneClass}>{summary.status}</span>
               <span className="font-semibold">{summary.action}</span>
-              {summary.subject && (
-                <span className="opacity-70">{summary.subject}</span>
-              )}
+              {summary.subject && <span className="opacity-70">{summary.subject}</span>}
             </div>
             {summary.error && (
-              <span className="font-mono text-[10.5px] text-amber-200/90">
-                {summary.error}
-              </span>
+              <span className="font-mono text-[10.5px] text-amber-200/90">{summary.error}</span>
             )}
             {summary.txHash && (
               <a
@@ -245,13 +231,12 @@ function GlassThread({
   chainIdHex: string | undefined;
   onDisconnect: () => void;
 }) {
-  const { input, setInput, busy, submitParse, confirm, cancel, chat } =
-    usePromptFlow({
-      connectionEpoch,
-      isConnected,
-      userAddress: address,
-      initialInput: '',
-    });
+  const { input, setInput, busy, submitParse, confirm, cancel, chat } = usePromptFlow({
+    connectionEpoch,
+    isConnected,
+    userAddress: address,
+    initialInput: '',
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -268,11 +253,7 @@ function GlassThread({
   return (
     <>
       <TopBar
-        account={
-          isConnected && address
-            ? { ens, address, balanceUsd: balanceLabel }
-            : null
-        }
+        account={isConnected && address ? { ens, address, balanceUsd: balanceLabel } : null}
         chain={chainMeta(chainIdHex)}
         live={isConnected}
         onDisconnect={onDisconnect}
@@ -310,11 +291,8 @@ function GlassThread({
         value={input}
         onChange={setInput}
         onSubmit={() => void submitParse()}
-        suggestions={EXAMPLE_PROMPTS}
         busy={busy || !isConnected}
-        statusLine={
-          isConnected ? undefined : 'Connect your wallet to start.'
-        }
+        statusLine={isConnected ? undefined : 'Connect your wallet to start.'}
       />
     </>
   );
@@ -360,11 +338,11 @@ export function GlassHome() {
         connectionEpoch={connectionEpoch}
         isConnected={isConnected}
         address={address}
-          ens={ensName ?? null}
-          balanceLabel={balanceLabel}
-          chainIdHex={chainIdHex}
-          onDisconnect={disconnect}
-        />
+        ens={ensName ?? null}
+        balanceLabel={balanceLabel}
+        chainIdHex={chainIdHex}
+        onDisconnect={disconnect}
+      />
     </AppFrame>
   );
 }
