@@ -1,0 +1,29 @@
+Sherpa
+Copyright 2024-2026 gnanam (https://github.com/gnanam1990)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied. See the License for the specific language governing
+permissions and limitations under the License.
+
+-------------------------------------------------------------------
+
+The "Sherpa" name and project identity are maintained by gnanam.
+This software was independently developed and externally audited.
+
+Audit reports: see /docs/sherpa/audit/stage-2/
+
+Verified contracts on Base mainnet:
+  SherpaRouter:   0x00bfef87DD352D48F8572BcfA52E57870B35DE8b
+  SherpaTreasury: 0xF4e72beAA559E1815f4671e39EDb1295aD975918
+
+Mini App verified on:
+  Farcaster: FID 976779 (gnanam.eth)
+  Base App:  app_id 6a06efd3067444793fb8ddba
