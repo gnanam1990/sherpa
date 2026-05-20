@@ -263,9 +263,28 @@ const pendingVerb: Record<string, string> = {
 };
 
 async function readJson<T>(res: Response): Promise<T> {
-  const body = (await res.json()) as T & { error?: string; message?: string };
+  const text = await res.text();
+  let body: (T & { details?: string; error?: string; message?: string }) | undefined;
+
+  if (text.trim()) {
+    try {
+      body = JSON.parse(text) as T & { details?: string; error?: string; message?: string };
+    } catch {
+      const preview = text.replace(/\s+/g, ' ').trim().slice(0, 500);
+      throw new Error(
+        res.ok
+          ? `Sherpa API returned an unreadable response${preview ? `: ${preview}` : '.'}`
+          : (preview || `Request failed with ${res.status}`),
+      );
+    }
+  } else {
+    body = {} as T & { details?: string; error?: string; message?: string };
+  }
+
   if (!res.ok) {
-    throw new Error(body.error ?? body.message ?? `Request failed with ${res.status}`);
+    throw new Error(
+      body.error ?? body.message ?? body.details ?? `Request failed with ${res.status}`,
+    );
   }
   return body;
 }
@@ -561,7 +580,7 @@ export function usePromptFlow({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ input: prompt, userKey: userAddress }),
       });
-      const body = (await res.json()) as ParseResponse;
+      const body = await readJson<ParseResponse>(res);
       if (body.parsed?.intent === 'BALANCE') {
         const balance = await readJson<BalanceResponse>(await fetch(`/api/balance/${userAddress}`));
         chat.updateMessage(thinkingMessage.id, {
@@ -753,7 +772,7 @@ export function usePromptFlow({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ input: sourceInput, userAddress }),
       });
-      const body = (await res.json()) as ExecuteResponse;
+      const body = await readJson<ExecuteResponse>(res);
       const latestWallet = walletState.current;
       if (
         !latestWallet.isConnected ||

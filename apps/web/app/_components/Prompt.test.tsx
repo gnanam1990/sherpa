@@ -39,6 +39,15 @@ function jsonResponse(body: unknown, status = 200) {
   );
 }
 
+function textResponse(body: string, status = 500) {
+  return Promise.resolve(
+    new Response(body, {
+      status,
+      headers: { 'content-type': 'text/plain' },
+    }),
+  );
+}
+
 function sendCard(withBatch = false) {
   return {
     intent: 'SEND',
@@ -432,6 +441,32 @@ describe('Prompt', () => {
     expect(
       screen.getByText('Transaction would fail. Try a smaller amount or different recipient.'),
     ).toBeTruthy();
+  });
+
+  it('renders plain-text execute failures without JSON parser noise', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({ parsed: { intent: 'SEND', confidence: 1 }, card: sendCard() });
+      }
+      if (url === '/api/execute') {
+        return textResponse('An error occurred while preparing wallet signature.', 502);
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<Prompt isConnected userAddress={USER_ADDRESS} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    await screen.findByRole('heading', { name: 'Send 5 USDC' });
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed' }));
+
+    expect(await screen.findByText('Transaction failed')).toBeTruthy();
+    expect(screen.getByText('An error occurred while preparing wallet signature.')).toBeTruthy();
+    expect(screen.queryByText(/Unexpected token/)).toBeNull();
+    expect(sendSponsoredCallsAsync).not.toHaveBeenCalled();
   });
 
   it('explains when the connected wallet does not support wallet_sendCalls', async () => {
