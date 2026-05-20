@@ -203,7 +203,17 @@ export function actionDescription(
 }
 
 function errorDetailFrom(err: unknown): string {
-  if (err instanceof Error) return err.message;
+  if (err instanceof Error) {
+    const normalized = err.message.toLowerCase();
+    if (
+      err instanceof SyntaxError &&
+      normalized.includes('unexpected token') &&
+      normalized.includes('json')
+    ) {
+      return UNREADABLE_WALLET_RESPONSE_ERROR;
+    }
+    return err.message;
+  }
   return String(err);
 }
 
@@ -261,6 +271,9 @@ const pendingVerb: Record<string, string> = {
   HISTORY: 'Loading history',
   IDENTITY_LOOKUP: 'Resolving identity',
 };
+
+const UNREADABLE_WALLET_RESPONSE_ERROR =
+  'Wallet returned an unreadable response. The transaction was not confirmed. Please retry from the wallet popup.';
 
 async function readJson<T>(res: Response): Promise<T> {
   const text = await res.text();

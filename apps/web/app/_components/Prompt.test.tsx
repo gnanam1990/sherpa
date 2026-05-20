@@ -469,6 +469,46 @@ describe('Prompt', () => {
     expect(sendSponsoredCallsAsync).not.toHaveBeenCalled();
   });
 
+  it('renders unreadable wallet status responses without JSON parser noise', async () => {
+    callsStatusState.current = {
+      data: undefined,
+      error: new SyntaxError('Unexpected token A, "An error occurred" is not valid JSON'),
+      isError: true,
+    };
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url === `/api/history/${USER_ADDRESS}?limit=50`) {
+        return jsonResponse({ address: USER_ADDRESS, chain: 'base', items: [] });
+      }
+      if (url === '/api/parse') {
+        return jsonResponse({ parsed: { intent: 'SEND', confidence: 1 }, card: sendCard() });
+      }
+      if (url === '/api/execute') return jsonResponse(executeBody());
+      if (url === '/api/execute/7/confirm') {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(init?.body as string)).toMatchObject({
+          error:
+            'Wallet returned an unreadable response. The transaction was not confirmed. Please retry from the wallet popup.',
+        });
+        return jsonResponse({ ok: true });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<Prompt isConnected userAddress={USER_ADDRESS} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    await screen.findByRole('heading', { name: 'Send 5 USDC' });
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed' }));
+
+    expect(await screen.findByText('Transaction failed')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Wallet returned an unreadable response. The transaction was not confirmed. Please retry from the wallet popup.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Unexpected token/)).toBeNull();
+  });
+
   it('explains when the connected wallet does not support wallet_sendCalls', async () => {
     sendSponsoredCallsAsync.mockRejectedValueOnce(new Error(UNSUPPORTED_SEND_CALLS_ERROR));
     const fetchMock = vi.fn((url: string) => {
