@@ -3,6 +3,7 @@ import { loadConfig } from '@sherpa/config';
 import { createInMemoryAuditStore, createInMemoryRateLimiter } from '@sherpa/memory';
 import { _resetSentryForTests, type Logger, type SentryLike } from '@sherpa/logger';
 import { buildServer } from './server.js';
+import type { LLMResponse } from '@sherpa/llm';
 
 const offlineConfig = { ...loadConfig(), stage2TestnetEnabled: false, useRealRpc: false } as const;
 const testnetStage2Config = { ...offlineConfig, stage2TestnetEnabled: true } as const;
@@ -14,6 +15,14 @@ const MAINNET_FACTORY = '0x420DD381b31aEf6683db6B902084cB0FFECe40Da' as const;
 const MAINNET_AAVE = '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5' as const;
 const MAINNET_ATOKEN = '0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB' as const;
 const MAINNET_DEBT_TOKEN = '0x59dca05b6c26dbd64b5381374aAaC5CD05644C28' as const;
+const fakeLlmUsage: LLMResponse['usage'] = {
+  provider: 'gpt-4o-mini',
+  model: 'gpt-4o-mini',
+  promptTokens: 1,
+  completionTokens: 1,
+  costUsd: 0,
+  latencyMs: 0,
+};
 const mainnetStage2Config = {
   ...offlineConfig,
   aerodromeFactoryAddress: MAINNET_FACTORY,
@@ -129,6 +138,49 @@ describe('apps/api', () => {
     expect(body.parsed?.intent).toBe('POSITIONS');
     expect(body.card?.intent).toBe('POSITIONS');
     expect(body.card?.steps).toEqual([]);
+    await app.close();
+  });
+
+  it('POST /api/parse uses LLM fallback for typoed balance requests', async () => {
+    const app = buildServer({
+      config: offlineConfig,
+      llmComplete: async (): Promise<LLMResponse> => ({
+        text: '{"intent":"BALANCE","slots":{},"confidence":0.82}',
+        usage: fakeLlmUsage,
+      }),
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse',
+      payload: { input: 'what is my balnce', userKey: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { parsed?: { intent: string }; card?: { intent: string; steps: unknown[] } };
+    expect(body.parsed?.intent).toBe('BALANCE');
+    expect(body.card?.intent).toBe('BALANCE');
+    expect(body.card?.steps).toEqual([]);
+    await app.close();
+  });
+
+  it('POST /api/parse rejects LLM output that rewrites the user amount', async () => {
+    const app = buildServer({
+      config: offlineConfig,
+      llmComplete: async (): Promise<LLMResponse> => ({
+        text: '{"intent":"SEND","slots":{"amount":"1","rawAmountText":"1","asset":"USDC","to":"vitalik.eth"},"confidence":0.91}',
+        usage: fakeLlmUsage,
+      }),
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse',
+      payload: { input: 'sned 0.1 usdc to vitalik dot eth', userKey: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { parsed?: { intent: string; confidence: number }; card?: unknown; error?: string };
+    expect(body.parsed?.intent).toBe('UNKNOWN');
+    expect(body.parsed?.confidence).toBe(0);
+    expect(body.card).toBeUndefined();
+    expect(body.error).toMatch(/intent UNKNOWN not supported/i);
     await app.close();
   });
 

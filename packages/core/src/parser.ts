@@ -41,9 +41,18 @@ import type { ParsedIntent, Intent } from './types.js';
  *   - "I want to buy some ETH"          (prose)
  */
 
-const SEND_RE = /^send\s+([\d.]+)\s*(usdc|eth)?\s+to\s+(\S+)\s*$/i;
+const AMOUNT_LITERAL_SOURCE = '(\\$?\\d+(?:\\.\\d+)?\\$?)';
+const AMOUNT_LITERAL_RE = /\$?\d+(?:\.\d+)?\$?/g;
+
+const SEND_RE = new RegExp(
+  `^send\\s+${AMOUNT_LITERAL_SOURCE}\\s*([a-zA-Z][a-zA-Z0-9]*)?\\s+to\\s+(\\S+)\\s*$`,
+  'i',
+);
 // Verbless: "<amount> [asset] to <recipient>". Asset defaults to USDC like SEND_RE.
-const SEND_NO_VERB_RE = /^([\d.]+)\s*(usdc|eth)?\s+to\s+(\S+)\s*$/i;
+const SEND_NO_VERB_RE = new RegExp(
+  `^${AMOUNT_LITERAL_SOURCE}\\s*([a-zA-Z][a-zA-Z0-9]*)?\\s+to\\s+(\\S+)\\s*$`,
+  'i',
+);
 const BUY_RE = /^buy\s+\$?([\d.]+)\s+(?:of\s+)?(\w+)\s*$/i;
 // Asset-first: "buy <asset> for $<amount>".
 const BUY_FOR_RE = /^buy\s+(\w+)\s+for\s+\$?([\d.]+)\s*$/i;
@@ -233,6 +242,36 @@ function make(
   return { intent, raw, slots, confidence };
 }
 
+function normalizeAmountLiteral(rawAmount: string): {
+  amount: string;
+  rawAmountText: string;
+  amountKind: 'token' | 'fiat' | 'fiat_or_ambiguous';
+} {
+  const rawAmountText = rawAmount.trim();
+  const hasLeadingDollar = rawAmountText.startsWith('$');
+  const hasTrailingDollar = rawAmountText.endsWith('$');
+  return {
+    amount: rawAmountText.replace(/^\$/, '').replace(/\$$/, ''),
+    rawAmountText,
+    amountKind: hasLeadingDollar ? 'fiat' : hasTrailingDollar ? 'fiat_or_ambiguous' : 'token',
+  };
+}
+
+function makeSendSlots(
+  rawAmount: string,
+  asset: string | undefined,
+  to: string | undefined,
+): Record<string, unknown> {
+  const amount = normalizeAmountLiteral(rawAmount);
+  return {
+    amount: amount.amount,
+    rawAmountText: amount.rawAmountText,
+    amountKind: amount.amountKind,
+    asset: (asset ?? 'USDC').toUpperCase(),
+    to,
+  };
+}
+
 export function parseDeterministic(input: string): ParsedIntent {
   const trimmed = input.trim();
   if (trimmed.length > 500) return make('UNKNOWN', trimmed.slice(0, 500), {}, 0);
@@ -241,12 +280,7 @@ export function parseDeterministic(input: string): ParsedIntent {
   let m: RegExpMatchArray | null;
 
   if ((m = raw.match(SEND_RE))) {
-    return make(
-      'SEND',
-      raw,
-      { amount: m[1], asset: (m[2] ?? 'USDC').toUpperCase(), to: m[3] },
-      0.95,
-    );
+    return make('SEND', raw, makeSendSlots(m[1] ?? '', m[2], m[3]), 0.95);
   }
 
   if ((m = raw.match(SEND_NO_VERB_RE))) {
@@ -255,7 +289,7 @@ export function parseDeterministic(input: string): ParsedIntent {
     // to UNKNOWN so the LLM (or future SWAP regex) can disambiguate.
     const to = m[3] ?? '';
     if (!/^(usdc|usd|eth|weth|btc|wbtc)$/i.test(to)) {
-      return make('SEND', raw, { amount: m[1], asset: (m[2] ?? 'USDC').toUpperCase(), to }, 0.85);
+      return make('SEND', raw, makeSendSlots(m[1] ?? '', m[2], to), 0.85);
     }
   }
 
@@ -1133,24 +1167,101 @@ const VALID_INTENTS: readonly Intent[] = [
 const PARSE_SYSTEM = `You translate a user's natural-language Web3 instruction into a strict JSON object.
 
 Output ONLY a single JSON object, no prose, with this shape:
-{ "intent": "SEND|BUY|BET|SWAP|LEND|BORROW|REPAY|WITHDRAW|POSITIONS|DEPOSIT|BALANCE|HISTORY|BRIDGE|COLLECT|UNKNOWN", "slots": { ... }, "confidence": 0..1 }
+{ "intent": "SEND|BUY|BET|SWAP|LEND|BORROW|REPAY|WITHDRAW|POSITIONS|LP|STAKE|DEPOSIT|BALANCE|HISTORY|BRIDGE|DCA|DCA_MANAGE|ALERT|AUTO_REPAY|TIP|COLLECT|UNKNOWN", "slots": { ... }, "confidence": 0..1 }
+
+Critical safety rules:
+- You may fix spelling/grammar for the intent and asset names.
+- NEVER rewrite, round, scale, convert, or infer a user-entered amount.
+- For every monetary/token amount, copy the original amount text exactly into "rawAmountText".
+- The normalized amount slot may only remove a leading or trailing "$". Examples:
+  - "send 1$ usdt to 0xabc" -> { "amount": "1", "rawAmountText": "1$", "asset": "USDT" }
+  - "send $1 usdc to 0xabc" -> { "amount": "1", "rawAmountText": "$1", "asset": "USDC" }
+  - "swap 0.10 usdc for eth" -> { "fromAmount": "0.10", "rawAmountText": "0.10" }
+- If preserving the exact original amount is impossible, return UNKNOWN.
 
 Slot conventions:
-- SEND     { "amount": "5", "asset": "USDC", "to": "<address|handle|ens>" }
-- BUY      { "usd": "50", "asset": "ETH" }
-- BET      { "usd": "5", "predicate": "<text>", "outcome": "YES|NO" }
-- DEPOSIT  { "usd": "50", "asset": "USDC" }
-- LEND     { "amount": "100", "asset": "USDC" }
-- BORROW   { "borrowAmount": "100", "borrowAsset": "USDC", "interestMode": "variable|stable", "collateralAsset": "ETH", "targetHealthFactor": "1.5" }
-- REPAY    { "amount": "100", "asset": "USDC" }
-- WITHDRAW { "amount": "100", "asset": "USDC" }
+- SEND     { "amount": "5", "rawAmountText": "5", "asset": "USDC", "to": "<address|handle|ens>" }
+- BUY      { "usd": "50", "rawAmountText": "$50", "asset": "ETH" }
+- BET      { "usd": "5", "rawAmountText": "$5", "predicate": "<text>", "outcome": "YES|NO" }
+- DEPOSIT  { "usd": "50", "rawAmountText": "$50", "asset": "USDC" }
+- LEND     { "amount": "100", "rawAmountText": "100", "asset": "USDC" }
+- BORROW   { "borrowAmount": "100", "rawAmountText": "100", "borrowAsset": "USDC", "interestMode": "variable|stable", "collateralAsset": "ETH", "targetHealthFactor": "1.5" }
+- REPAY    { "amount": "100", "rawAmountText": "100", "asset": "USDC" }
+- WITHDRAW { "amount": "100", "rawAmountText": "100", "asset": "USDC" }
 - POSITIONS {}
 - LP       { "asset1": "USDC", "amount1": "100", "asset2": "ETH", "amount2": "0.05" } or { "asset1": "USDC", "amount1": "100", "asset2": "ETH", "poolName": "USDC/ETH" }
 - BALANCE  {}
 - HISTORY  { "limit": 10 }
-- BRIDGE   { "bridgeAmount": "100", "bridgeAsset": "USDC", "destinationChain": "optimism", "sourceChain": "base" }
+- BRIDGE   { "bridgeAmount": "100", "rawAmountText": "100", "bridgeAsset": "USDC", "destinationChain": "optimism", "sourceChain": "base" }
 
 If you cannot parse, return { "intent": "UNKNOWN", "slots": {}, "confidence": 0 }.`;
+
+const AMOUNT_SLOT_KEYS = new Set([
+  'amount',
+  'usd',
+  'betAmount',
+  'borrowAmount',
+  'bridgeAmount',
+  'dcaAmount',
+  'fromAmount',
+  'stakeAmount',
+  'tipAmount',
+  'amount1',
+  'amount2',
+]);
+
+function normalizeAmountForGuard(value: unknown): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  const text = String(value).trim();
+  if (!/^\$?\d+(?:\.\d+)?\$?$/.test(text)) return null;
+  return text.replace(/^\$/, '').replace(/\$$/, '');
+}
+
+function originalAmountLiterals(raw: string): Array<{ raw: string; normalized: string }> {
+  return Array.from(raw.matchAll(AMOUNT_LITERAL_RE)).map((match) => {
+    const literal = match[0];
+    return { raw: literal, normalized: literal.replace(/^\$/, '').replace(/\$$/, '') };
+  });
+}
+
+function amountSlotsPreserveInput(raw: string, slots: Record<string, unknown>): boolean {
+  const originals = originalAmountLiterals(raw);
+  const rawAmountText = typeof slots.rawAmountText === 'string' ? slots.rawAmountText.trim() : null;
+
+  if (rawAmountText && !originals.some((literal) => literal.raw === rawAmountText)) {
+    return false;
+  }
+
+  for (const [key, value] of Object.entries(slots)) {
+    if (!AMOUNT_SLOT_KEYS.has(key)) continue;
+    const normalized = normalizeAmountForGuard(value);
+    if (!normalized) return false;
+
+    if (
+      rawAmountText &&
+      [
+        'amount',
+        'usd',
+        'betAmount',
+        'borrowAmount',
+        'bridgeAmount',
+        'dcaAmount',
+        'fromAmount',
+        'stakeAmount',
+        'tipAmount',
+      ].includes(key)
+    ) {
+      const rawNormalized = rawAmountText.replace(/^\$/, '').replace(/\$$/, '');
+      if (normalized !== rawNormalized) return false;
+    }
+
+    if (!originals.some((literal) => literal.normalized === normalized)) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 function safeParseJson(text: string): unknown {
   // The model may wrap the JSON in code fences. Strip them, then take the
@@ -1187,6 +1298,9 @@ export async function parseWithLLM(input: string, complete: LLMComplete): Promis
     obj.slots && typeof obj.slots === 'object' ? (obj.slots as Record<string, unknown>) : {};
   const confidence =
     typeof obj.confidence === 'number' ? Math.max(0, Math.min(1, obj.confidence)) : 0.5;
+
+  if (intent === 'UNKNOWN') return make('UNKNOWN', raw, {}, confidence);
+  if (!amountSlotsPreserveInput(raw, slots)) return make('UNKNOWN', raw, {}, 0);
 
   return make(intent, raw, slots, confidence);
 }

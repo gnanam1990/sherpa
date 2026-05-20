@@ -11,7 +11,23 @@ describe('core/parser', () => {
     const p = parseDeterministic(`send 5 usdc to ${USDC_RECIPIENT}`);
     expect(p.intent).toBe('SEND');
     expect(p.slots.amount).toBe('5');
+    expect(p.slots.rawAmountText).toBe('5');
     expect(p.slots.to).toBe(USDC_RECIPIENT);
+  });
+
+  it('preserves user-entered amount text for SEND with currency sigils', () => {
+    const trailing = parseDeterministic(`send 1$ usdt to ${USDC_RECIPIENT}`);
+    expect(trailing.intent).toBe('SEND');
+    expect(trailing.slots.amount).toBe('1');
+    expect(trailing.slots.rawAmountText).toBe('1$');
+    expect(trailing.slots.amountKind).toBe('fiat_or_ambiguous');
+    expect(trailing.slots.asset).toBe('USDT');
+
+    const leading = parseDeterministic(`send $1 usdc to ${USDC_RECIPIENT}`);
+    expect(leading.intent).toBe('SEND');
+    expect(leading.slots.amount).toBe('1');
+    expect(leading.slots.rawAmountText).toBe('$1');
+    expect(leading.slots.amountKind).toBe('fiat');
   });
 
   it('parses BALANCE', () => {
@@ -1920,7 +1936,14 @@ describe('core/executor', () => {
 });
 
 describe('core/parseWithLLM', () => {
-  const fakeUsage = { provider: 'gpt-4o-mini' as const, model: 'gpt-4o-mini', promptTokens: 1, completionTokens: 1, costUsd: 0, latencyMs: 0 };
+  const fakeUsage = {
+    provider: 'gpt-4o-mini' as const,
+    model: 'gpt-4o-mini',
+    promptTokens: 1,
+    completionTokens: 1,
+    costUsd: 0,
+    latencyMs: 0,
+  };
 
   it('uses deterministic parse when it matches (no LLM call)', async () => {
     let called = 0;
@@ -1935,13 +1958,56 @@ describe('core/parseWithLLM', () => {
 
   it('falls back to LLM and validates the JSON response', async () => {
     const llm = async (): Promise<LLMResponse> => ({
-      text: '```json\n{"intent":"DEPOSIT","slots":{"usd":"25","asset":"USDC"},"confidence":0.8}\n```',
+      text: '```json\n{"intent":"DEPOSIT","slots":{"usd":"25","rawAmountText":"$25","asset":"USDC"},"confidence":0.8}\n```',
       usage: fakeUsage,
     });
     const out = await parseWithLLM('please put $25 into my wallet', llm);
     expect(out.intent).toBe('DEPOSIT');
     expect(out.slots.usd).toBe('25');
+    expect(out.slots.rawAmountText).toBe('$25');
     expect(out.confidence).toBe(0.8);
+  });
+
+  it('uses LLM fallback for spelling mistakes without changing the amount', async () => {
+    const llm = async (): Promise<LLMResponse> => ({
+      text: '{"intent":"SWAP","slots":{"fromAmount":"0.10","rawAmountText":"0.10","fromAsset":"USDC","toAsset":"ETH"},"confidence":0.82}',
+      usage: fakeUsage,
+    });
+    const out = await parseWithLLM('swaap 0.10 usdc for eth', llm);
+    expect(out.intent).toBe('SWAP');
+    expect(out.slots.fromAmount).toBe('0.10');
+    expect(out.slots.rawAmountText).toBe('0.10');
+  });
+
+  it('uses LLM fallback for typoed balance requests', async () => {
+    const llm = async (): Promise<LLMResponse> => ({
+      text: '{"intent":"BALANCE","slots":{},"confidence":0.77}',
+      usage: fakeUsage,
+    });
+    const out = await parseWithLLM('what is my balnce', llm);
+    expect(out.intent).toBe('BALANCE');
+  });
+
+  it('rejects LLM output that rewrites the user amount', async () => {
+    const llm = async (): Promise<LLMResponse> => ({
+      text: '{"intent":"SEND","slots":{"amount":"1","rawAmountText":"1","asset":"USDC","to":"vitalik.eth"},"confidence":0.9}',
+      usage: fakeUsage,
+    });
+    const out = await parseWithLLM('send 0.1 usdc to vitalik dot eth', llm);
+    expect(out.intent).toBe('UNKNOWN');
+    expect(out.confidence).toBe(0);
+  });
+
+  it('accepts LLM output for awkward amount spelling only when raw amount text matches', async () => {
+    const llm = async (): Promise<LLMResponse> => ({
+      text: `{"intent":"SEND","slots":{"amount":"1","rawAmountText":"1$","asset":"USDT","to":"${USDC_RECIPIENT}"},"confidence":0.9}`,
+      usage: fakeUsage,
+    });
+    const out = await parseWithLLM(`sned 1$ usdt to ${USDC_RECIPIENT}`, llm);
+    expect(out.intent).toBe('SEND');
+    expect(out.slots.amount).toBe('1');
+    expect(out.slots.rawAmountText).toBe('1$');
+    expect(out.slots.asset).toBe('USDT');
   });
 
   it('returns UNKNOWN for non-JSON model output', async () => {
