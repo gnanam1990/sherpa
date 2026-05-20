@@ -162,6 +162,29 @@ describe('apps/api', () => {
     await app.close();
   });
 
+  it('POST /api/parse handles common balance typos without LLM fallback', async () => {
+    let llmCalls = 0;
+    const app = buildServer({
+      config: offlineConfig,
+      llmComplete: async (): Promise<LLMResponse> => {
+        llmCalls += 1;
+        return { text: '{}', usage: fakeLlmUsage };
+      },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse',
+      payload: { input: 'whats my balnce', userKey: USDC_RECIPIENT },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { parsed?: { intent: string }; card?: { intent: string; steps: unknown[] } };
+    expect(body.parsed?.intent).toBe('BALANCE');
+    expect(body.card?.intent).toBe('BALANCE');
+    expect(body.card?.steps).toEqual([]);
+    expect(llmCalls).toBe(0);
+    await app.close();
+  });
+
   it('POST /api/parse rejects LLM output that rewrites the user amount', async () => {
     const app = buildServer({
       config: offlineConfig,

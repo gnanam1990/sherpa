@@ -187,6 +187,16 @@ describe('core/parser', () => {
     expect(parseDeterministic('show me my balance').intent).toBe('BALANCE');
   });
 
+  it('parses common BALANCE typos as read-only requests', () => {
+    expect(parseDeterministic('whats my balnce').intent).toBe('BALANCE');
+    expect(parseDeterministic('what is my balnace').intent).toBe('BALANCE');
+    expect(parseDeterministic('check my wallet balence').intent).toBe('BALANCE');
+  });
+
+  it('does not treat balance-like alert conditions as simple BALANCE requests', () => {
+    expect(parseDeterministic('notify me if my usdc balance < 100').intent).toBe('ALERT');
+  });
+
   it('returns UNKNOWN for multi-word recipients (LLM territory)', () => {
     // "vitalik dot eth" should NOT match SEND_RE — the recipient capture is a
     // single \S+ token by design. parseWithLLM picks this up.
