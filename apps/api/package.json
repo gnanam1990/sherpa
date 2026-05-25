@@ -28,12 +28,12 @@
     "@sherpa/tools": "workspace:*",
     "@vercel/kv": "^3.0.0",
     "fastify": "^5.2.0",
-    "viem": "^2.21.54",
+    "viem": "^2.50.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.9"
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
   }
 }
