@@ -24,10 +24,10 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "devDependencies": {
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.9"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
   },
   "dependencies": {
-    "viem": "^2.21.54"
+    "viem": "^2.50.4"
   }
 }

@@ -11,6 +11,23 @@
 import type { LLMProvider, LLMRequest, LLMResponse } from './types.js';
 import type { ProviderFn } from './router.js';
 
+type FetchLike = (
+  input: string,
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  },
+) => Promise<{
+  ok: boolean;
+  status: number;
+  text(): Promise<string>;
+  json(): Promise<unknown>;
+}>;
+
+const defaultFetch = (input: string, init?: Parameters<FetchLike>[1]) =>
+  (globalThis as { fetch: FetchLike }).fetch(input, init);
+
 /**
  * Real provider adapters. All three speak the OpenAI-compatible chat
  * completions shape (Groq's API is a drop-in; Anthropic uses messages
@@ -24,7 +41,7 @@ import type { ProviderFn } from './router.js';
 
 export type HttpProviderConfig = {
   apiKey: string;
-  fetchImpl?: typeof fetch;
+  fetchImpl?: FetchLike;
 };
 
 const PRICE: Record<LLMProvider, { in: number; out: number }> = {
@@ -50,7 +67,7 @@ async function openaiCompatible(
   cfg: HttpProviderConfig,
   req: LLMRequest,
 ): Promise<LLMResponse> {
-  const f = cfg.fetchImpl ?? fetch;
+  const f = cfg.fetchImpl ?? defaultFetch;
   const start = Date.now();
   const res = await f(endpoint, {
     method: 'POST',
@@ -119,7 +136,7 @@ const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 
 export function anthropicProvider(cfg: HttpProviderConfig): ProviderFn {
   return async (req) => {
-    const f = cfg.fetchImpl ?? fetch;
+    const f = cfg.fetchImpl ?? defaultFetch;
     const start = Date.now();
     const res = await f('https://api.anthropic.com/v1/messages', {
       method: 'POST',
