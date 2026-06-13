@@ -1,178 +1,105 @@
 # Sherpa
 
-<p align="center">
-  <img src="apps/web/public/sherpa-horizontal-logo.png" alt="Sherpa" width="360" />
-</p>
+> Natural-language DeFi agent for Base: type plain English, get safety-checked, on-chain execution through reviewed contracts.
 
-<p align="center">
-  <strong>Natural-language DeFi agent for Base.</strong>
-</p>
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+![Language: TypeScript & Solidity](https://img.shields.io/badge/built%20with-TypeScript%20%26%20Solidity-555.svg)
+[![CI](https://github.com/gnanam1990/sherpa/actions/workflows/ci.yml/badge.svg)](https://github.com/gnanam1990/sherpa/actions/workflows/ci.yml)
 
-<p align="center">
-  <a href="https://sherpa-web.vercel.app"><img src="https://img.shields.io/badge/web-live-0052FF" alt="Sherpa web app" /></a>
-  <a href="https://sherpa-miniapp.vercel.app"><img src="https://img.shields.io/badge/mini%20app-live-0052FF" alt="Sherpa Mini App" /></a>
-  <a href="https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b"><img src="https://img.shields.io/badge/contracts-verified-00D395" alt="Verified contracts" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-00D395" alt="Apache 2.0 license" /></a>
-</p>
+## Overview
 
-<p align="center">
-  <a href="https://sherpa-miniapp.vercel.app">Mini App</a>
-  ·
-  <a href="https://sherpa-web.vercel.app">Web</a>
-  ·
-  <a href="https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b">SherpaRouter</a>
-  ·
-  <a href="https://farcaster.xyz/gnanam.eth">Farcaster</a>
-</p>
+Sherpa turns natural-language requests (for example, `supply 100 USDC to Aave`)
+into structured DeFi intents, runs them through a deterministic safety pipeline,
+shows a human-readable confirmation, and routes the approved transaction through
+its own reviewed contracts on Base mainnet. It is built for users who want to
+interact with on-chain protocols without writing transactions by hand, while
+keeping every action explicit and gated rather than autonomous.
 
-## What Is Sherpa?
+The repository is a pnpm + Turborepo monorepo combining immutable, Safe-owned
+Solidity contracts (built and tested with Foundry) and a set of TypeScript
+packages and apps that handle intent parsing, safety checks, protocol adapters,
+identity resolution, scheduling, and the web / mini-app / API / worker surfaces.
 
-Sherpa lets people use DeFi by typing plain English.
+## Features
 
-Example:
+- Natural-language intent parsing into structured, typed DeFi operations.
+- A layered safety pipeline (rings 1–7) covering chain support, token allowlists,
+  balances, slippage and deadline validation, health-factor checks, and amount
+  caps before any wallet prompt.
+- On-chain execution via the reviewed `SherpaRouter` contract, integrating
+  Aerodrome (swaps) and Aave V3 (supply / borrow / repay / withdraw) on Base.
+- A `SherpaTreasury` contract for protocol fee custody, owned by a Safe.
+- Read-only multi-chain portfolio visibility (Base, Ethereum, Polygon, Optimism,
+  Arbitrum) — non-Base chains are display surfaces, not transaction surfaces.
+- Scheduling primitives for alerts, DCA, and auto-repay (rule/schedule creation
+  and worker evaluation). Unattended on-chain signing is gated and ships with
+  safe no-op executors by default (see Status).
+- Pluggable LLM router with provider fallback and cost tracking.
+- Multiple surfaces: Next.js web app, Farcaster / Base Mini App, Fastify API,
+  background worker, and a Telegram bot.
 
-```text
-supply 100 USDC to Aave
-```
+## Tech stack
 
-Behind the scenes, Sherpa parses the intent, resolves tokens and addresses,
-runs deterministic safety checks, shows a confirmation card, then routes the
-approved transaction through independently reviewed Base mainnet contracts.
+- **Contracts:** Solidity 0.8.24, Foundry (forge), OpenZeppelin (Ownable,
+  Pausable, ReentrancyGuard, SafeERC20).
+- **Chain tooling:** viem, wagmi, RainbowKit; Aave V3 and Aerodrome integrations.
+- **Web / UI:** Next.js, React, Tailwind CSS, shared `@sherpa/ui` components.
+- **Backend / workers:** Fastify, pino, Sentry, Zod-validated config.
+- **Monorepo:** pnpm workspaces, Turborepo, TypeScript, Vitest, ESLint, Prettier.
 
-Sherpa is not an autonomous black box. If a flow is read-only, gated, or
-unsupported, the product says so before any wallet prompt appears.
+## Architecture
 
-## Why Sherpa?
+The monorepo is split into deployable apps and shared packages.
 
-- **Independently reviewed:** 2 security reviews by anandh8x and
-  vasanthdev2004, 0 critical findings after remediation.
-- **Honest:** Real data, explicit empty states, no fake TVL or scripted success.
-- **Base-native execution:** Write transactions execute on Base mainnet only.
-- **Multi-chain visibility:** Ethereum, Polygon, Optimism, Arbitrum, and Base
-  balances are visible read-only.
-- **Solo built, open source:** Maintained by gnanam under Apache 2.0.
-- **Safety first:** 7-ring preflight pipeline before confirmation.
+**Apps (`apps/*`)**
 
-## Live On Base Mainnet
+- `web` — Next.js web app and primary UI.
+- `miniapp` — Farcaster / Base Mini App surface.
+- `api` — Fastify REST API.
+- `worker` — background daemon for alert evaluation, DCA, and auto-repay loops.
+- `telegram-bot` — Telegram command surface.
 
-| Contract       | Address                                      | Explorer                                                                            |
-| -------------- | -------------------------------------------- | ----------------------------------------------------------------------------------- |
-| SherpaRouter   | `0x00bfef87DD352D48F8572BcfA52E57870B35DE8b` | [Basescan](https://basescan.org/address/0x00bfef87DD352D48F8572BcfA52E57870B35DE8b) |
-| SherpaTreasury | `0xF4e72beAA559E1815f4671e39EDb1295aD975918` | [Basescan](https://basescan.org/address/0xF4e72beAA559E1815f4671e39EDb1295aD975918) |
+**Packages (`packages/*`)**
 
-Mainnet ownership is Safe-controlled. Deployment records live in
-[`deployments/base-mainnet.json`](deployments/base-mainnet.json), and security
-review materials live in
-[`docs/sherpa/audit/stage-2/`](docs/sherpa/audit/stage-2/).
+- `contracts` — Solidity contracts, Foundry tests, and deployment scripts.
+- `core` — agent core: parser, planner, and executor.
+- `tools` — protocol adapters (quote / build-tx / verify) and data indexers.
+- `safety` — safety rings 1–7, allowlists, and amount caps.
+- `memory` — user prefs, history snapshots, and the audit-log wrapper.
+- `scheduler` — DCA, alerts, and monitor runners.
+- `identity` — address resolution (Farcaster, Basenames, ENS, direct).
+- `config` — single-source environment validation and chain configs.
+- `llm` — LLM provider router and cost tracking.
+- `agentkit` — Coinbase AgentKit fallback adapter.
+- `sdk` — TypeScript client for the Sherpa API.
+- `ui` — shared React components and design tokens.
+- `logger` — shared structured logger.
 
-## What You Can Do Today
+Supporting directories: `deployments/` (public deployment artifacts),
+`scripts/db/` (database migrations), and `docs/sherpa/` (product, audit, and
+decision records).
 
-| Capability               | Status | Scope                                                                             |
-| ------------------------ | ------ | --------------------------------------------------------------------------------- |
-| Supply to Aave V3        | Live   | Base mainnet guarded transaction                                                  |
-| Borrow from Aave V3      | Live   | Base mainnet guarded transaction                                                  |
-| Repay Aave debt          | Live   | Base mainnet guarded transaction                                                  |
-| Withdraw Aave collateral | Live   | Base mainnet guarded transaction                                                  |
-| Swap via Aerodrome       | Live   | Base mainnet guarded transaction                                                  |
-| Alerts                   | Live   | Price, balance, and health-factor notifications                                   |
-| DCA scheduler            | Live   | Schedule creation and worker checks; unattended signing remains session-key gated |
-| Auto-repay               | Live   | Rule creation and worker checks; unattended signing remains session-key gated     |
-| Multi-chain portfolio    | Live   | Read-only balances across Base, Ethereum, Polygon, Optimism, and Arbitrum         |
+### On-chain contracts (Base mainnet)
 
-Sherpa transactions execute on Base mainnet only. Non-Base chains are display
-surfaces, not transaction surfaces.
+| Contract       | Address                                      |
+| -------------- | -------------------------------------------- |
+| SherpaRouter   | `0x00bfef87DD352D48F8572BcfA52E57870B35DE8b` |
+| SherpaTreasury | `0xF4e72beAA559E1815f4671e39EDb1295aD975918` |
 
-## What's Coming
+`FeeCalculator` and `SafetyCheck` are internal Solidity libraries used by the
+router. Both deployed contracts are verified on Basescan and owned by a Safe.
+Full deployment records (mainnet and Base Sepolia) are in
+[`deployments/`](deployments/).
 
-- **Session keys:** waiting on broader Coinbase Smart Wallet general availability
-  before unattended signing is exposed as a default user flow.
-- **Morpho Blue:** scaffolded for Stage 2 preparation, not wired into production
-  execution.
-- **More chain transactions:** review-gated; current non-Base support is
-  read-only.
-- **Bridge:** disabled until adapters and routes are reviewed or audited.
-
-## How It Works
-
-```text
-User intent
-  -> Parser
-  -> Safety pipeline (7 rings)
-  -> Human-readable confirmation
-  -> Wallet signature
-  -> Reviewed SherpaRouter
-  -> Onchain execution
-```
-
-1. **Parser:** turns natural language into a structured intent.
-2. **Safety pipeline:** checks chain support, allowlists, balances, slippage,
-   health factor, route shape, and execution boundaries.
-3. **Confirmation:** shows exactly what will happen before signing.
-4. **Router:** executes approved Base mainnet DeFi actions through verified
-   contracts.
-5. **Audit log:** records operational events for debugging and accountability.
-
-## Stack
-
-- Next.js 16 / React 19
-- Viem 2 / Wagmi 2 / RainbowKit
-- Tailwind CSS / Glass Aurora design system
-- Foundry / Solidity
-- Fastify / Redis-compatible worker patterns
-- pnpm / Turborepo
-- Farcaster Mini App / Base App metadata
-- Telegram bot surface
-
-## Test Coverage
-
-Current verification snapshot:
-
-- 2,200 tests passing across the workspace.
-- SherpaRouter: 96.94% line coverage.
-- SherpaTreasury: 100% line coverage.
-- Slither: 0 high / 0 critical findings.
-- 2 independent security reviews completed with 0 critical findings after
-  remediation.
-
-Run the same checks locally:
-
-```bash
-pnpm -r typecheck
-pnpm -r build
-pnpm -r test
-```
-
-Contract-only verification:
-
-```bash
-cd packages/contracts
-forge build
-forge test -vv
-```
-
-## Try It
-
-| Surface   | Link                                                           |
-| --------- | -------------------------------------------------------------- |
-| Web app   | [sherpa-web.vercel.app](https://sherpa-web.vercel.app)         |
-| Mini App  | [sherpa-miniapp.vercel.app](https://sherpa-miniapp.vercel.app) |
-| Farcaster | [gnanam.eth](https://farcaster.xyz/gnanam.eth)                 |
-| Base App  | `app_id 6a06efd3067444793fb8ddba`                              |
-
-Mini App verification:
-
-- Farcaster FID: `976779`
-- Base App app_id: `6a06efd3067444793fb8ddba`
-
-## Development
+## Getting started
 
 ### Prerequisites
 
-- Node.js 20 or newer
-- pnpm 9.x
-- Foundry, for contract builds and tests
+- Node.js 20 or newer (repo pins Node 22 via `.nvmrc`).
+- pnpm 9.x (the repo declares `pnpm@9.15.1`).
+- [Foundry](https://book.getfoundry.sh/) for building and testing the contracts.
 
-### Setup
+### Installation
 
 ```bash
 git clone https://github.com/gnanam1990/sherpa.git
@@ -180,17 +107,50 @@ cd sherpa
 pnpm install
 ```
 
-Copy only the env files needed for the surface you are running:
+### Configuration
+
+Sherpa reads all environment variables through `packages/config` (`loadConfig()`).
+Copy the template and fill in only what the surface you run requires:
 
 ```bash
-cp apps/web/.env.example apps/web/.env.local
-cp apps/api/.env.example apps/api/.env.local
+cp .env.example .env
 ```
 
-Never commit private keys, bot tokens, API secrets, wallet mnemonics, or
-deployment env files.
+Key variables (see [`.env.example`](.env.example) for the full, commented list):
 
-### Run Locally
+| Variable | Purpose |
+| --- | --- |
+| `SHERPA_CHAIN` | Target chain (`base-sepolia` default, or `base-mainnet`). |
+| `SHERPA_RPC_URL` | Optional RPC override for the selected chain. |
+| `SHERPA_USE_REAL_RPC` | Enable real RPC reads (`false` for offline/unit tests). |
+| `SHERPA_PAYMASTER_URL` | Optional paymaster service URL for gas sponsorship. |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` | LLM provider API keys; at least one enables the LLM router (with fallback). |
+| `BASESCAN_API_KEY` | Basescan key for the history indexer. |
+| `HOST`, `PORT`, `SHERPA_API_BASE` | API bind config and web → API proxy base. |
+| `SHERPA_USE_REAL_DB`, `DATABASE_URL`, `SUPABASE_SERVICE_KEY` | Postgres-backed memory stores (default in-memory). |
+| `NEYNAR_API_KEY`, `NEYNAR_BASE_URL`, `ALCHEMY_ETH_MAINNET_RPC` | Identity resolvers (Farcaster, ENS). |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Optional KV cache layer. |
+| `ADMIN_API_KEY`, `CRON_SECRET` | Bearer tokens for admin and cron endpoints. |
+| `SENTRY_DSN`, `SENTRY_ENVIRONMENT` | Error reporting (no-op when unset). |
+| `WORKER_ALERTS_ENABLED`, `WORKER_DCA_ENABLED`, `WORKER_AUTO_REPAY_ENABLED`, `*_INTERVAL_MS` | Worker loop toggles and intervals. |
+| `RESEND_API_KEY`, `POSTMARK_API_KEY`, `EMAIL_FROM_ADDRESS`, `WEB_PUSH_VAPID_*` | Notification delivery. |
+| `DCA_EXECUTION_ENABLED`, `AUTO_REPAY_EXECUTION_ENABLED` | Unattended execution gates (default `false`). |
+| `NEXT_PUBLIC_GLASS_AURORA` | Web design-system rollout flag. |
+
+Never commit private keys, bot tokens, API secrets, mnemonics, or `.env` files.
+
+### Building and running
+
+Workspace-wide tasks (run from the repo root via Turborepo):
+
+```bash
+pnpm build       # turbo run build
+pnpm dev         # turbo run dev
+pnpm typecheck   # turbo run typecheck
+pnpm lint        # turbo run lint
+```
+
+Run individual surfaces:
 
 ```bash
 pnpm --filter @sherpa/api dev
@@ -199,57 +159,57 @@ pnpm --filter @sherpa/worker dev
 pnpm --filter @sherpa/telegram-bot dev
 ```
 
-### Verify
+Build and test the contracts:
 
 ```bash
-pnpm -r typecheck
-pnpm -r build
-pnpm -r test
+cd packages/contracts
+forge build
+forge test -vv
 ```
 
-## Architecture
+## Testing
 
-```text
-sherpa/
-├── apps/
-│   ├── web/            Next.js web app
-│   ├── api/            Fastify API
-│   ├── worker/         Automation and notification worker
-│   ├── miniapp/        Farcaster/Base Mini App
-│   └── telegram-bot/   Telegram command surface
-├── packages/
-│   ├── contracts/      Solidity contracts, tests, deployment scripts
-│   ├── core/           Parser, intent types, execution models
-│   ├── tools/          Protocol adapters and transaction builders
-│   ├── safety/         Safety rings and preflight checks
-│   ├── memory/         Audit log, rules, notifications, durable stores
-│   ├── scheduler/      Alert, DCA, auto-repay runners
-│   ├── identity/       ENS, Basenames, Farcaster resolution
-│   ├── config/         Environment schema and runtime config
-│   ├── logger/         Structured logging and Sentry integration
-│   ├── ui/             Shared UI primitives
-│   └── sdk/            Developer SDK surface
-├── scripts/db/         Database migrations
-├── deployments/        Public deployment artifacts
-└── docs/sherpa/        Product, audit, launch, and decision records
+```bash
+pnpm test        # turbo run test across the workspace (Vitest)
 ```
+
+Contracts are tested with Foundry. The `packages/contracts` suite covers the
+router and treasury, the `FeeCalculator` and `SafetyCheck` libraries, and
+treasury invariants:
+
+```bash
+cd packages/contracts
+forge test -vv                          # unit + integration tests
+pnpm --filter @sherpa/contracts test:fuzz       # fuzz runs
+pnpm --filter @sherpa/contracts test:invariant  # invariant tests
+pnpm --filter @sherpa/contracts coverage        # lcov coverage report
+```
+
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, build, and tests; separate
+workflows run Slither (`slither.yml`) and Lighthouse (`lighthouse.yml`).
+
+## Status
+
+Sherpa is partially live and partially in active development:
+
+- **Live / immutable:** `SherpaRouter` and `SherpaTreasury` are deployed and
+  verified on Base mainnet and owned by a Safe. They back the supported Aave V3
+  and Aerodrome flows. Contracts are also deployed on Base Sepolia for testing.
+- **Default chain:** the off-chain stack defaults to `base-sepolia`; mainnet
+  execution requires `SHERPA_CHAIN=base-mainnet`.
+- **Stage-2 / scaffolded:** several off-chain capabilities are in progress. The
+  scheduler's unattended on-chain signing ships with safe no-op executors and is
+  gated behind `DCA_EXECUTION_ENABLED` / `AUTO_REPAY_EXECUTION_ENABLED`
+  (default `false`); Postgres-backed memory is opt-in (`SHERPA_USE_REAL_DB`);
+  and additional protocol adapters and chains are review-gated and not wired into
+  production execution.
+
+Transactions execute on Base only. Non-Base chains are read-only display
+surfaces.
 
 ## License
 
-Sherpa is licensed under the Apache License, Version 2.0. See
-[`LICENSE`](LICENSE).
-
-The "Sherpa" name and project identity are maintained by gnanam. See
-[`NOTICE`](NOTICE).
-
-## Maintainer
-
-- GitHub: [@gnanam1990](https://github.com/gnanam1990)
-- Farcaster: [gnanam.eth](https://farcaster.xyz/gnanam.eth)
-- X: [@0x_art](https://x.com/0x_art)
-- Location: Ooty, Tamil Nadu, India
-
-## Security
-
-Do not open public issues for vulnerabilities. Follow
-[`SECURITY.md`](SECURITY.md).
+Licensed under the Apache License, Version 2.0 — see [`LICENSE`](LICENSE) and
+[`NOTICE`](NOTICE). Report security issues privately per [`SECURITY.md`](SECURITY.md);
+do not open public issues for vulnerabilities.
+</content>
