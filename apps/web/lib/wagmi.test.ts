@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  DEFAULT_BUILDER_CODE,
   getBuilderCodeCapabilities,
   getBuilderCodeDataSuffix,
   getPaymasterCapabilities,
+  resolveBuilderCode,
   walletEnv,
   withPaymasterCapabilities,
   withSherpaSendCapabilities,
@@ -101,9 +103,35 @@ describe('wagmi wallet config', () => {
     });
   });
 
-  it('omits builder code attribution when no code is configured', () => {
+  it('omits builder code attribution when an explicitly empty code is passed', () => {
     expect(getBuilderCodeDataSuffix('')).toBeUndefined();
     expect(getBuilderCodeCapabilities('   ')).toBeUndefined();
+  });
+
+  it('falls back to the canonical Sherpa builder code when no env override is set', () => {
+    expect(resolveBuilderCode('')).toBe(DEFAULT_BUILDER_CODE);
+    expect(resolveBuilderCode('   ')).toBe(DEFAULT_BUILDER_CODE);
+    expect(resolveBuilderCode('bc_custom')).toBe('bc_custom');
+  });
+
+  it('attributes sends to the default builder code when NEXT_PUBLIC_BUILDER_CODE is unset', () => {
+    vi.stubEnv('NEXT_PUBLIC_BUILDER_CODE', '');
+
+    expect(
+      withSherpaSendCapabilities(
+        { capabilities: { atomic: { status: 'supported' } } },
+        { location: PUBLIC_LOCATION, paymasterUrl: '/api/paymaster' },
+      ),
+    ).toEqual({
+      capabilities: {
+        atomic: { status: 'supported' },
+        dataSuffix: {
+          value: getBuilderCodeDataSuffix(DEFAULT_BUILDER_CODE),
+          optional: true,
+        },
+        paymasterService: { url: `${PUBLIC_ORIGIN}/api/paymaster` },
+      },
+    });
   });
 
   it('combines builder code attribution with the proxy paymaster capability', () => {
