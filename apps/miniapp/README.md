@@ -9,7 +9,8 @@ Farcaster + Base App mini app for Sherpa.
 ## Setup
 
 ```bash
-cd ~/dev/serpha/sherpa
+git clone https://github.com/gnanam1990/sherpa.git
+cd sherpa
 pnpm install
 pnpm --filter @sherpa/miniapp dev
 ```

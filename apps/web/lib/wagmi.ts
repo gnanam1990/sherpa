@@ -107,15 +107,35 @@ export function withPaymasterCapabilities<
   };
 }
 
+/**
+ * Canonical Sherpa builder code for ERC-8021 onchain attribution (Base Builder
+ * Rewards). Matches the Mini App helper (apps/miniapp/lib/builder.ts) and the
+ * on-chain SherpaRouter BUILDER_CODE so every Sherpa surface attributes to the
+ * same builder. Override per deployment with NEXT_PUBLIC_BUILDER_CODE.
+ */
+export const DEFAULT_BUILDER_CODE = 'bc_97ju6eu2';
+
+/**
+ * Resolve the active builder code. An explicit, non-empty NEXT_PUBLIC_BUILDER_CODE
+ * wins; otherwise fall back to {@link DEFAULT_BUILDER_CODE} so mainnet sends are
+ * attributed out of the box. Previously the default was the raw env var, so
+ * attribution silently no-op'd whenever the var was unset at build time.
+ */
+export function resolveBuilderCode(
+  envCode = process.env.NEXT_PUBLIC_BUILDER_CODE,
+): string {
+  return envCode?.trim() || DEFAULT_BUILDER_CODE;
+}
+
 export function getBuilderCodeDataSuffix(
-  builderCode = process.env.NEXT_PUBLIC_BUILDER_CODE,
+  builderCode = resolveBuilderCode(),
 ): `0x${string}` | undefined {
   const code = builderCode?.trim();
   if (!code) return undefined;
   return Attribution.toDataSuffix({ codes: [code] }) as `0x${string}`;
 }
 
-export function getBuilderCodeCapabilities(builderCode = process.env.NEXT_PUBLIC_BUILDER_CODE) {
+export function getBuilderCodeCapabilities(builderCode = resolveBuilderCode()) {
   const dataSuffix = getBuilderCodeDataSuffix(builderCode);
   if (!dataSuffix) return undefined;
 
@@ -129,7 +149,7 @@ export function getBuilderCodeCapabilities(builderCode = process.env.NEXT_PUBLIC
 
 export function withBuilderCodeCapabilities<
   Variables extends SendCallsVariables,
->(variables: Variables, builderCode = process.env.NEXT_PUBLIC_BUILDER_CODE): Variables {
+>(variables: Variables, builderCode = resolveBuilderCode()): Variables {
   const builderCodeCapabilities = getBuilderCodeCapabilities(builderCode);
   if (!builderCodeCapabilities) return variables;
 
