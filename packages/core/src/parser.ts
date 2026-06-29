@@ -500,13 +500,31 @@ export function parseDeterministic(input: string): ParsedIntent {
     );
   }
   if ((m = raw.match(BORROW_RATE_RE))) {
+    const interestMode = (m[3] ?? 'variable').toLowerCase();
+    // Aave V3 on Base only supports variable-rate borrowing. Recognize the
+    // stable-rate phrasing but flag it as unsupported so the planner refuses
+    // with a friendly message instead of silently downgrading to variable.
+    if (interestMode === 'stable') {
+      return make(
+        'BORROW',
+        raw,
+        {
+          borrowAsset: (m[2] ?? '').toUpperCase(),
+          borrowAmount: m[1],
+          interestMode: 'stable',
+          unsupported: true,
+          unsupportedReason: 'Aave V3 on Base only supports variable-rate borrowing.',
+        },
+        0.9,
+      );
+    }
     return make(
       'BORROW',
       raw,
       {
         borrowAsset: (m[2] ?? '').toUpperCase(),
         borrowAmount: m[1],
-        interestMode: (m[3] ?? 'variable').toLowerCase(),
+        interestMode,
       },
       0.9,
     );
@@ -1249,7 +1267,7 @@ Slot conventions:
 - BET      { "usd": "5", "rawAmountText": "$5", "predicate": "<text>", "outcome": "YES|NO" }
 - DEPOSIT  { "usd": "50", "rawAmountText": "$50", "asset": "USDC" }
 - LEND     { "amount": "100", "rawAmountText": "100", "asset": "USDC" }
-- BORROW   { "borrowAmount": "100", "rawAmountText": "100", "borrowAsset": "USDC", "interestMode": "variable|stable", "collateralAsset": "ETH", "targetHealthFactor": "1.5" }
+- BORROW   { "borrowAmount": "100", "rawAmountText": "100", "borrowAsset": "USDC", "interestMode": "variable", "collateralAsset": "ETH", "targetHealthFactor": "1.5" }  // Aave V3 on Base is variable-rate only; never emit "stable"
 - REPAY    { "amount": "100", "rawAmountText": "100", "asset": "USDC" }
 - WITHDRAW { "amount": "100", "rawAmountText": "100", "asset": "USDC" }
 - POSITIONS {}

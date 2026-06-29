@@ -111,7 +111,17 @@ export type ExecutorDeps = {
   feeTreasuryAddress?: Address;
 };
 
-export type PlanResult = { ok: true; card: ConfirmationCardProps } | { ok: false; error: string };
+export type PlanResult =
+  | { ok: true; card: ConfirmationCardProps }
+  | { ok: false; error: string; errorCode?: string };
+
+/**
+ * Aave V3 on Base has stable-rate borrowing disabled — interestRateMode 1
+ * reverts at the pool. We reject it off-chain so the user gets a clear message
+ * instead of a silent downgrade to variable or an on-chain revert.
+ */
+export const STABLE_RATE_UNSUPPORTED = 'STABLE_RATE_UNSUPPORTED';
+const STABLE_RATE_MESSAGE = 'Aave V3 on Base only supports variable-rate borrowing.';
 
 const GAS_SPONSORED_DISPLAY = '$0.00 (sponsored ✓)';
 const GAS_USER_PAYS = 'user pays';
@@ -1001,6 +1011,12 @@ async function planBorrow(parsed: ParsedIntent, deps: ExecutorDeps): Promise<Pla
 
   if (!amount || !asset) {
     return { ok: false, error: 'missing slots: amount/asset' };
+  }
+  // Reject stable-rate borrowing off-chain before building a confirmation.
+  const interestMode =
+    typeof slots.interestMode === 'string' ? slots.interestMode.toLowerCase() : 'variable';
+  if (interestMode === 'stable' || slots.unsupported === true) {
+    return { ok: false, error: STABLE_RATE_MESSAGE, errorCode: STABLE_RATE_UNSUPPORTED };
   }
   if (!deps.userAddress) {
     return { ok: false, error: 'BORROW requires a connected wallet.' };

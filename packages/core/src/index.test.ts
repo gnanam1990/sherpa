@@ -371,10 +371,12 @@ describe('core/parser', () => {
     expect(p.slots.interestMode).toBe('variable');
   });
 
-  it('parses "borrow 100 USDC at stable rate"', () => {
+  it('flags "borrow 100 USDC at stable rate" as unsupported (Base is variable-only)', () => {
     const p = parseDeterministic('borrow 100 USDC at stable rate');
     expect(p.intent).toBe('BORROW');
     expect(p.slots.interestMode).toBe('stable');
+    expect(p.slots.unsupported).toBe(true);
+    expect(String(p.slots.unsupportedReason)).toMatch(/variable-rate/i);
   });
 
   it('parses "borrow 100 USDC health factor 2.0"', () => {
@@ -1363,6 +1365,16 @@ describe('core/executor', () => {
     const p = parseDeterministic('send 5 usdc to garbage-handle');
     const out = await plan(p);
     expect(out.ok).toBe(false);
+  });
+
+  it('rejects a stable-rate borrow with STABLE_RATE_UNSUPPORTED', async () => {
+    const p = parseDeterministic('borrow 100 USDC at stable rate');
+    const out = await plan(p, { userAddress: USDC_RECIPIENT as `0x${string}` });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.errorCode).toBe('STABLE_RATE_UNSUPPORTED');
+      expect(out.error).toMatch(/variable-rate/i);
+    }
   });
 
   it('plans a BUY with approve+swap and an EIP-5792 envelope', async () => {

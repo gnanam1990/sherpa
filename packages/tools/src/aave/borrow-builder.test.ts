@@ -23,17 +23,18 @@ describe('aave/borrow-builder', () => {
     expect(result.sponsorable).toBe(true);
   });
 
-  it('handles stable rate mode', async () => {
-    const result = await buildBorrowCall(
-      {
-        asset: USDC_ADDRESS,
-        amount: 50_000_000n,
-        interestRateMode: 1,
-        onBehalfOf: FAKE_USER,
-      },
-      { poolAddress: FAKE_POOL },
-    );
-    expect(result.data.startsWith(BORROW_SELECTOR)).toBe(true);
+  it('rejects stable rate mode (Aave V3 on Base is variable-only)', async () => {
+    await expect(
+      buildBorrowCall(
+        {
+          asset: USDC_ADDRESS,
+          amount: 50_000_000n,
+          interestRateMode: 1,
+          onBehalfOf: FAKE_USER,
+        },
+        { poolAddress: FAKE_POOL },
+      ),
+    ).rejects.toMatchObject({ code: 'STABLE_RATE_UNSUPPORTED' });
   });
 
   it('handles zero amount', async () => {
@@ -76,5 +77,11 @@ describe('aave/repay-builder', () => {
     await expect(
       buildRepayCall(USDC_ADDRESS, 100_000_000n, 2, FAKE_USER),
     ).rejects.toBeInstanceOf(AaveNotConfiguredError);
+  });
+
+  it('rejects stable rate mode on repay (variable-only on Base)', async () => {
+    await expect(
+      buildRepayCall(USDC_ADDRESS, 50_000_000n, 1, FAKE_USER, { poolAddress: FAKE_POOL }),
+    ).rejects.toMatchObject({ code: 'STABLE_RATE_UNSUPPORTED' });
   });
 });
