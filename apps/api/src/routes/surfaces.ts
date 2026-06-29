@@ -35,7 +35,7 @@ const LinkBody = z.object({
 });
 
 const SignIntentBody = z.object({
-  surface: z.enum(['telegram', 'farcaster', 'web']),
+  surface: z.enum(['telegram', 'farcaster', 'web', 'mcp']),
   surfaceUserId: z.string().min(1),
   intent: z.record(z.unknown()),
 });

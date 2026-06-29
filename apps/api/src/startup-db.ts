@@ -34,7 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_tg_smartwallet_address
 
 CREATE TABLE IF NOT EXISTS signing_tokens (
   token               TEXT PRIMARY KEY,
-  surface             TEXT NOT NULL CHECK (surface IN ('telegram','farcaster','web')),
+  surface             TEXT NOT NULL CHECK (surface IN ('telegram','farcaster','web','mcp')),
   surface_user_id     TEXT NOT NULL,
   intent_payload      JSONB NOT NULL,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -42,6 +42,13 @@ CREATE TABLE IF NOT EXISTS signing_tokens (
   consumed_at         TIMESTAMPTZ,
   resulting_tx_hash   TEXT
 );
+
+-- Widen the surface CHECK to include 'mcp' on already-provisioned databases
+-- (CREATE TABLE IF NOT EXISTS above only applies to fresh schemas). Postgres
+-- auto-names the inline single-column check signing_tokens_surface_check.
+ALTER TABLE signing_tokens DROP CONSTRAINT IF EXISTS signing_tokens_surface_check;
+ALTER TABLE signing_tokens ADD CONSTRAINT signing_tokens_surface_check
+  CHECK (surface IN ('telegram','farcaster','web','mcp'));
 
 CREATE INDEX IF NOT EXISTS idx_signing_tokens_expires
   ON signing_tokens (expires_at) WHERE consumed_at IS NULL;

@@ -108,3 +108,19 @@ export interface SafetyCheckResponse {
   warnings: string[];
   ringResults: Array<{ ring: number; passed: boolean; detail?: string }>;
 }
+
+/** Sherpa surfaces (signing-token flow). */
+export type Surface = 'telegram' | 'farcaster' | 'web' | 'mcp';
+
+export interface SignIntentRequest {
+  surface: Surface;
+  surfaceUserId: string;
+  intent: Record<string, unknown>;
+}
+
+export interface SignIntentResponse {
+  token: string;
+  /** Where the user opens their Base Account to review and sign. */
+  signUrl: string;
+  expiresAt: string;
+}

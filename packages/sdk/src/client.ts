@@ -22,6 +22,8 @@ import type {
   WebhookConfig,
   Webhook,
   ApiKey,
+  SignIntentRequest,
+  SignIntentResponse,
 } from './types.js';
 
 export class SherpaClient {
@@ -82,6 +84,18 @@ export class SherpaClient {
     return this.request('/api/safety', {
       method: 'POST',
       body: JSON.stringify(params),
+    });
+  }
+
+  /**
+   * Create a non-custodial signing token for an intent. The returned `signUrl`
+   * is where the user opens their Base Account to review and sign — the caller
+   * (e.g. the MCP server) never holds keys or signs.
+   */
+  async signIntent(request: SignIntentRequest): Promise<SignIntentResponse> {
+    return this.request('/api/surfaces/sign-intent', {
+      method: 'POST',
+      body: JSON.stringify(request),
     });
   }
 

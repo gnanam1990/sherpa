@@ -23,4 +23,7 @@ export type {
   WebhookConfig,
   Webhook,
   ApiKey,
+  Surface,
+  SignIntentRequest,
+  SignIntentResponse,
 } from './types.js';
