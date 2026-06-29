@@ -10,7 +10,7 @@
 
 export { AaveNotConfiguredError, AssetNotSupportedError, quote } from './quoter.js';
 export { buildSupplyCall, buildWithdrawCall } from './supply-builder.js';
-export { buildBorrowCall, buildRepayCall } from './borrow-builder.js';
+export { buildBorrowCall, buildRepayCall, StableRateUnsupportedError } from './borrow-builder.js';
 export { verifySupply } from './verify.js';
 export { STUB_SUPPLY_APY_BPS } from './stub-pricing.js';
 export { AAVE_POOL_ABI, SUPPLY_SELECTOR, WITHDRAW_SELECTOR, BORROW_SELECTOR, REPAY_SELECTOR } from './pool.js';

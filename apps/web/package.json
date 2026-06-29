@@ -1,6 +1,7 @@
 {
   "name": "@sherpa/web",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "Sherpa web app — Next.js 15 (owner: M2).",
   "scripts": {

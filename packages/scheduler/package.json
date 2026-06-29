@@ -1,6 +1,7 @@
 {
   "name": "@sherpa/scheduler",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "DCA, alerts, monitors (cron + watchers). (owner: M3)",
   "type": "module",

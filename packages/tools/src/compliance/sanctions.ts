@@ -8,11 +8,19 @@
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
 
-export const SANCTIONED_ADDRESSES: Set<string> = new Set([
-  '0x8576acc5c05d6ce88f4e49bf65bdf0c62f91353c',
-  '0xd90e2f925da726b50c4ed8d0fb90ad053324f31b',
-]);
+/**
+ * Single source of truth lives in @sherpa/safety (the leaf security package).
+ * @sherpa/tools depends on @sherpa/safety, so re-exporting here keeps these
+ * signatures stable for existing callers without duplicating the OFAC list or
+ * introducing a circular dependency.
+ */
+import {
+  SANCTIONED_ADDRESSES as SAFETY_SANCTIONED_ADDRESSES,
+  isSanctioned as safetyIsSanctioned,
+} from '@sherpa/safety';
+
+export const SANCTIONED_ADDRESSES: ReadonlySet<string> = SAFETY_SANCTIONED_ADDRESSES;
 
 export function isSanctioned(address: `0x${string}`): boolean {
-  return SANCTIONED_ADDRESSES.has(address.toLowerCase());
+  return safetyIsSanctioned(address);
 }

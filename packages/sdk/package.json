@@ -1,6 +1,7 @@
 {
   "name": "@sherpa/sdk",
   "version": "0.1.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "Sherpa Developer SDK — TypeScript client for the Sherpa API",
   "type": "module",

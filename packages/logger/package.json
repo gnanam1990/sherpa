@@ -1,6 +1,7 @@
 {
   "name": "@sherpa/logger",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "pino logger setup. (owner: M3)",
   "type": "module",

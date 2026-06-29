@@ -47,3 +47,25 @@ DEFAULT_COMPLIANCE_CONFIG = {
 - Sanctions list is static; production deployment needs dynamic OFAC API.
 - `isOFACSanctioned` and `validateTransactionAmount` are pure — no async, no external calls.
 - `checkCompliance` currently returns stub `isCompliant: true`; real checks wired in Stage 10.
+
+## Update — 2026-06-29: maintained sanctions list + mainnet honesty gate
+
+The hardcoded 2–3 address stub has been replaced with a maintained dataset
+(Path A). Screening source and wiring are now:
+
+- **Source:** OFAC SDN digital-currency address lists (EVM / `0x`-format),
+  derived from `sanctions.gov` via the reproducible community mirror
+  `https://github.com/0xB10C/ofac-sanctioned-digital-currency-addresses`.
+- **Generation:** `scripts/compliance/build-sanctions.ts` fetches, normalizes
+  (lowercase, dedupe, sort), and writes the committed generated file
+  `packages/safety/src/sanctions-data.generated.ts` (with provenance header).
+  Re-run on OFAC updates and commit the result. The script fails closed if the
+  fetch returns fewer than 50 addresses.
+- **Single source of truth:** the canonical list now lives in `@sherpa/safety`
+  (the leaf security package). `@sherpa/tools` re-exports it (tools already
+  depends on safety), so both the ring-0 sanctions check and the compliance
+  checker screen against the same list — no duplication, no circular dependency.
+- **Mainnet honesty gate:** `assertMainnetSafety` now refuses to operate on
+  mainnet unless a real sanctions source is loaded (`SANCTIONED_ADDRESSES.size
+  >= 50`), so the list can never silently regress to a stub in production. A CI
+  unit test enforces the same floor.
