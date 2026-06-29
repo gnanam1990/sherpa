@@ -1,6 +1,7 @@
 {
   "name": "@sherpa/memory",
   "version": "0.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "description": "User prefs, history snapshots, audit log wrapper. (owner: M3)",
   "type": "module",
