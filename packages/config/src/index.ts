@@ -495,6 +495,29 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SherpaConfig {
   };
 }
 
+/** Runtime config for the standalone Sherpa MCP server (`apps/mcp`). */
+export type McpConfig = {
+  /** Base URL of the Sherpa API the MCP server proxies to. */
+  sherpaApiBaseUrl: string;
+  /** API key the MCP server presents to the Sherpa API (Bearer). */
+  sherpaApiKey: string;
+  /** Web base used to build Base Account sign URLs (non-custodial signing). */
+  sherpaWebBase: string;
+};
+
+/**
+ * Load the MCP server config. Kept here so `process.env` is read only inside
+ * `@sherpa/config` (per the repo rule); `apps/mcp` library code is env-free and
+ * takes this config by injection.
+ */
+export function loadMcpConfig(env: NodeJS.ProcessEnv = process.env): McpConfig {
+  return {
+    sherpaApiBaseUrl: env.SHERPA_API_BASE_URL ?? env.SHERPA_API_BASE ?? 'http://localhost:8787',
+    sherpaApiKey: env.SHERPA_MCP_API_KEY ?? '',
+    sherpaWebBase: env.SHERPA_WEB_BASE ?? 'https://sherpa-web.vercel.app',
+  };
+}
+
 export function validateChainConfig(config: SherpaConfig): string[] {
   const errors: string[] = [];
 

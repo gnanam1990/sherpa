@@ -1,0 +1,31 @@
+{
+  "name": "@sherpa/mcp",
+  "version": "0.0.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "sherpa-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sherpa/config": "workspace:*",
+    "@sherpa/sdk": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "viem": "^2.50.4",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.24.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
+  }
+}

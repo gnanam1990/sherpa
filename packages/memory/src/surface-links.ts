@@ -85,7 +85,7 @@ export async function getTelegramLink(
 export async function createSigningToken(
   pool: pg.Pool,
   params: {
-    surface: 'telegram' | 'farcaster' | 'web';
+    surface: 'telegram' | 'farcaster' | 'web' | 'mcp';
     surfaceUserId: string;
     intentPayload: unknown;
     ttlSeconds?: number;
