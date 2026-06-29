@@ -12,6 +12,7 @@ import type { Address } from './types.js';
 import type { PendingTx, RingCheckResult, SafetyRing, SimulationCheckResult } from './types.js';
 import { assertAllowlisted, ALLOWED_CONTRACTS } from './allowlist.js';
 import { assertAmountCap, DEFAULT_CAPS } from './caps.js';
+import { isSanctioned, hasRealSanctionsSource } from './sanctions.js';
 
 const CHAIN_ALLOWLISTS: Record<number, Address[]> = {
   42161: [ // Arbitrum
@@ -37,21 +38,6 @@ export function getChainAllowlist(chainId: number): Set<string> {
   }
 
   return base;
-}
-
-// Inline sanctions list (avoid circular dependency with @sherpa/tools)
-const SANCTIONED_ADDRESSES: Set<string> = new Set([
-  '0x8576acc5c05d6ce88f4e49bf65bdf0c62f91353c',
-  '0xd90e2f925da726b50c4ed8d0fb90ad053324f31b',
-  '0x8589427373d6d84e98730d7795d8f6f8731fda16',
-]);
-
-function isSanctioned(address: string): boolean {
-  return SANCTIONED_ADDRESSES.has(address.toLowerCase());
-}
-
-export function isOFACSanctioned(address: string): boolean {
-  return isSanctioned(address);
 }
 
 /**
@@ -221,7 +207,8 @@ export function checkBorrowCapacity(
  * Validate mainnet-specific safety invariants.
  *
  * On mainnet the protocol MUST have fees enabled, a treasury address set,
- * and simulation must be fail-closed. These checks are no-ops on Sepolia.
+ * simulation fail-closed, and a real OFAC sanctions list loaded. These checks
+ * are no-ops on Sepolia.
  */
 export function assertMainnetSafety(config: {
   isMainnet: boolean;
@@ -235,6 +222,13 @@ export function assertMainnetSafety(config: {
     if (!config.feeEnabled) errors.push('Protocol fee must be enabled on mainnet');
     if (!config.treasuryAddress) errors.push('Fee treasury address required on mainnet');
     if (config.simulationFailOpen) errors.push('Simulation must be fail-closed on mainnet');
+    // Honesty gate: refuse to operate on mainnet unless a real OFAC sanctions
+    // source is loaded (not the historical 2-3 address stub).
+    if (!hasRealSanctionsSource()) {
+      errors.push(
+        'Real OFAC sanctions list required on mainnet (loaded list looks like a stub)',
+      );
+    }
   }
 
   return { ok: errors.length === 0, errors };

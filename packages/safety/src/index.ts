@@ -20,6 +20,7 @@ export * from './types.js';
 export * from './allowlist.js';
 export * from './caps.js';
 export * from './rings.js';
+export * from './sanctions.js';
 export * from './sponsor.js';
 export * from './signature.js';
 export * from './rings/health-factor.js';

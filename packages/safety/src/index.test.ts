@@ -963,7 +963,8 @@ describe('OFAC sanctions check', () => {
   it('rejects sanctioned address as recipient', async () => {
     const sanctionedTx = {
       ...goodTx,
-      to: '0x8589427373d6d84e98730d7795d8f6f8731fda16' as `0x${string}`,
+      // A real OFAC SDN EVM address from the maintained sanctions dataset.
+      to: '0x8576acc5c05d6ce88f4e49bf65bdf0c62f91353c' as `0x${string}`,
     };
     const results = await checkRings(sanctionedTx);
     expect(ringsOk(results)).toBe(false);
