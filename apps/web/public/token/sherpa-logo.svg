@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000"><rect width="1000" height="1000" fill="#080B14"/>
+<defs>
+  <radialGradient id="glowa" cx="50%" cy="46%" r="52%">
+    <stop offset="0%"   stop-color="#7C6CF0" stop-opacity="0.55"/>
+    <stop offset="45%"  stop-color="#0052FF"   stop-opacity="0.30"/>
+    <stop offset="100%" stop-color="#080B14"   stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="rima" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%"   stop-color="#22D3EE"/>
+    <stop offset="55%"  stop-color="#0052FF"/>
+    <stop offset="100%" stop-color="#7C6CF0"/>
+  </linearGradient>
+  <linearGradient id="facea" x1="0" y1="0" x2="0.35" y2="1">
+    <stop offset="0%"   stop-color="#E8EDF7"/>
+    <stop offset="100%" stop-color="#C3CEE4"/>
+  </linearGradient>
+</defs><circle cx="500" cy="470" r="430" fill="url(#glowa)"/><g transform="rotate(-2.0 500 620.0)"><rect x="277.0" y="557.0" width="446.0" height="126.0" rx="53.4" fill="url(#rima)" opacity="0.5"/><rect x="280.0" y="560.0" width="440.0" height="120.0" rx="50.4" fill="url(#facea)"/><rect x="280.0" y="646.4" width="440.0" height="33.6" rx="16.8" fill="#8E9CBA" opacity="0.28"/></g><g transform="rotate(1.6 500 505.0)"><rect x="317.0" y="449.5" width="366.0" height="111.0" rx="47.1" fill="url(#rima)" opacity="0.5"/><rect x="320.0" y="452.5" width="360.0" height="105.0" rx="44.1" fill="url(#facea)"/><rect x="320.0" y="528.1" width="360.0" height="29.400000000000002" rx="14.700000000000001" fill="#8E9CBA" opacity="0.28"/></g><g transform="rotate(-1.2 500 398.0)"><rect x="357.0" y="347.5" width="286.0" height="101.0" rx="42.9" fill="url(#rima)" opacity="0.5"/><rect x="360.0" y="350.5" width="280.0" height="95.0" rx="39.9" fill="url(#facea)"/><rect x="360.0" y="418.9" width="280.0" height="26.6" rx="13.3" fill="#8E9CBA" opacity="0.28"/></g><g transform="rotate(2.2 500 300.0)"><rect x="399.5" y="256.0" width="201.0" height="88.0" rx="37.44" fill="url(#rima)" opacity="0.5"/><rect x="402.5" y="259.0" width="195.0" height="82.0" rx="34.44" fill="url(#facea)"/><rect x="402.5" y="318.04" width="195.0" height="22.96" rx="11.48" fill="#8E9CBA" opacity="0.28"/></g></svg>
