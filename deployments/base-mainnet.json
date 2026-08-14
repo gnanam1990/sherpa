@@ -77,6 +77,7 @@
     "feeBps": "10",
     "minHealthFactor": "1500000000000000000",
     "minWithdrawHealthFactor": "1500000000000000000",
+    "builderCode": "bc_97ju6eu2",
     "paused": false
   }
 }
